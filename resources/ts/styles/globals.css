@@ -1,0 +1,140 @@
+/* ─────────────────────────────────────────────────────────────────────────────
+   MUI COMPONENT RESETS
+   The global selectors in theme.css (label, button, input, h1-h4) target raw
+   HTML elements and unintentionally override MUI's internal style calculations,
+   causing floating labels to misalign and text to visually overlap on interact.
+   These rules restore the correct MUI defaults with higher specificity.
+───────────────────────────────────────────────────────────────────────────── */
+
+/* ── TextField / InputLabel ──────────────────────────────────────────────── */
+/* MUI uses font-size:1rem + transform:scale(0.75) to float labels.
+   The global label { font-size / line-height } from theme.css breaks that. */
+.MuiFormLabel-root,
+.MuiInputLabel-root {
+  font-size: 1rem !important;
+  font-weight: 400 !important;
+  line-height: 1.4375em !important;
+}
+
+/* When the label is shrunk (floating to top of the field border) */
+.MuiInputLabel-shrink {
+  /* MUI's transform: scale(0.75) handles the size — no extra override needed,
+     but we must ensure line-height doesn't push it down into the input. */
+  line-height: 1.4375em !important;
+}
+
+/* ── Input base ──────────────────────────────────────────────────────────── */
+.MuiInputBase-root,
+.MuiInputBase-input {
+  font-size: 1rem !important;
+  font-weight: 400 !important;
+  line-height: 1.4375em !important;
+}
+
+/* ── Select (native & MUI) ───────────────────────────────────────────────── */
+.MuiSelect-select {
+  font-size: 1rem !important;
+  font-weight: 400 !important;
+  line-height: 1.4375em !important;
+}
+
+/* ── Button ──────────────────────────────────────────────────────────────── */
+/* theme.css button rule conflicts with MUI's internal button font sizing */
+.MuiButtonBase-root,
+.MuiButton-root {
+  font-size: 0.875rem !important;
+  font-weight: 600 !important;
+  line-height: 1.75 !important;
+}
+
+/* Size variants */
+.MuiButton-sizeSmall {
+  font-size: 0.8125rem !important;
+}
+.MuiButton-sizeLarge {
+  font-size: 0.9375rem !important;
+}
+
+/* ── Typography headings ──────────────────────────────────────────────────── */
+/* theme.css h1-h4 rules conflict with MUI Typography variant sizing */
+.MuiTypography-h1 { font-size: 6rem !important;    line-height: 1.167 !important; }
+.MuiTypography-h2 { font-size: 3.75rem !important;  line-height: 1.2 !important; }
+.MuiTypography-h3 { font-size: 3rem !important;     line-height: 1.167 !important; }
+.MuiTypography-h4 { font-size: 2.125rem !important; line-height: 1.235 !important; }
+.MuiTypography-h5 { font-size: 1.5rem !important;   line-height: 1.334 !important; }
+.MuiTypography-h6 { font-size: 1.25rem !important;  line-height: 1.6 !important; }
+.MuiTypography-body1 { font-size: 1rem !important;      line-height: 1.5 !important; }
+.MuiTypography-body2 { font-size: 0.875rem !important;  line-height: 1.43 !important; }
+.MuiTypography-caption { font-size: 0.75rem !important; line-height: 1.66 !important; }
+.MuiTypography-subtitle1 { font-size: 1rem !important;     line-height: 1.75 !important; }
+.MuiTypography-subtitle2 { font-size: 0.875rem !important; line-height: 1.57 !important; }
+
+/* ── Chip label ──────────────────────────────────────────────────────────── */
+.MuiChip-label {
+  font-size: 0.8125rem !important;
+  line-height: normal !important;
+  font-weight: 600 !important;
+}
+
+/* ── Slider value label ───────────────────────────────────────────────────── */
+/* Prevent the MUI Slider value bubble from overlapping adjacent text */
+.MuiSlider-valueLabel {
+  font-size: 0.75rem !important;
+  font-weight: 600 !important;
+  line-height: 1.2 !important;
+  z-index: 2;
+}
+
+/* ── Table cell ──────────────────────────────────────────────────────────── */
+.MuiTableCell-root {
+  font-size: 0.875rem !important;
+  line-height: 1.43 !important;
+}
+.MuiTableCell-head {
+  font-weight: 700 !important;
+}
+
+/* ── Dialog ──────────────────────────────────────────────────────────────── */
+.MuiDialogTitle-root {
+  font-size: 1.25rem !important;
+  line-height: 1.6 !important;
+}
+
+/* ── Card hover isolation ────────────────────────────────────────────────── */
+/* Cards that use transform:translateY(-2px) on hover must be isolated so
+   they don't overlap sibling elements during the lift animation. */
+.MuiCard-root {
+  isolation: isolate;
+  position: relative;
+  z-index: 0;
+}
+.MuiCard-root:hover {
+  z-index: 1;
+}
+
+/* ── MenuItem / ListItem text ────────────────────────────────────────────── */
+.MuiMenuItem-root,
+.MuiListItemText-primary,
+.MuiListItemText-secondary {
+  font-size: inherit !important;
+  line-height: inherit !important;
+}
+
+/* ── Tooltip ─────────────────────────────────────────────────────────────── */
+.MuiTooltip-tooltip {
+  font-size: 0.6875rem !important;
+  line-height: 1.4 !important;
+}
+
+/* ── FormHelperText ──────────────────────────────────────────────────────── */
+.MuiFormHelperText-root {
+  font-size: 0.75rem !important;
+  line-height: 1.66 !important;
+}
+
+/* ── Tab label ────────────────────────────────────────────────────────────── */
+.MuiTab-root {
+  font-size: 0.875rem !important;
+  font-weight: 600 !important;
+  line-height: 1.25 !important;
+}

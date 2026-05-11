@@ -1,0 +1,317 @@
+import { Outlet, useNavigate, useLocation, Navigate } from 'react-router';
+import { useAuth } from '../../context/AuthContext';
+import {
+  AppBar, Toolbar, Typography, Drawer, List, ListItem, ListItemButton,
+  ListItemIcon, ListItemText, Box, IconButton, Avatar, Menu, MenuItem,
+  useMediaQuery, useTheme, Divider, Chip, Tooltip, Stack, Badge, Popover, Paper, Button,
+} from '@mui/material';
+import {
+  SpaceDashboard, PersonAddAlt1, Groups, CalendarMonth, Schedule, Assignment,
+  Payments, Insights, Analytics, Logout, Menu as MenuIcon, CorporateFare,
+  NotificationsNone, ManageAccounts, Timer, ReceiptLong, AccountCircle,
+} from '@mui/icons-material';
+import { useState, useEffect } from 'react';
+import { API, HEADERS } from '../../lib/api';
+
+const drawerWidth = 268;
+
+// Role-specific nav items — each includes which roles can see it
+const ALL_MENU_ITEMS = [
+  { text: 'Dashboard',         icon: <SpaceDashboard />,     path: '/dashboard',                  roles: ['hr','employee','supervisor','gm','accounting'] },
+  { text: 'Recruitment',       icon: <PersonAddAlt1 />,      path: '/dashboard/recruitment',      roles: ['hr','gm'] },
+  { text: 'User Accounts',     icon: <ManageAccounts />,     path: '/dashboard/users',            roles: ['hr'] },
+  { text: 'Employees',         icon: <Groups />,             path: '/dashboard/employees',        roles: ['hr','supervisor','gm'] },
+  { text: 'Schedule',          icon: <CalendarMonth />,      path: '/dashboard/schedule',         roles: ['hr','supervisor','employee'] },
+  { text: 'Time Tracker',      icon: <Timer />,              path: '/dashboard/time',             roles: ['employee'] },
+  { text: 'Attendance',        icon: <Schedule />,           path: '/dashboard/attendance',       roles: ['hr','supervisor'] },
+  { text: 'Requests',          icon: <Assignment />,         path: '/dashboard/requests',         roles: ['hr','supervisor','employee'] },
+  { text: 'Payroll',           icon: <Payments />,           path: '/dashboard/payroll',          roles: ['hr','accounting'] },
+  { text: 'My Payslips',       icon: <ReceiptLong />,        path: '/dashboard/payslips',         roles: ['employee'] },
+  { text: 'Evaluation',        icon: <Insights />,           path: '/dashboard/evaluation',       roles: ['hr','supervisor','gm','employee'] },
+  { text: 'Reports',           icon: <Analytics />,          path: '/dashboard/reports',          roles: ['hr','gm','accounting'] },
+  { text: 'My Profile',        icon: <AccountCircle />,      path: '/dashboard/profile',          roles: ['employee'] },
+];
+
+export default function RootLayout() {
+  const { user, logout } = useAuth();
+  const navigate = useNavigate();
+  const location = useLocation();
+  const theme = useTheme();
+  const isDesktop = useMediaQuery(theme.breakpoints.up('md'));
+  const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
+  const [mobileOpen, setMobileOpen] = useState(false);
+  const [notifAnchor, setNotifAnchor] = useState<null | HTMLElement>(null);
+  const [notifications, setNotifications] = useState<any[]>([]);
+  const [notifCount, setNotifCount] = useState(0);
+  const [readIds, setReadIds] = useState<Set<string>>(new Set());
+
+  // Fetch notifications based on role — must be before any early return
+  useEffect(() => {
+    if (!user) return;
+    const fetchNotifications = async () => {
+      try {
+        const notifs: any[] = [];
+
+        // HR/Admin: new applications
+        if (user.role === 'hr') {
+          const res = await fetch(`${API}/applications`, { headers: HEADERS });
+          const data = await res.json();
+          const newApps = (data.applications ?? []).filter((a: any) => a?.status === 'Submitted' || a?.status === 'Under Review');
+          newApps.forEach((app: any) => {
+            notifs.push({
+              id: `app-${app.id}`,
+              type: 'application',
+              title: 'New Application',
+              message: `${app.name} applied for ${app.position}`,
+              link: '/dashboard/recruitment',
+              timestamp: app.dateApplied,
+            });
+          });
+        }
+
+        // Supervisor: pending requests
+        if (user.role === 'supervisor') {
+          const res = await fetch(`${API}/requests`, { headers: HEADERS });
+          const data = await res.json();
+          const pendingReqs = (data.requests ?? []).filter((r: any) => r?.status === 'Pending');
+          pendingReqs.forEach((req: any) => {
+            notifs.push({
+              id: `req-${req.id}`,
+              type: 'request',
+              title: 'Pending Request',
+              message: `${req.employee} - ${req.type} on ${req.date}`,
+              link: '/dashboard/requests',
+              timestamp: req.submittedDate,
+            });
+          });
+        }
+
+        setNotifications(notifs);
+        setNotifCount(notifs.length);
+      } catch (e) {
+        console.error('Failed to fetch notifications:', e);
+      }
+    };
+
+    fetchNotifications();
+    const interval = setInterval(fetchNotifications, 30000);
+    return () => clearInterval(interval);
+  }, [user?.role]);
+
+  // Early return AFTER all hooks
+  if (!user) return <Navigate to="/" replace />;
+
+  const filteredMenuItems = ALL_MENU_ITEMS.filter(item => item.roles.includes(user.role));
+
+  const handleLogout = () => { logout(); navigate('/'); };
+  const handleNavigate = (path: string) => { navigate(path); if (!isDesktop) setMobileOpen(false); };
+
+  const unreadCount = notifications.filter(n => !readIds.has(n.id)).length;
+
+  const handleMarkRead = (id: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setReadIds(prev => new Set([...prev, id]));
+  };
+
+  const handleMarkAllRead = () => {
+    setReadIds(new Set(notifications.map(n => n.id)));
+  };
+
+  const ROLE_LABELS: Record<string, string> = {
+    hr: 'HR / Admin', employee: 'Employee', supervisor: 'Supervisor',
+    gm: 'General Manager', accounting: 'Accounting & Finance',
+  };
+
+  const drawerContent = (
+    <Box sx={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+      <Box sx={{ display: { xs: 'block', md: 'none' } }}><Toolbar /></Box>
+
+      <Box onClick={() => handleNavigate('/dashboard')} sx={{ px: 2.5, py: 2.5, display: 'flex', alignItems: 'center', gap: 1.5, cursor: 'pointer', borderRadius: 2, mx: 1, transition: 'background 0.18s', '&:hover': { background: 'rgba(255,255,255,0.07)' } }}>
+        <Box sx={{ width: 44, height: 44, minWidth: 44, borderRadius: '14px', background: 'linear-gradient(135deg, #E8A33D 0%, #F5C277 100%)', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 8px 16px rgba(232,163,61,0.35)' }}>
+          <CorporateFare sx={{ color: 'white' }} />
+        </Box>
+        <Box sx={{ minWidth: 0 }}>
+          <Typography sx={{ color: 'white', fontWeight: 700, lineHeight: 1.1, fontSize: '0.95rem' }} noWrap>Buenaventura</Typography>
+          <Typography sx={{ color: 'rgba(230,238,248,0.7)', fontSize: '0.72rem', letterSpacing: 1 }} noWrap>HRIS · DSS</Typography>
+        </Box>
+      </Box>
+
+      <Divider sx={{ borderColor: 'rgba(255,255,255,0.08)', mx: 2 }} />
+
+      <Box sx={{ px: 2.5, pt: 1.5, pb: 0.5 }}>
+        <Chip size="small" label={ROLE_LABELS[user.role] ?? user.role.toUpperCase()}
+          sx={{ bgcolor: 'rgba(217,164,65,0.22)', color: '#F5D38A', fontWeight: 700, fontSize: '0.7rem', letterSpacing: 0.5 }} />
+      </Box>
+
+      <Typography sx={{ px: 3, pt: 1.5, pb: 1, fontSize: '0.7rem', letterSpacing: 1.5, color: 'rgba(230,238,248,0.55)', fontWeight: 700 }}>
+        MAIN MENU
+      </Typography>
+
+      <Box sx={{ flexGrow: 1, overflow: 'auto', pb: 1 }}>
+        <List sx={{ px: 0.5 }}>
+          {filteredMenuItems.map((item) => {
+            const selected = item.path === '/dashboard' ? location.pathname === '/dashboard' : location.pathname.startsWith(item.path);
+            return (
+              <ListItem key={item.text} disablePadding>
+                <ListItemButton selected={selected} onClick={() => handleNavigate(item.path)}>
+                  <ListItemIcon>{item.icon}</ListItemIcon>
+                  <ListItemText primary={item.text} primaryTypographyProps={{ fontSize: '0.92rem', fontWeight: 600 }} />
+                </ListItemButton>
+              </ListItem>
+            );
+          })}
+        </List>
+      </Box>
+
+      {/* User card */}
+      <Box sx={{ p: 2 }}>
+        <Box sx={{ p: 1.5, borderRadius: 2, background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.08)', display: 'flex', alignItems: 'center', gap: 1.25 }}>
+          <Avatar sx={{ bgcolor: 'secondary.main', width: 38, height: 38, fontWeight: 700 }}>{user.name.charAt(0)}</Avatar>
+          <Box sx={{ minWidth: 0, flex: 1 }}>
+            <Typography sx={{ color: 'white', fontSize: '0.85rem', fontWeight: 600 }} noWrap>{user.name}</Typography>
+            <Typography sx={{ color: 'rgba(230,238,248,0.7)', fontSize: '0.7rem' }} noWrap>{ROLE_LABELS[user.role] ?? user.role}</Typography>
+          </Box>
+          <Tooltip title="Logout">
+            <IconButton size="small" onClick={handleLogout} sx={{ color: 'rgba(230,238,248,0.85)' }}><Logout fontSize="small" /></IconButton>
+          </Tooltip>
+        </Box>
+      </Box>
+    </Box>
+  );
+
+  return (
+    <Box sx={{ display: 'flex', minHeight: '100vh', bgcolor: 'background.default' }}>
+      <AppBar position="fixed" sx={{ zIndex: (t) => t.zIndex.drawer + 1, width: { md: `calc(100% - ${drawerWidth}px)` }, ml: { md: `${drawerWidth}px` } }}>
+        <Toolbar sx={{ gap: 1 }}>
+          <IconButton color="inherit" edge="start" onClick={() => setMobileOpen(prev => !prev)} sx={{ display: { md: 'none' } }}><MenuIcon /></IconButton>
+          <Box sx={{ flexGrow: 1, minWidth: 0 }}>
+            <Typography noWrap sx={{ fontWeight: 700, fontSize: { xs: '0.95rem', sm: '1.05rem' }, lineHeight: 1.2 }}>
+              HRIS — Human Resource Information System
+            </Typography>
+            <Typography noWrap sx={{ color: 'rgba(255,255,255,0.75)', fontSize: '0.72rem', letterSpacing: 0.5, display: { xs: 'none', sm: 'block' } }}>
+              with Decision Support System · Buenaventura Estate
+            </Typography>
+          </Box>
+          <Stack direction="row" spacing={1} alignItems="center">
+            <Chip size="small" label={ROLE_LABELS[user.role] ?? user.role.toUpperCase()}
+              sx={{ display: { xs: 'none', sm: 'inline-flex' }, bgcolor: 'rgba(255,255,255,0.15)', color: 'white', border: '1px solid rgba(255,255,255,0.25)' }} />
+            <Tooltip title="Notifications">
+              <IconButton color="inherit" size="small" onClick={e => setNotifAnchor(e.currentTarget)}>
+                <Badge badgeContent={unreadCount} color="error">
+                  <NotificationsNone />
+                </Badge>
+              </IconButton>
+            </Tooltip>
+            <IconButton onClick={(e) => setAnchorEl(e.currentTarget)} size="small">
+              <Avatar sx={{ bgcolor: 'secondary.main', width: 36, height: 36, fontWeight: 700 }}>{user.name.charAt(0)}</Avatar>
+            </IconButton>
+          </Stack>
+          <Menu anchorEl={anchorEl} open={Boolean(anchorEl)} onClose={() => setAnchorEl(null)} PaperProps={{ sx: { mt: 1, minWidth: 220, borderRadius: 2 } }}>
+            <MenuItem disabled><Typography fontWeight={700}>{user.name}</Typography></MenuItem>
+            <MenuItem disabled><Typography variant="body2" color="text.secondary">{ROLE_LABELS[user.role]}</Typography></MenuItem>
+            <Divider />
+            {user.role === 'employee' && (
+              <MenuItem onClick={() => { setAnchorEl(null); navigate('/dashboard/profile'); }}>
+                <ListItemIcon><AccountCircle fontSize="small" /></ListItemIcon>My Profile
+              </MenuItem>
+            )}
+            <MenuItem onClick={() => { setAnchorEl(null); handleLogout(); }}>
+              <ListItemIcon><Logout fontSize="small" /></ListItemIcon>Logout
+            </MenuItem>
+          </Menu>
+
+          {/* Notifications Popover */}
+          <Popover
+            open={Boolean(notifAnchor)}
+            anchorEl={notifAnchor}
+            onClose={() => setNotifAnchor(null)}
+            anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
+            transformOrigin={{ vertical: 'top', horizontal: 'right' }}
+            PaperProps={{ sx: { mt: 1, borderRadius: 2, minWidth: 320, maxWidth: 400, maxHeight: 500 } }}
+          >
+            <Box sx={{ p: 2, borderBottom: '1px solid', borderColor: 'divider', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <Typography fontWeight={700}>Notifications</Typography>
+              {unreadCount > 0 && (
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                  <Chip label={unreadCount} size="small" color="error" />
+                  <Button size="small" variant="text" onClick={handleMarkAllRead} sx={{ fontSize: '0.72rem', textTransform: 'none', p: 0.5, minWidth: 0 }}>
+                    Mark all read
+                  </Button>
+                </Box>
+              )}
+            </Box>
+            {notifications.length === 0 ? (
+              <Paper elevation={0} sx={{ p: 3, textAlign: 'center' }}>
+                <NotificationsNone sx={{ fontSize: 40, color: 'text.disabled', mb: 1 }} />
+                <Typography variant="body2" color="text.secondary">No new notifications at this time.</Typography>
+              </Paper>
+            ) : (
+              <Box sx={{ maxHeight: 400, overflowY: 'auto' }}>
+                {notifications.map((notif) => {
+                  const isRead = readIds.has(notif.id);
+                  return (
+                    <Box
+                      key={notif.id}
+                      onClick={() => {
+                        navigate(notif.link);
+                        setNotifAnchor(null);
+                      }}
+                      sx={{
+                        p: 2,
+                        borderBottom: '1px solid',
+                        borderColor: 'divider',
+                        cursor: 'pointer',
+                        opacity: isRead ? 0.55 : 1,
+                        bgcolor: isRead ? 'transparent' : 'action.selected',
+                        transition: 'background 0.2s, opacity 0.2s',
+                        '&:hover': { bgcolor: 'action.hover' },
+                      }}
+                    >
+                      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 1 }}>
+                        <Box sx={{ minWidth: 0 }}>
+                          <Typography variant="body2" fontWeight={600} color={isRead ? 'text.secondary' : 'primary'}>
+                            {notif.title}
+                          </Typography>
+                          <Typography variant="body2" color="text.primary" sx={{ mt: 0.5 }}>
+                            {notif.message}
+                          </Typography>
+                          {notif.timestamp && (
+                            <Typography variant="caption" color="text.secondary" sx={{ mt: 0.5, display: 'block' }}>
+                              {notif.timestamp}
+                            </Typography>
+                          )}
+                        </Box>
+                        {!isRead && (
+                          <Button
+                            size="small"
+                            variant="outlined"
+                            onClick={(e) => handleMarkRead(notif.id, e)}
+                            sx={{ fontSize: '0.68rem', textTransform: 'none', whiteSpace: 'nowrap', minWidth: 0, px: 1, py: 0.25, flexShrink: 0 }}
+                          >
+                            Mark read
+                          </Button>
+                        )}
+                      </Box>
+                    </Box>
+                  );
+                })}
+              </Box>
+            )}
+          </Popover>
+        </Toolbar>
+      </AppBar>
+
+      <Drawer variant="permanent" sx={{ display: { xs: 'none', md: 'block' }, width: drawerWidth, flexShrink: 0, '& .MuiDrawer-paper': { width: drawerWidth, boxSizing: 'border-box' } }} open>
+        {drawerContent}
+      </Drawer>
+      <Drawer variant="temporary" open={mobileOpen} onClose={() => setMobileOpen(false)} ModalProps={{ keepMounted: true }} sx={{ display: { xs: 'block', md: 'none' }, '& .MuiDrawer-paper': { width: drawerWidth, boxSizing: 'border-box' } }}>
+        {drawerContent}
+      </Drawer>
+
+      <Box component="main" sx={{ flexGrow: 1, minWidth: 0, width: { md: `calc(100% - ${drawerWidth}px)` }, minHeight: '100vh', p: { xs: 1.5, sm: 2.5, md: 3 }, bgcolor: 'background.default', backgroundImage: 'radial-gradient(circle at 0% 0%, rgba(15,76,129,0.05), transparent 40%), radial-gradient(circle at 100% 100%, rgba(232,163,61,0.06), transparent 45%)' }}>
+        <Toolbar />
+        <Outlet />
+      </Box>
+    </Box>
+  );
+}
