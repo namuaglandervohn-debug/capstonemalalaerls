@@ -6,7 +6,7 @@
     <title>HR Management System</title>
     
     @viteReactRefresh
-    @vite(['resources/styles/globals.css', 'resources/ts/main.tsx'])
+    @vite(['resources/ts/main.tsx'])
 </head>
 <body>
     <div id="root"></div> 
