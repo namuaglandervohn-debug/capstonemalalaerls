@@ -2,9 +2,9 @@ import { useEffect, useState, ReactNode } from 'react';
 import { Box } from '@mui/material';
 
 const IMAGES = [
-  'https://images.unsplash.com/photo-1674305906324-f4f50dc3e957?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&q=80&w=1920',
-  'https://images.unsplash.com/photo-1610020469704-2ff0cb933543?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&q=80&w=1920',
-  'https://images.unsplash.com/photo-1612209944608-bbf965464340?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwzfHx0cm9waWNhbCUyMGVzdGF0ZSUyMHJlc29ydCUyMHBsYW50YXRpb258ZW58MXx8fHwxNzc4MjQ3ODE2fDA&ixlib=rb-4.1.0&q=80&w=1920',
+  '/images/bg1.jpg',
+  '/images/bg2.jpg',
+  '/images/bg3.jpg',
 ];
 
 const OVERLAY =
