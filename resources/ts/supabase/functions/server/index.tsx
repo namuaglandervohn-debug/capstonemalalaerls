@@ -2,6 +2,12 @@ import { Hono } from "npm:hono";
 import { cors } from "npm:hono/cors";
 import { logger } from "npm:hono/logger";
 import * as kv from "./kv_store.tsx";
+import { createClient } from "npm:@supabase/supabase-js";
+
+const supabase = createClient(
+  Deno.env.get("SUPABASE_URL")!,
+  Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
+);
 
 const app = new Hono();
 app.use("*", logger(console.log));
@@ -178,56 +184,58 @@ app.get("/make-server-24f1182d/applications", async (c) => {
 app.post("/make-server-24f1182d/applications", async (c) => {
   try {
     const body = await c.req.json();
-    const existing = await kv.getByPrefix("application:");
-    const nextNum = String(existing.length + 1).padStart(4, "0");
-    const id = `APP-2026-${nextNum}`;
-    const application = {
-      id,
-      name: body.name,
-      firstName: body.firstName ?? "",
-      middleName: body.middleName ?? "",
-      lastName: body.lastName ?? "",
+
+    const applicantId = `APP-2026-${Date.now()}`;
+
+    const applicant = {
+      applicant_id: applicantId,
+
+      name: body.name ?? "",
+      first_name: body.firstName ?? "",
+      middle_name: body.middleName ?? "",
+      last_name: body.lastName ?? "",
       suffix: body.suffix ?? "",
       gender: body.gender ?? "",
-      civilStatus: body.civilStatus ?? "",
-      birthdate: body.birthdate ?? "",
+      civil_status: body.civilStatus ?? "",
+      birthdate: body.birthdate || null,
       birthplace: body.birthplace ?? "",
       height: body.height ?? "",
       weight: body.weight ?? "",
-      position: body.position,
-      email: body.email,
-      phone: body.phone,
+
+      position_applied: body.position ?? "",
+      email: body.email ?? "",
+      phone_number: body.phone ?? "",
       address: body.address ?? "",
       experience: body.experience ?? "",
       education: body.education ?? "",
-      coverLetter: body.coverLetter ?? "",
+      cover_letter: body.coverLetter ?? "",
+
       tin: body.tin ?? "",
       sss: body.sss ?? "",
       philhealth: body.philhealth ?? "",
       pagibig: body.pagibig ?? "",
-      emergencyContact: body.emergencyContact ?? "",
-      resumeFileName: body.resumeFileName ?? null,
-      resumeFileData: body.resumeFileData ?? null,
-      supportingDocuments: body.supportingDocuments ?? [],
-      supportingDocumentFiles: body.supportingDocumentFiles ?? [],
-      dateApplied: new Date().toISOString().split("T")[0],
+      emergency_contact: body.emergencyContact ?? "",
+
+      resume_file_name: body.resumeFileName ?? null,
+      resume_file_data: body.resumeFileData ?? null,
+      supporting_documents: body.supportingDocuments ?? [],
+      supporting_document_files: body.supportingDocumentFiles ?? [],
+
       status: "Submitted",
-      hasResume: body.hasResume ?? false,
-      hasBirthCert: body.hasBirthCert ?? false,
-      hasTOR: body.hasTOR ?? false,
-      hasMedCert: body.hasMedCert ?? false,
-      requirementsNote: body.requirementsNote ?? "",
-      interviewDate: null,
-      interviewTime: null,
-      interviewLocation: null,
-      interviewNotes: null,
-      interviewFeedback: null,
-      hiringDecision: null,
-      scheduledBy: null,
-      createdAt: new Date().toISOString(),
     };
-    await kv.set(`application:${id}`, application);
-    return c.json({ application }, 201);
+
+    const { data, error } = await supabase
+      .from("applicants")
+      .insert(applicant)
+      .select()
+      .single();
+
+    if (error) {
+      console.log("Supabase insert error:", error);
+      return c.json({ error: error.message }, 500);
+    }
+
+    return c.json({ application: data }, 201);
   } catch (error) {
     console.log("Error creating application:", error);
     return c.json({ error: `Failed to create application: ${error}` }, 500);
