@@ -112,7 +112,13 @@ export default function ApplyForJobPage() {
   setError('');
 
   try {
-    const applicantIdGenerated = `APP-2026-${Date.now()}`;
+    const { count } = await supabase
+  .from("applicants")
+  .select("*", { count: "exact", head: true });
+
+const nextNumber = ((count ?? 0) + 1).toString().padStart(4, "0");
+
+const applicantIdGenerated = `APP-2026-${nextNumber}`;
 
     const resumeFileData = resumeFiles[0]
       ? await fileToBase64(resumeFiles[0])
