@@ -104,7 +104,7 @@ export default function TrackApplicationPage() {
       <Container maxWidth="md" sx={{ py: 2 }}>
         <Button startIcon={<ArrowBackIosNew />} onClick={() => navigate('/')} variant="contained" color="inherit"
           sx={{ mb: 3, bgcolor: 'rgba(255,255,255,0.92)', color: 'primary.dark', '&:hover': { bgcolor: 'white' } }}>
-          Back to Login
+          Back
         </Button>
 
         <Paper elevation={0} sx={{ p: { xs: 3, sm: 4, md: 5 }, borderRadius: 4, backdropFilter: 'blur(18px)', background: 'rgba(255,255,255,0.94)', border: '1px solid rgba(255,255,255,0.5)', boxShadow: '0 30px 60px rgba(8,40,20,0.30)' }}>

@@ -19,12 +19,18 @@ import EmployeeTimeTracker from "./components/pages/EmployeeTimeTracker";
 import EmployeePayslips from "./components/pages/EmployeePayslips";
 import MyProfile from "./components/pages/MyProfile";
 import EmployeeDTR from "./components/pages/EmployeeDTR";
+import LandingPage from "./components/pages/LandingPage";
+import JobPostingManagement from "./components/pages/JobPostingManagement";
 
 export const router = createBrowserRouter([
   {
-    path: "/",
-    element: <LoginPage />,
-  },
+  path: "/",
+  element: <LandingPage />,
+},
+{
+  path: "/login",
+  element: <LoginPage />,
+},
   {
     path: "/apply",
     element: <ApplyForJobPage />,
@@ -33,6 +39,11 @@ export const router = createBrowserRouter([
     path: "/track",
     element: <TrackApplicationPage />,
   },
+
+  {
+  path: "/careers",
+  element: <LandingPage />,
+},
   {
     path: "/dashboard",
     element: <RootLayout />,
@@ -41,6 +52,7 @@ export const router = createBrowserRouter([
       { index: true, element: <DashboardRouter /> },
       // HR / Admin
       { path: "recruitment", element: <RecruitmentManagement /> },
+      { path: "job-postings", element: <JobPostingManagement /> },
       { path: "recruitment/apply", element: <ApplicationForm /> },
       { path: "users", element: <UserManagement /> },
       { path: "employees", element: <EmployeeRecords /> },

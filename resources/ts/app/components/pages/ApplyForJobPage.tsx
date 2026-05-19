@@ -240,7 +240,7 @@ const applicantIdGenerated = `APP-2026-${nextNumber}`;
           color="inherit"
           sx={{ mb: 3, bgcolor: 'rgba(255,255,255,0.92)', color: 'primary.dark', '&:hover': { bgcolor: 'white' } }}
         >
-          Back to Login
+          Back
         </Button>
 
         <Paper

@@ -8,7 +8,7 @@ import {
 import {
   SpaceDashboard, PersonAddAlt1, Groups, CalendarMonth, Schedule, Assignment,
   Payments, Insights, Analytics, Logout, Menu as MenuIcon, CorporateFare,
-  NotificationsNone, ManageAccounts, Timer, ReceiptLong, AccountCircle, BadgeOutlined,
+  NotificationsNone, ManageAccounts, Timer, ReceiptLong, AccountCircle, BadgeOutlined, Work,
 } from '@mui/icons-material';
 import { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabaseClient';
@@ -19,6 +19,7 @@ const drawerWidth = 268;
 const ALL_MENU_ITEMS = [
   { text: 'Dashboard',         icon: <SpaceDashboard />,     path: '/dashboard',                  roles: ['hr','employee','supervisor','gm','accounting'] },
   { text: 'Recruitment',       icon: <PersonAddAlt1 />,      path: '/dashboard/recruitment',      roles: ['hr','gm'] },
+  { text: 'Job Postings', icon: <Work />, path: '/dashboard/job-postings', roles: ['hr', 'gm'] },
   { text: 'User Accounts',     icon: <ManageAccounts />,     path: '/dashboard/users',            roles: ['hr'] },
   { text: 'Employees',         icon: <Groups />,             path: '/dashboard/employees',        roles: ['hr','supervisor','gm'] },
   { text: 'Schedule',          icon: <CalendarMonth />,      path: '/dashboard/schedule',         roles: ['hr','supervisor','employee'] },

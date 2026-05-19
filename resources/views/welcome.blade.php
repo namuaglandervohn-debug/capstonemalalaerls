@@ -6,7 +6,7 @@
     <title>HR Management System</title>
     
     @viteReactRefresh
-    @vite(['resources/ts/main.tsx'])
+    @vite(['resources/ts/LandingPage.tsx'])
 </head>
 <body>
     <div id="root"></div> 

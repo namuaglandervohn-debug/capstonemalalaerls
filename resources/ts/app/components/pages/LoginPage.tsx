@@ -283,44 +283,6 @@ export default function LoginPage() {
             </Button>
           </form>
 
-          <Divider sx={{ my: 2.5 }}>
-            <Typography
-              variant="caption"
-              color="text.secondary"
-              sx={{ letterSpacing: 1 }}
-            >
-              APPLICANT PORTAL
-            </Typography>
-          </Divider>
-
-          <Grid container spacing={1.5}>
-            <Grid size={{ xs: 12, sm: 6 }}>
-              <Button
-                fullWidth
-                variant="outlined"
-                size="large"
-                startIcon={<PersonAdd />}
-                onClick={() => navigate("/apply")}
-                sx={{ py: 1.3 }}
-              >
-                Apply for Job
-              </Button>
-            </Grid>
-            <Grid size={{ xs: 12, sm: 6 }}>
-              <Button
-                fullWidth
-                variant="outlined"
-                size="large"
-                color="secondary"
-                startIcon={<Search />}
-                onClick={() => navigate("/track")}
-                sx={{ py: 1.3 }}
-              >
-                Track Application
-              </Button>
-            </Grid>
-          </Grid>
-
           <Box
             sx={{
               mt: 3,
