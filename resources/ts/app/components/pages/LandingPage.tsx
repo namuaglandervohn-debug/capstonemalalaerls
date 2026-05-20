@@ -4,7 +4,7 @@ import {
   Box, Typography, Button, Card, CardContent, Grid, Chip,
   Dialog, DialogTitle, DialogContent, DialogActions, TextField,
   CircularProgress, Snackbar, Alert, Divider, Paper, Stack,
-  Container,
+  Container, useMediaQuery, useTheme,
 } from "@mui/material";
 import {
   Work, LocationOn, AccessTime, Edit, Campaign, Business,
@@ -41,6 +41,8 @@ const EMPTY_FORM = {
 export default function LandingPage() {
   const { user } = useAuth();
   const navigate = useNavigate();
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
 
   const [jobs, setJobs] = useState<JobPosting[]>([]);
   const [loading, setLoading] = useState(true);
@@ -179,33 +181,50 @@ export default function LandingPage() {
         <Container maxWidth="xl">
           <Box
             sx={{
-              height: 76,
+              minHeight: { xs: 70, sm: 76 },
+              py: { xs: 1, sm: 0 },
               display: "flex",
               alignItems: "center",
               justifyContent: "space-between",
+              gap: 1.5,
             }}
           >
-            <Stack direction="row" spacing={1.5} alignItems="center">
+            <Stack direction="row" spacing={1.5} alignItems="center" sx={{ minWidth: 0 }}>
               <Box
                 sx={{
-                  width: 46,
-                  height: 46,
+                  width: { xs: 40, sm: 46 },
+                  height: { xs: 40, sm: 46 },
                   borderRadius: 3,
                   background: "linear-gradient(135deg, #1F7A47 0%, #3FA46A 100%)",
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "center",
                   boxShadow: "0 10px 24px rgba(31,122,71,0.30)",
+                  flexShrink: 0,
                 }}
               >
                 <Business sx={{ color: "#fff" }} />
               </Box>
 
-              <Box>
-                <Typography fontWeight={900} sx={{ color: "#1F7A47", lineHeight: 1 }}>
+              <Box sx={{ minWidth: 0 }}>
+                <Typography
+                  fontWeight={900}
+                  sx={{
+                    color: "#1F7A47",
+                    lineHeight: 1,
+                    fontSize: { xs: "0.9rem", sm: "1rem" },
+                    whiteSpace: "nowrap",
+                    overflow: "hidden",
+                    textOverflow: "ellipsis",
+                  }}
+                >
                   Buenaventura Estate
                 </Typography>
-                <Typography variant="caption" color="text.secondary">
+                <Typography
+                  variant="caption"
+                  color="text.secondary"
+                  sx={{ display: { xs: "none", sm: "block" } }}
+                >
                   HRIS • DSS Career Portal
                 </Typography>
               </Box>
@@ -224,11 +243,13 @@ export default function LandingPage() {
               onClick={() => navigate("/login")}
               sx={{
                 borderRadius: 999,
-                px: 3,
+                px: { xs: 1.8, sm: 3 },
                 fontWeight: 800,
                 textTransform: "none",
                 background: "linear-gradient(135deg, #1F7A47 0%, #3FA46A 100%)",
                 boxShadow: "0 10px 24px rgba(31,122,71,0.35)",
+                whiteSpace: "nowrap",
+                fontSize: { xs: "0.75rem", sm: "0.875rem" },
               }}
             >
               Employee Login
@@ -243,11 +264,11 @@ export default function LandingPage() {
           background:
             "linear-gradient(135deg, rgba(31,122,71,0.96), rgba(63,164,106,0.88))",
           color: "#fff",
-          py: { xs: 8, md: 12 },
+          py: { xs: 6, sm: 8, md: 12 },
         }}
       >
         <Container maxWidth="xl">
-          <Grid container spacing={6} alignItems="center">
+          <Grid container spacing={{ xs: 4, md: 6 }} alignItems="center">
             <Grid size={{ xs: 12, md: 7 }}>
               <Chip
                 icon={<Campaign />}
@@ -262,8 +283,8 @@ export default function LandingPage() {
 
               <Typography
                 sx={{
-                  fontSize: { xs: "2.6rem", sm: "3.4rem", md: "5rem" },
-                  lineHeight: 0.98,
+                  fontSize: { xs: "2.2rem", sm: "3.4rem", md: "5rem" },
+                  lineHeight: { xs: 1.05, md: 0.98 },
                   fontWeight: 900,
                   mb: 3,
                   maxWidth: 800,
@@ -275,7 +296,7 @@ export default function LandingPage() {
               <Typography
                 sx={{
                   maxWidth: 680,
-                  fontSize: { xs: "1rem", md: "1.2rem" },
+                  fontSize: { xs: "0.95rem", sm: "1rem", md: "1.2rem" },
                   lineHeight: 1.8,
                   color: "rgba(255,255,255,0.92)",
                   mb: 4,
@@ -290,6 +311,7 @@ export default function LandingPage() {
                   size="large"
                   startIcon={<AssignmentTurnedIn />}
                   onClick={() => navigate("/apply")}
+                  fullWidth={isMobile}
                   sx={{
                     borderRadius: 999,
                     px: 4,
@@ -300,10 +322,10 @@ export default function LandingPage() {
                     bgcolor: "#ffffff",
                     boxShadow: "0 10px 24px rgba(255,255,255,0.25)",
                     "&:hover": {
-                        bgcolor: "#eef7ee",
-                        color: "#1F7A47",
+                      bgcolor: "#eef7ee",
+                      color: "#1F7A47",
                     },
-                    }}
+                  }}
                 >
                   Apply for Job
                 </Button>
@@ -313,6 +335,7 @@ export default function LandingPage() {
                   variant="outlined"
                   startIcon={<TrackChanges />}
                   onClick={() => navigate("/track")}
+                  fullWidth={isMobile}
                   sx={{
                     borderRadius: 999,
                     px: 4,
@@ -335,13 +358,21 @@ export default function LandingPage() {
             <Grid size={{ xs: 12, md: 5 }}>
               <Card
                 sx={{
-                  borderRadius: 6,
+                  borderRadius: { xs: 4, md: 6 },
                   background: "rgba(255,255,255,0.95)",
                   boxShadow: "0 24px 60px rgba(0,0,0,0.18)",
                 }}
               >
                 <CardContent sx={{ p: { xs: 3, md: 5 } }}>
-                  <Typography variant="h4" fontWeight={900} sx={{ color: "#1F7A47", mb: 3 }}>
+                  <Typography
+                    variant="h4"
+                    fontWeight={900}
+                    sx={{
+                      color: "#1F7A47",
+                      mb: 3,
+                      fontSize: { xs: "1.6rem", sm: "2rem", md: "2.125rem" },
+                    }}
+                  >
                     Why Work With Us?
                   </Typography>
 
@@ -373,9 +404,9 @@ export default function LandingPage() {
         <Paper
           elevation={0}
           sx={{
-            mt: -4,
-            p: 2,
-            borderRadius: 5,
+            mt: { xs: 2, md: -4 },
+            p: { xs: 1.5, sm: 2 },
+            borderRadius: { xs: 3, sm: 5 },
             display: "flex",
             gap: 2,
             flexDirection: { xs: "column", md: "row" },
@@ -394,7 +425,8 @@ export default function LandingPage() {
 
           <Button
             variant="contained"
-            onClick={() => navigate("/apply")}
+            onClick={() => document.getElementById("jobs")?.scrollIntoView({ behavior: "smooth" })}
+            fullWidth={isMobile}
             sx={{
               borderRadius: 999,
               px: 4,
@@ -410,20 +442,28 @@ export default function LandingPage() {
       </Container>
 
       {/* JOB POSTINGS */}
-      <Box id="jobs" sx={{ py: 8 }}>
+      <Box id="jobs" sx={{ py: { xs: 5, md: 8 } }}>
         <Container maxWidth="xl">
           <Box
             sx={{
               mb: 4,
               display: "flex",
               justifyContent: "space-between",
-              alignItems: "center",
+              alignItems: { xs: "stretch", md: "center" },
+              flexDirection: { xs: "column", md: "row" },
               gap: 2,
               flexWrap: "wrap",
             }}
           >
             <Box>
-              <Typography variant="h4" fontWeight={900} sx={{ color: "#0f172a" }}>
+              <Typography
+                variant="h4"
+                fontWeight={900}
+                sx={{
+                  color: "#0f172a",
+                  fontSize: { xs: "1.7rem", sm: "2rem", md: "2.125rem" },
+                }}
+              >
                 Open Positions
               </Typography>
               <Typography color="text.secondary">
@@ -436,12 +476,14 @@ export default function LandingPage() {
                 variant="contained"
                 startIcon={<Edit />}
                 onClick={handleOpenCreate}
+                fullWidth={isMobile}
                 sx={{
                   borderRadius: 999,
                   px: 3,
                   py: 1.2,
                   fontWeight: 900,
                   background: "linear-gradient(135deg, #1F7A47 0%, #3FA46A 100%)",
+                  alignSelf: { xs: "stretch", md: "center" },
                 }}
               >
                 Create Job Posting
@@ -457,7 +499,7 @@ export default function LandingPage() {
             <Paper
               elevation={0}
               sx={{
-                p: 6,
+                p: { xs: 3, md: 6 },
                 textAlign: "center",
                 borderRadius: 5,
                 border: "1px solid rgba(31,122,71,0.12)",
@@ -468,9 +510,9 @@ export default function LandingPage() {
               </Typography>
             </Paper>
           ) : (
-            <Grid container spacing={3}>
+            <Grid container spacing={{ xs: 2, md: 3 }}>
               {filteredJobs.map((job) => (
-                <Grid key={job.id} size={{ xs: 12, md: 6, lg: 4 }}>
+                <Grid key={job.id} size={{ xs: 12, sm: 12, md: 6, lg: 4 }}>
                   <Card
                     sx={{
                       height: "100%",
@@ -479,62 +521,93 @@ export default function LandingPage() {
                       border: "1px solid rgba(31,122,71,0.10)",
                     }}
                   >
-                    <CardContent sx={{ p: 3.5 }}>
-                      <Stack direction="row" justifyContent="space-between" spacing={2} sx={{ mb: 2 }}>
-                        <Typography variant="h5" fontWeight={900}>
+                    <CardContent
+                      sx={{
+                        p: { xs: 2.5, sm: 3.5 },
+                        height: "100%",
+                        display: "flex",
+                        flexDirection: "column",
+                      }}
+                    >
+                      <Stack
+                        direction={{ xs: "column", sm: "row" }}
+                        justifyContent="space-between"
+                        alignItems={{ xs: "flex-start", sm: "center" }}
+                        spacing={1}
+                        sx={{ mb: 2 }}
+                      >
+                        <Typography
+                          variant="h5"
+                          fontWeight={900}
+                          sx={{
+                            fontSize: { xs: "1.25rem", sm: "1.5rem" },
+                            wordBreak: "break-word",
+                          }}
+                        >
                           {job.title}
                         </Typography>
                         <Chip label={job.employment_type} size="small" color="success" />
                       </Stack>
 
                       <Stack spacing={1.2} sx={{ mb: 2 }}>
-                      <Typography
-                        sx={{
-                          display: "flex",
-                          alignItems: "center",
-                          gap: 1,
-                          color: "text.secondary",
-                        }}
-                      >
-                        <Work fontSize="small" />
-                        <strong>Department:</strong> {job.department}
-                      </Typography>
+                        <Typography
+                          sx={{
+                            display: "flex",
+                            alignItems: "center",
+                            gap: 1,
+                            color: "text.secondary",
+                            wordBreak: "break-word",
+                          }}
+                        >
+                          <Work fontSize="small" />
+                          <strong>Department:</strong> {job.department}
+                        </Typography>
 
-                      <Typography
-                        sx={{
-                          display: "flex",
-                          alignItems: "center",
-                          gap: 1,
-                          color: "text.secondary",
-                        }}
-                      >
-                        <LocationOn fontSize="small" />
-                        <strong>Location:</strong> {job.location}
-                      </Typography>
+                        <Typography
+                          sx={{
+                            display: "flex",
+                            alignItems: "center",
+                            gap: 1,
+                            color: "text.secondary",
+                            wordBreak: "break-word",
+                          }}
+                        >
+                          <LocationOn fontSize="small" />
+                          <strong>Location:</strong> {job.location}
+                        </Typography>
 
-                      <Typography
-                        sx={{
-                          display: "flex",
-                          alignItems: "center",
-                          gap: 1,
-                          color: "#166534",
-                          fontWeight: 700,
-                        }}
-                      >
-                        <AccessTime fontSize="small" />
-                        <strong>Salary Range:</strong>{" "}
-                        {job.salary_range
-                          ? `₱ ${job.salary_range}`
-                          : "Salary Negotiable"}
-                      </Typography>
-                    </Stack>
+                        <Typography
+                          sx={{
+                            display: "flex",
+                            alignItems: "center",
+                            gap: 1,
+                            color: "#166534",
+                            fontWeight: 700,
+                            wordBreak: "break-word",
+                          }}
+                        >
+                          <AccessTime fontSize="small" />
+                          <strong>Salary Range:</strong>{" "}
+                          {job.salary_range
+                            ? `₱ ${job.salary_range}`
+                            : "Salary Negotiable"}
+                        </Typography>
+                      </Stack>
 
                       <Divider sx={{ my: 2 }} />
 
                       <Typography fontWeight={800} sx={{ mb: 1 }}>
                         Job Description
                       </Typography>
-                      <Typography color="text.secondary" sx={{ mb: 3 }}>
+                      <Typography
+                        color="text.secondary"
+                        sx={{
+                          mb: 3,
+                          flexGrow: 1,
+                          wordBreak: "break-word",
+                          lineHeight: 1.7,
+                        }}
+                      >
                         {job.description || "No description provided."}
                       </Typography>
 
@@ -552,7 +625,11 @@ export default function LandingPage() {
                       </Button>
 
                       {(user?.role === "hr" || user?.role === "gm") && (
-                        <Stack direction="row" spacing={1} sx={{ mt: 2 }}>
+                        <Stack
+                          direction={{ xs: "column", sm: "row" }}
+                          spacing={1}
+                          sx={{ mt: 2 }}
+                        >
                           <Button fullWidth variant="outlined" onClick={() => handleEdit(job)}>
                             Edit
                           </Button>
@@ -570,7 +647,13 @@ export default function LandingPage() {
         </Container>
       </Box>
 
-      <Dialog open={openDialog} onClose={() => setOpenDialog(false)} maxWidth="md" fullWidth>
+      <Dialog
+        open={openDialog}
+        onClose={() => setOpenDialog(false)}
+        maxWidth="md"
+        fullWidth
+        fullScreen={isMobile}
+      >
         <DialogTitle>{editingJob ? "Edit Job Posting" : "Create Job Posting"}</DialogTitle>
         <DialogContent dividers>
           <Grid container spacing={2}>
@@ -601,9 +684,15 @@ export default function LandingPage() {
           </Grid>
         </DialogContent>
 
-        <DialogActions>
-          <Button onClick={() => setOpenDialog(false)}>Cancel</Button>
-          <Button variant="contained" onClick={handleSave} disabled={saving}>
+        <DialogActions
+          sx={{
+            flexDirection: { xs: "column-reverse", sm: "row" },
+            gap: 1,
+            p: 2,
+          }}
+        >
+          <Button fullWidth={isMobile} onClick={() => setOpenDialog(false)}>Cancel</Button>
+          <Button fullWidth={isMobile} variant="contained" onClick={handleSave} disabled={saving}>
             {saving ? "Saving..." : editingJob ? "Save Changes" : "Create Posting"}
           </Button>
         </DialogActions>
