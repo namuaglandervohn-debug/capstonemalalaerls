@@ -1,732 +1,956 @@
-import React, { useState, useEffect } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import {
-  Box, Typography, Paper, Button, Table, TableBody, TableCell,
-  TableContainer, TableHead, TableRow, Chip, Dialog, DialogTitle,
-  DialogContent, DialogActions, TextField, Slider, Card, CardContent,
-  Grid, CircularProgress, Alert, Snackbar, Tooltip, IconButton,
-  Divider, MenuItem,
+  Alert,
+  Box,
+  Button,
+  Card,
+  CardContent,
+  Chip,
+  CircularProgress,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogTitle,
+  Divider,
+  Grid,
+  IconButton,
+  MenuItem,
+  Paper,
+  Slider,
+  Snackbar,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow,
+  TextField,
+  Tooltip,
+  Typography,
 } from "@mui/material";
 import {
-  AddCircleOutline, Insights, Grade, TaskAlt, Sync, EmojiEvents,
-  DeleteOutline, Groups, Edit, Add, Save,
+  Add,
+  AddCircleOutline,
+  DeleteOutline,
+  Edit,
+  EmojiEvents,
+  Grade,
+  Groups,
+  Insights,
+  Save,
+  Sync,
+  TaskAlt,
 } from "@mui/icons-material";
-import { API, HEADERS } from "../../lib/api";
-import { DSS_CRITERIA, POSITIONS, OUTLETS } from "../../lib/constants";
+import { supabase } from "../../lib/supabaseClient";
+import { OUTLETS, POSITIONS } from "../../lib/constants";
+
+const AVAILABLE_POSITIONS = POSITIONS.filter(position => position !== "Payroll Staff");
 import { useAuth } from "../../context/AuthContext";
 
 /* ── Types ─────────────────────────────────────────────────────────────── */
-interface CriterionDef {
-  key: string;
-  label: string;
-  weight: number;
-  description: string;
-}
+type EvaluationStatus = "Draft" | "Submitted" | "Reviewed" | "Approved" | "Returned" | "Cancelled";
 
-interface EvaluationResult {
-  id: string;
-  employee: string;
-  position: string;
-  period: string;
-  workQuality: number;
-  jobKnowledge: number;
-  teamwork: number;
-  initiative: number;
-  peerEvaluation: number;
-  conduct: number;
-  attendance: number;
-  performanceOutput: number;
-  finalScore: number;
-  evaluatedBy?: string;
-  status: "Pending GM Approval" | "Approved" | "Employee of the Month";
+interface CriterionDef {
+  criteria_id: string;
+  criteria_name: string;
+  description: string | null;
+  category: string | null;
+  weight: number; // stored as percent, e.g. 25 = 25%
+  max_score: number;
+  is_active: boolean;
 }
 
 interface EmployeeRecord {
-  id: string;
+  employee_id: string;
   name: string;
   position: string;
   outlet: string;
   status: string;
 }
 
+interface EvaluationScoreRow {
+  criteria_id: string;
+  criteria_name: string;
+  criteria_weight: number;
+  max_score: number;
+  raw_score: number;
+  weighted_score: number;
+}
+
+interface EvaluationResult {
+  evaluation_id: string;
+  employee_id: string;
+  employee_name: string;
+  position: string;
+  outlet: string;
+  evaluation_period_start: string;
+  evaluation_period_end: string;
+  evaluation_period_label: string | null;
+  evaluator_name: string | null;
+  evaluator_role: string | null;
+  total_raw_score: number;
+  final_weighted_score: number;
+  rating_label: string | null;
+  status: EvaluationStatus;
+  remarks: string | null;
+  scores: Record<string, EvaluationScoreRow>;
+}
+
+interface DssResult {
+  result_id: string;
+  result_period_start: string;
+  result_period_end: string;
+  result_period_label: string | null;
+  total_employees: number;
+  highest_score: number;
+  average_score: number;
+  lowest_score: number;
+  top_employee_id: string | null;
+  top_employee_name: string | null;
+  status: string;
+  generated_at: string | null;
+}
+
+interface DssResultItem {
+  result_id: string;
+  evaluation_id: string;
+  employee_id: string;
+  employee_name: string;
+  position: string;
+  outlet: string;
+  final_weighted_score: number;
+  rating_label: string | null;
+  rank_no: number;
+  recommendation: string | null;
+}
+
 interface FormState {
-  employee: string;
+  employee_id: string;
+  employee_name: string;
   position: string;
   outlet: string;
   periodStart: string;
   periodEnd: string;
+  periodLabel: string;
   scores: Record<string, number>;
-  comments: string;
+  remarks: string;
 }
 
-interface PublishedTemplate {
-  position: string;
-  periodStart: string;
-  periodEnd: string;
-  criteria: CriterionDef[];
-  publishedAt: string;
+interface CriteriaEditorRow {
+  criteria_id: string;
+  criteria_name: string;
+  description: string;
+  category: string;
+  weight: number;
+  max_score: number;
+  isNew?: boolean;
 }
 
-/* ── localStorage helpers ────────────────────────────────────────────── */
-const CRITERIA_KEY = "hris_eval_criteria";
-const TEMPLATE_KEY = "hris_eval_template";
-
-const loadCriteria = (): CriterionDef[] => {
-  try {
-    const s = localStorage.getItem(CRITERIA_KEY);
-    return s ? JSON.parse(s) : [...DSS_CRITERIA];
-  } catch {
-    return [...DSS_CRITERIA];
-  }
+const monthStart = () => {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-01`;
 };
 
-const loadTemplate = (): PublishedTemplate | null => {
-  try {
-    const s = localStorage.getItem(TEMPLATE_KEY);
-    return s ? JSON.parse(s) : null;
-  } catch {
-    return null;
-  }
+const monthEnd = () => {
+  const d = new Date();
+  return new Date(d.getFullYear(), d.getMonth() + 1, 0).toISOString().split("T")[0];
 };
+
+const fullName = (row: any) =>
+  [row.first_name, row.middle_name, row.last_name, row.suffix].filter(Boolean).join(" ").replace(/\s+/g, " ").trim();
+
+const formatPeriod = (r: Pick<EvaluationResult, "evaluation_period_start" | "evaluation_period_end" | "evaluation_period_label">) =>
+  r.evaluation_period_label || `${r.evaluation_period_start} — ${r.evaluation_period_end}`;
+
+const money = (n: number | null | undefined) => Number(n || 0).toLocaleString(undefined, { maximumFractionDigits: 2 });
 
 function buildEmptyForm(criteria: CriterionDef[]): FormState {
   const scores: Record<string, number> = {};
-  criteria.forEach((c) => { scores[c.key] = 50; });
-  return { employee: "", position: "", outlet: "", periodStart: "", periodEnd: "", scores, comments: "" };
-}
-
-function computeScore(scores: Record<string, number>, criteria: CriterionDef[]): number {
-  const totalWeight = criteria.reduce((s, c) => s + c.weight, 0);
-  if (totalWeight === 0) return 50;
-  return criteria.reduce((sum, c) => sum + (scores[c.key] ?? 50) * c.weight, 0) / totalWeight;
-}
-
-/* ── Component ────────────────────────────────────────────────────────── */
-export default function PerformanceEvaluation() {
-  const { user } = useAuth();
-
-  /* evaluation results */
-  const [results, setResults] = useState<EvaluationResult[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  /* eval form dialog */
-  const [openEvalForm, setOpenEvalForm] = useState(false);
-  const [form, setForm] = useState<FormState>(() => buildEmptyForm(loadCriteria()));
-  const [saving, setSaving] = useState(false);
-
-  /* snackbar */
-  const [snackbar, setSnackbar] = useState({
-    open: false, message: "", severity: "success" as "success" | "error",
+  criteria.forEach((c) => {
+    scores[c.criteria_id] = 85;
   });
 
-  /* custom criteria */
-  const [customCriteria, setCustomCriteria] = useState<CriterionDef[]>(loadCriteria);
-  const [criteriaDialogOpen, setCriteriaDialogOpen] = useState(false);
-  const [editCriteriaTemp, setEditCriteriaTemp] = useState<CriterionDef[]>([]);
+  return {
+    employee_id: "",
+    employee_name: "",
+    position: "",
+    outlet: "",
+    periodStart: monthStart(),
+    periodEnd: monthEnd(),
+    periodLabel: "",
+    scores,
+    remarks: "",
+  };
+}
 
-  /* published template */
-  const [publishedTemplate, setPublishedTemplate] = useState<PublishedTemplate | null>(loadTemplate);
+function computePreviewScore(scores: Record<string, number>, criteria: CriterionDef[]): number {
+  const totalWeight = criteria.reduce((sum, c) => sum + Number(c.weight || 0), 0);
+  if (totalWeight <= 0) return 0;
 
-  /* employees (supervisor) */
-  const [employeesList, setEmployeesList] = useState<EmployeeRecord[]>([]);
+  return criteria.reduce((sum, c) => {
+    const raw = Number(scores[c.criteria_id] ?? 0);
+    const max = Number(c.max_score || 100);
+    const weighted = max > 0 ? (raw / max) * Number(c.weight || 0) : 0;
+    return sum + weighted;
+  }, 0);
+}
+
+function labelForScore(score: number) {
+  if (score >= 90) return "Outstanding";
+  if (score >= 85) return "Very Satisfactory";
+  if (score >= 80) return "Satisfactory";
+  if (score >= 75) return "Fair";
+  return "Needs Improvement";
+}
+
+export default function PerformanceEvaluation() {
+  const { user } = useAuth();
+  const role = String((user as any)?.role || "").toLowerCase();
+  const isHR = role === "hr_admin" || role.includes("hr") || role.includes("admin");
+  const isSupervisor = role.includes("supervisor");
+  const isGM = role === "general_manager" || role.includes("gm") || role.includes("general");
+  const isEmployee = role.includes("employee");
+  const currentUserName = String((user as any)?.name || (user as any)?.full_name || "Current User");
+  const currentEmployeeId = String((user as any)?.employee_id || "");
+
+  const [criteria, setCriteria] = useState<CriterionDef[]>([]);
+  const [criteriaReady, setCriteriaReady] = useState<{ total_weight: number; is_ready: boolean; message: string } | null>(null);
+
+  const [evaluations, setEvaluations] = useState<EvaluationResult[]>([]);
+  const [employees, setEmployees] = useState<EmployeeRecord[]>([]);
+  const [latestDss, setLatestDss] = useState<DssResult | null>(null);
+  const [ranking, setRanking] = useState<DssResultItem[]>([]);
+
+  const [loading, setLoading] = useState(true);
   const [employeesLoading, setEmployeesLoading] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  /* ── data fetching ─────────────────────────────────────────────────── */
+  const [evalDialogOpen, setEvalDialogOpen] = useState(false);
+  const [form, setForm] = useState<FormState>(() => buildEmptyForm([]));
+
+  const [criteriaDialogOpen, setCriteriaDialogOpen] = useState(false);
+  const [criteriaDraft, setCriteriaDraft] = useState<CriteriaEditorRow[]>([]);
+
+  const [dssDialogOpen, setDssDialogOpen] = useState(false);
+  const [dssPeriodStart, setDssPeriodStart] = useState(monthStart());
+  const [dssPeriodEnd, setDssPeriodEnd] = useState(monthEnd());
+  const [dssPeriodLabel, setDssPeriodLabel] = useState("");
+
+  const [snackbar, setSnackbar] = useState({
+    open: false,
+    message: "",
+    severity: "success" as "success" | "error" | "info" | "warning",
+  });
+
+  const showMessage = (message: string, severity: "success" | "error" | "info" | "warning" = "success") => {
+    setSnackbar({ open: true, message, severity });
+  };
+
+  /* ── Fetch helpers ─────────────────────────────────────────────────── */
+  const fetchCriteria = async () => {
+    const { data, error: err } = await supabase
+      .from("evaluation_criteria")
+      .select("criteria_id, criteria_name, description, category, weight, max_score, is_active")
+      .eq("is_active", true)
+      .order("category", { ascending: true })
+      .order("criteria_name", { ascending: true });
+
+    if (err) throw err;
+
+    const active = (data || []).filter((c: any) => c.criteria_id && c.criteria_name) as CriterionDef[];
+    setCriteria(active);
+    setForm((prev) => {
+      const nextScores = { ...prev.scores };
+      active.forEach((c) => {
+        if (typeof nextScores[c.criteria_id] !== "number") nextScores[c.criteria_id] = 85;
+      });
+      return { ...prev, scores: nextScores };
+    });
+
+    const { data: readyData } = await supabase.rpc("check_active_evaluation_criteria_weights");
+    if (Array.isArray(readyData) && readyData.length > 0) {
+      setCriteriaReady({
+        total_weight: Number(readyData[0].total_weight || 0),
+        is_ready: Boolean(readyData[0].is_ready),
+        message: String(readyData[0].message || ""),
+      });
+    }
+  };
+
+  const fetchEmployees = async () => {
+    setEmployeesLoading(true);
+    try {
+      const { data, error: err } = await supabase
+        .from("employees")
+        .select("employee_id, first_name, middle_name, last_name, suffix, position, outlet, status")
+        .order("last_name", { ascending: true });
+
+      if (err) throw err;
+
+      setEmployees(
+        (data || []).map((e: any) => ({
+          employee_id: e.employee_id,
+          name: fullName(e) || e.employee_id,
+          position: e.position || "",
+          outlet: e.outlet || "",
+          status: e.status || "Active",
+        }))
+      );
+    } catch (err) {
+      console.error(err);
+      showMessage("Could not load employees.", "error");
+    } finally {
+      setEmployeesLoading(false);
+    }
+  };
+
   const fetchEvaluations = async () => {
+    const { data: evalRows, error: evalErr } = await supabase
+      .from("employee_evaluations")
+      .select("*")
+      .order("final_weighted_score", { ascending: false })
+      .order("created_at", { ascending: false });
+
+    if (evalErr) throw evalErr;
+
+    const ids = (evalRows || []).map((r: any) => r.evaluation_id).filter(Boolean);
+    let scoresByEvaluation: Record<string, Record<string, EvaluationScoreRow>> = {};
+
+    if (ids.length > 0) {
+      const { data: scoreRows, error: scoreErr } = await supabase
+        .from("employee_evaluation_scores")
+        .select("evaluation_id, criteria_id, criteria_name, criteria_weight, max_score, raw_score, weighted_score")
+        .in("evaluation_id", ids);
+
+      if (scoreErr) throw scoreErr;
+
+      scoresByEvaluation = (scoreRows || []).reduce((acc: Record<string, Record<string, EvaluationScoreRow>>, row: any) => {
+        if (!acc[row.evaluation_id]) acc[row.evaluation_id] = {};
+        acc[row.evaluation_id][row.criteria_id] = {
+          criteria_id: row.criteria_id,
+          criteria_name: row.criteria_name,
+          criteria_weight: Number(row.criteria_weight || 0),
+          max_score: Number(row.max_score || 100),
+          raw_score: Number(row.raw_score || 0),
+          weighted_score: Number(row.weighted_score || 0),
+        };
+        return acc;
+      }, {});
+    }
+
+    setEvaluations(
+      (evalRows || []).map((row: any) => ({
+        evaluation_id: row.evaluation_id,
+        employee_id: row.employee_id,
+        employee_name: row.employee_name || row.employee_id,
+        position: row.position || "",
+        outlet: row.outlet || "",
+        evaluation_period_start: row.evaluation_period_start,
+        evaluation_period_end: row.evaluation_period_end,
+        evaluation_period_label: row.evaluation_period_label,
+        evaluator_name: row.evaluator_name,
+        evaluator_role: row.evaluator_role,
+        total_raw_score: Number(row.total_raw_score || 0),
+        final_weighted_score: Number(row.final_weighted_score || 0),
+        rating_label: row.rating_label,
+        status: row.status || "Draft",
+        remarks: row.remarks,
+        scores: scoresByEvaluation[row.evaluation_id] || {},
+      }))
+    );
+  };
+
+  const fetchLatestDss = async () => {
+    const { data: dssRows, error: dssErr } = await supabase
+      .from("dss_results")
+      .select("*")
+      .order("generated_at", { ascending: false })
+      .limit(1);
+
+    if (dssErr) throw dssErr;
+
+    const current = (dssRows || [])[0] as DssResult | undefined;
+    setLatestDss(current || null);
+
+    if (!current?.result_id) {
+      setRanking([]);
+      return;
+    }
+
+    const { data: items, error: itemErr } = await supabase
+      .from("dss_result_items")
+      .select("*")
+      .eq("result_id", current.result_id)
+      .order("rank_no", { ascending: true });
+
+    if (itemErr) throw itemErr;
+
+    setRanking((items || []) as DssResultItem[]);
+  };
+
+  const refreshAll = async () => {
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch(`${API}/evaluations`, { headers: HEADERS });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error ?? "Server error");
-      const evals = (data.evaluations ?? []).filter((e: any) => e != null);
-      evals.sort((a: EvaluationResult, b: EvaluationResult) => b.finalScore - a.finalScore);
-      setResults(evals);
-    } catch (e: any) {
-      setError(`Could not load evaluations: ${e.message}`);
+      await Promise.all([fetchCriteria(), fetchEmployees(), fetchEvaluations(), fetchLatestDss()]);
+    } catch (err: any) {
+      console.error(err);
+      setError(err?.message || "Could not load performance evaluation data.");
     } finally {
       setLoading(false);
     }
   };
 
-  useEffect(() => { fetchEvaluations(); }, []);
-
   useEffect(() => {
-    if (user?.role !== "supervisor") return;
-    setEmployeesLoading(true);
-    fetch(`${API}/employees`, { headers: HEADERS })
-      .then((r) => r.json())
-      .then((d) => setEmployeesList((d.employees ?? []).filter((e: any) => e != null)))
-      .catch(() => {})
-      .finally(() => setEmployeesLoading(false));
-  }, [user]);
+    refreshAll();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
-  /* ── submit handlers ────────────────────────────────────────────────── */
-  const handleSubmit = async () => {
-    if (user?.role === "hr") {
-      /* HR publishes a template — no evaluation record created */
-      const template: PublishedTemplate = {
-        position: form.position,
-        periodStart: form.periodStart,
-        periodEnd: form.periodEnd,
-        criteria: customCriteria,
-        publishedAt: new Date().toISOString(),
-      };
-      localStorage.setItem(TEMPLATE_KEY, JSON.stringify(template));
-      setPublishedTemplate(template);
-      setOpenEvalForm(false);
-      setForm(buildEmptyForm(customCriteria));
-      setSnackbar({ open: true, message: "✅ Evaluation form published successfully!", severity: "success" });
+  /* ── Derived values ────────────────────────────────────────────────── */
+  const displayedEvaluations = useMemo(() => {
+    if (isEmployee) {
+      return evaluations.filter((e) => {
+        if (currentEmployeeId) return e.employee_id === currentEmployeeId;
+        return e.employee_name === currentUserName;
+      });
+    }
+
+    if (isSupervisor) {
+      return evaluations.filter((e) => e.evaluator_name === currentUserName);
+    }
+
+    return evaluations;
+  }, [currentEmployeeId, currentUserName, evaluations, isEmployee, isSupervisor]);
+
+  const previewScore = computePreviewScore(form.scores, criteria);
+  const topDssItem = ranking.find((r) => (r.recommendation || "").includes("Employee of the Month")) || ranking[0] || null;
+
+  /* ── Evaluation actions ────────────────────────────────────────────── */
+  const openEvaluateForEmployee = (emp?: EmployeeRecord) => {
+    setForm({
+      ...buildEmptyForm(criteria),
+      employee_id: emp?.employee_id || "",
+      employee_name: emp?.name || "",
+      position: emp?.position || "",
+      outlet: emp?.outlet || "",
+      periodLabel: `${new Date().toLocaleString("default", { month: "long" })} ${new Date().getFullYear()} Evaluation`,
+    });
+    setEvalDialogOpen(true);
+  };
+
+  const handleSubmitEvaluation = async () => {
+    if (!form.employee_id) {
+      showMessage("Please select an employee to evaluate.", "warning");
       return;
     }
 
-    /* Supervisor creates evaluation record */
-    if (!form.employee) return;
+    if (!form.periodStart || !form.periodEnd) {
+      showMessage("Please select the evaluation period.", "warning");
+      return;
+    }
+
+    if (!criteriaReady?.is_ready) {
+      showMessage(criteriaReady?.message || "Criteria weights must total 100% before evaluation.", "error");
+      return;
+    }
+
     setSaving(true);
     try {
-      const criteria = publishedTemplate?.criteria ?? customCriteria;
-      const finalScore = computeScore(form.scores, criteria);
-      const body = {
-        employee: form.employee,
-        position: form.position,
-        outlet: form.outlet,
-        period:
-          form.periodStart && form.periodEnd
-            ? `${form.periodStart} — ${form.periodEnd}`
-            : form.periodStart || "—",
-        evaluatedBy: user?.name ?? "",
-        evaluatorRole: user?.role ?? "",
-        workQuality: form.scores.workQuality ?? 50,
-        jobKnowledge: form.scores.jobKnowledge ?? 50,
-        teamwork: form.scores.teamwork ?? 50,
-        initiative: form.scores.initiative ?? 50,
-        peerEvaluation: form.scores.peerEvaluation ?? 50,
-        conduct: form.scores.conduct ?? 50,
-        attendance: form.scores.attendance ?? 50,
-        performanceOutput: form.scores.performanceOutput ?? 50,
-        comments: form.comments,
-        finalScore,
-      };
-      const res = await fetch(`${API}/evaluations`, {
-        method: "POST",
-        headers: HEADERS,
-        body: JSON.stringify(body),
+      const { data: evalId, error: templateErr } = await supabase.rpc("create_employee_evaluation_template", {
+        p_employee_id: form.employee_id,
+        p_period_start: form.periodStart,
+        p_period_end: form.periodEnd,
+        p_period_label: form.periodLabel || null,
+        p_evaluator_user_id: null, // kept null to avoid FK errors if custom login user_id is not in user_accounts
+        p_evaluator_name: currentUserName,
+        p_evaluator_role: (user as any)?.role || "Supervisor",
       });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error ?? "Server error");
-      const updated = [...results, data.record].sort((a, b) => b.finalScore - a.finalScore);
-      setResults(updated);
-      // ── Notify GM of new evaluation submission ──
-      try {
-        await fetch(`${API}/notifications`, {
-          method: "POST",
-          headers: HEADERS,
-          body: JSON.stringify({
-            recipientEmployee: "gm",
-            type: "eval_submitted",
-            message: `${user?.name ?? "Supervisor"} submitted an evaluation for ${form.employee} — Final Score: ${data.record.finalScore.toFixed(2)}%`,
-            scheduleId: data.record.id,
-            week: form.periodStart,
-            createdBy: user?.name ?? "",
-          }),
-        });
-      } catch { /* non-critical */ }
-      setOpenEvalForm(false);
-      setForm(buildEmptyForm(criteria));
-      setSnackbar({
-        open: true,
-        message: `✅ Evaluation submitted for ${form.employee}! Score: ${data.record.finalScore.toFixed(2)}%`,
-        severity: "success",
+
+      if (templateErr) throw templateErr;
+
+      const evaluationId = String(evalId);
+      const updatePromises = criteria.map((c) =>
+        supabase
+          .from("employee_evaluation_scores")
+          .update({ raw_score: Number(form.scores[c.criteria_id] ?? 0), updated_at: new Date().toISOString() })
+          .eq("evaluation_id", evaluationId)
+          .eq("criteria_id", c.criteria_id)
+      );
+
+      const updateResults = await Promise.all(updatePromises);
+      const failedUpdate = updateResults.find((r) => r.error);
+      if (failedUpdate?.error) throw failedUpdate.error;
+
+      const { error: recalcErr } = await supabase.rpc("recalculate_employee_evaluation", {
+        p_evaluation_id: evaluationId,
       });
-    } catch (e: any) {
-      setSnackbar({ open: true, message: `Failed: ${e.message}`, severity: "error" });
+      if (recalcErr) throw recalcErr;
+
+      const { error: evalUpdateErr } = await supabase
+        .from("employee_evaluations")
+        .update({
+          status: "Submitted",
+          remarks: form.remarks || null,
+          submitted_at: new Date().toISOString(),
+          evaluator_name: currentUserName,
+          evaluator_role: (user as any)?.role || "Supervisor",
+        })
+        .eq("evaluation_id", evaluationId);
+
+      if (evalUpdateErr) throw evalUpdateErr;
+
+      await supabase.rpc("create_system_log", {
+        p_user_id: null,
+        p_user_name: currentUserName,
+        p_user_role: (user as any)?.role || null,
+        p_action: "SUBMIT_EVALUATION",
+        p_module: "Performance Evaluation",
+        p_record_id: evaluationId,
+        p_record_table: "employee_evaluations",
+        p_description: `Submitted evaluation for ${form.employee_name || form.employee_id}.`,
+        p_old_data: null,
+        p_new_data: { employee_id: form.employee_id, final_preview_score: previewScore },
+        p_ip_address: null,
+        p_user_agent: navigator.userAgent,
+      });
+
+      setEvalDialogOpen(false);
+      showMessage(`Evaluation submitted. Final score: ${previewScore.toFixed(2)}%.`, "success");
+      await refreshAll();
+    } catch (err: any) {
+      console.error(err);
+      showMessage(`Failed: ${err?.message || "Could not submit evaluation."}`, "error");
     } finally {
       setSaving(false);
     }
   };
 
-  const openEvaluateForEmployee = (emp: EmployeeRecord) => {
-    const template = publishedTemplate;
-    const criteria = template?.criteria ?? customCriteria;
-    const scores: Record<string, number> = {};
-    criteria.forEach((c) => { scores[c.key] = 50; });
-    setForm({
-      employee: emp.name,
-      position: emp.position,
-      outlet: emp.outlet,
-      periodStart: template?.periodStart ?? "",
-      periodEnd: template?.periodEnd ?? "",
-      scores,
-      comments: "",
-    });
-    setOpenEvalForm(true);
+  const handleApprove = async (evaluationId: string) => {
+    try {
+      const { error: err } = await supabase
+        .from("employee_evaluations")
+        .update({
+          status: "Approved",
+          approved_at: new Date().toISOString(),
+        })
+        .eq("evaluation_id", evaluationId);
+
+      if (err) throw err;
+
+      await supabase.rpc("create_system_log", {
+        p_user_id: null,
+        p_user_name: currentUserName,
+        p_user_role: (user as any)?.role || null,
+        p_action: "APPROVE_EVALUATION",
+        p_module: "Performance Evaluation",
+        p_record_id: evaluationId,
+        p_record_table: "employee_evaluations",
+        p_description: "Approved employee evaluation.",
+        p_old_data: null,
+        p_new_data: { status: "Approved" },
+        p_ip_address: null,
+        p_user_agent: navigator.userAgent,
+      });
+
+      showMessage("Evaluation approved.", "success");
+      await refreshAll();
+    } catch (err: any) {
+      console.error(err);
+      showMessage(`Failed: ${err?.message || "Could not approve evaluation."}`, "error");
+    }
   };
 
-  /* ── criteria dialog ─────────────────────────────────────────────── */
+  const handleDelete = async (evaluationId: string) => {
+    if (!window.confirm(`Delete evaluation ${evaluationId}? This cannot be undone.`)) return;
+
+    try {
+      const { error: err } = await supabase.from("employee_evaluations").delete().eq("evaluation_id", evaluationId);
+      if (err) throw err;
+
+      await supabase.rpc("create_system_log", {
+        p_user_id: null,
+        p_user_name: currentUserName,
+        p_user_role: (user as any)?.role || null,
+        p_action: "DELETE_EVALUATION",
+        p_module: "Performance Evaluation",
+        p_record_id: evaluationId,
+        p_record_table: "employee_evaluations",
+        p_description: "Deleted employee evaluation.",
+        p_old_data: null,
+        p_new_data: null,
+        p_ip_address: null,
+        p_user_agent: navigator.userAgent,
+      });
+
+      showMessage("Evaluation deleted.", "success");
+      await refreshAll();
+    } catch (err: any) {
+      console.error(err);
+      showMessage(`Failed: ${err?.message || "Could not delete evaluation."}`, "error");
+    }
+  };
+
+  const handleGenerateDss = async () => {
+    if (!dssPeriodStart || !dssPeriodEnd) {
+      showMessage("Please select DSS period start and end dates.", "warning");
+      return;
+    }
+
+    setSaving(true);
+    try {
+      const { data: resultId, error: err } = await supabase.rpc("generate_dss_results_from_evaluations", {
+        p_period_start: dssPeriodStart,
+        p_period_end: dssPeriodEnd,
+        p_period_label: dssPeriodLabel || `${dssPeriodStart} — ${dssPeriodEnd}`,
+        p_generated_by_user_id: null,
+      });
+
+      if (err) throw err;
+
+      await supabase.rpc("create_system_log", {
+        p_user_id: null,
+        p_user_name: currentUserName,
+        p_user_role: (user as any)?.role || null,
+        p_action: "GENERATE_DSS_RANKING",
+        p_module: "Performance Evaluation DSS",
+        p_record_id: String(resultId),
+        p_record_table: "dss_results",
+        p_description: `Generated DSS ranking for ${dssPeriodStart} to ${dssPeriodEnd}.`,
+        p_old_data: null,
+        p_new_data: { result_id: resultId },
+        p_ip_address: null,
+        p_user_agent: navigator.userAgent,
+      });
+
+      setDssDialogOpen(false);
+      showMessage("DSS ranking generated successfully.", "success");
+      await refreshAll();
+    } catch (err: any) {
+      console.error(err);
+      showMessage(`Failed: ${err?.message || "Could not generate DSS ranking."}`, "error");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleMarkEOTM = async (item: DssResultItem) => {
+    try {
+      const { error: err } = await supabase
+        .from("dss_result_items")
+        .update({ recommendation: "Employee of the Month", remarks: "Manually marked by management." })
+        .eq("result_id", item.result_id)
+        .eq("evaluation_id", item.evaluation_id);
+
+      if (err) throw err;
+
+      await supabase.rpc("create_system_log", {
+        p_user_id: null,
+        p_user_name: currentUserName,
+        p_user_role: (user as any)?.role || null,
+        p_action: "MARK_EMPLOYEE_OF_THE_MONTH",
+        p_module: "Performance Evaluation DSS",
+        p_record_id: item.evaluation_id,
+        p_record_table: "dss_result_items",
+        p_description: `${item.employee_name} was marked as Employee of the Month.`,
+        p_old_data: null,
+        p_new_data: { recommendation: "Employee of the Month" },
+        p_ip_address: null,
+        p_user_agent: navigator.userAgent,
+      });
+
+      showMessage("Employee of the Month saved.", "success");
+      await refreshAll();
+    } catch (err: any) {
+      console.error(err);
+      showMessage(`Failed: ${err?.message || "Could not mark Employee of the Month."}`, "error");
+    }
+  };
+
+  /* ── Criteria actions ──────────────────────────────────────────────── */
   const openCriteriaDialog = () => {
-    setEditCriteriaTemp([...customCriteria]);
+    setCriteriaDraft(
+      criteria.map((c) => ({
+        criteria_id: c.criteria_id,
+        criteria_name: c.criteria_name,
+        description: c.description || "",
+        category: c.category || "",
+        weight: Number(c.weight || 0),
+        max_score: Number(c.max_score || 100),
+      }))
+    );
     setCriteriaDialogOpen(true);
   };
 
-  const saveCriteria = () => {
-    setCustomCriteria(editCriteriaTemp);
-    localStorage.setItem(CRITERIA_KEY, JSON.stringify(editCriteriaTemp));
-    setCriteriaDialogOpen(false);
-    setSnackbar({ open: true, message: "✅ Criteria updated!", severity: "success" });
-  };
-
   const addNewCriterion = () => {
-    const newKey = `custom_${Date.now()}`;
-    setEditCriteriaTemp((prev) => [
+    setCriteriaDraft((prev) => [
       ...prev,
-      { key: newKey, label: "New Criterion", weight: 0.05, description: "Describe this criterion." },
+      {
+        criteria_id: `NEW-${Date.now()}`,
+        criteria_name: "New Criterion",
+        description: "Describe this criterion.",
+        category: "Custom",
+        weight: 0,
+        max_score: 100,
+        isNew: true,
+      },
     ]);
   };
 
   const removeCriterion = (idx: number) => {
-    setEditCriteriaTemp((prev) => prev.filter((_, i) => i !== idx));
+    setCriteriaDraft((prev) => prev.filter((_, i) => i !== idx));
   };
 
-  /* ── approval / EOTM / delete ────────────────────────────────────── */
-  const handleApprove = async (id: string) => {
+  const saveCriteria = async () => {
+    const total = criteriaDraft.reduce((sum, c) => sum + Number(c.weight || 0), 0);
+    if (Math.round(total * 100) / 100 !== 100) {
+      showMessage(`Criteria weights must total exactly 100%. Current total: ${total}%.`, "error");
+      return;
+    }
+
+    setSaving(true);
     try {
-      const res = await fetch(`${API}/evaluations/${id}`, {
-        method: "PUT", headers: HEADERS, body: JSON.stringify({ status: "Approved" }),
+      const keptExistingIds = criteriaDraft.filter((c) => !c.isNew).map((c) => c.criteria_id);
+      const activeExistingIds = criteria.map((c) => c.criteria_id);
+      const toDeactivate = activeExistingIds.filter((id) => !keptExistingIds.includes(id));
+
+      if (toDeactivate.length > 0) {
+        const { error: deactivateErr } = await supabase
+          .from("evaluation_criteria")
+          .update({ is_active: false, updated_at: new Date().toISOString() })
+          .in("criteria_id", toDeactivate);
+
+        if (deactivateErr) throw deactivateErr;
+      }
+
+      for (const row of criteriaDraft) {
+        const payload = {
+          criteria_name: row.criteria_name,
+          description: row.description || null,
+          category: row.category || null,
+          weight: Number(row.weight || 0),
+          max_score: Number(row.max_score || 100),
+          is_active: true,
+          updated_at: new Date().toISOString(),
+        };
+
+        if (row.isNew) {
+          const { error: insertErr } = await supabase.from("evaluation_criteria").insert(payload);
+          if (insertErr) throw insertErr;
+        } else {
+          const { error: updateErr } = await supabase
+            .from("evaluation_criteria")
+            .update(payload)
+            .eq("criteria_id", row.criteria_id);
+
+          if (updateErr) throw updateErr;
+        }
+      }
+
+      await supabase.rpc("create_system_log", {
+        p_user_id: null,
+        p_user_name: currentUserName,
+        p_user_role: (user as any)?.role || null,
+        p_action: "UPDATE_DSS_CRITERIA",
+        p_module: "Performance Evaluation DSS",
+        p_record_id: null,
+        p_record_table: "evaluation_criteria",
+        p_description: "Updated DSS evaluation criteria and weights.",
+        p_old_data: null,
+        p_new_data: { total_weight: total, criteria_count: criteriaDraft.length },
+        p_ip_address: null,
+        p_user_agent: navigator.userAgent,
       });
-      if (!res.ok) throw new Error("Update failed");
-      setResults((prev) => prev.map((r) => r.id === id ? { ...r, status: "Approved" } : r));
-      setSnackbar({ open: true, message: "✅ Evaluation approved!", severity: "success" });
-    } catch (e: any) {
-      setSnackbar({ open: true, message: `Failed: ${e.message}`, severity: "error" });
+
+      setCriteriaDialogOpen(false);
+      showMessage("DSS criteria updated successfully.", "success");
+      await refreshAll();
+    } catch (err: any) {
+      console.error(err);
+      showMessage(`Failed: ${err?.message || "Could not save criteria."}`, "error");
+    } finally {
+      setSaving(false);
     }
   };
-
-  const handleEOTM = async (id: string) => {
-    try {
-      const res = await fetch(`${API}/evaluations/${id}`, {
-        method: "PUT", headers: HEADERS, body: JSON.stringify({ status: "Employee of the Month" }),
-      });
-      if (!res.ok) throw new Error("Update failed");
-      setResults((prev) => prev.map((r) => r.id === id ? { ...r, status: "Employee of the Month" } : r));
-      setSnackbar({ open: true, message: "🏆 Employee of the Month saved!", severity: "success" });
-    } catch (e: any) {
-      setSnackbar({ open: true, message: `Failed: ${e.message}`, severity: "error" });
-    }
-  };
-
-  const handleDelete = async (id: string) => {
-    if (!window.confirm(`Delete evaluation ${id}? This cannot be undone.`)) return;
-    try {
-      const res = await fetch(`${API}/evaluations/${id}`, { method: "DELETE", headers: HEADERS });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error ?? "Server error");
-      setResults((prev) => prev.filter((r) => r.id !== id));
-      setSnackbar({ open: true, message: `🗑️ Evaluation ${id} deleted.`, severity: "success" });
-    } catch (e: any) {
-      setSnackbar({ open: true, message: `Failed: ${e.message}`, severity: "error" });
-    }
-  };
-
-  /* ── derived values ─────────────────────────────────────────────── */
-  const eotm = results.find((r) => r.status === "Employee of the Month");
-  const activeCriteria =
-    user?.role === "supervisor" && publishedTemplate
-      ? publishedTemplate.criteria
-      : customCriteria;
-  const previewScore = computeScore(form.scores, activeCriteria);
-  const displayResults =
-    user?.role === "employee" ? results.filter((r) => r.employee === user.name) : results;
-
-  // ── Date-range gate for supervisor Evaluate button ─────────────────
-  const todayStr = new Date().toISOString().split("T")[0];
-  const isWithinPeriod = publishedTemplate
-    ? todayStr >= publishedTemplate.periodStart && todayStr <= publishedTemplate.periodEnd
-    : true; // no template → allow (use default criteria)
 
   /* ═══════════════════════════════════════════════════════════════════ */
   return (
     <Box>
-      {/* ── Page Header ─────────────────────────────────────────────── */}
+      {/* Header */}
       <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: { xs: "flex-start", sm: "center" }, flexWrap: "wrap", gap: 2, mb: 3 }}>
         <Box>
           <Typography variant="h4" gutterBottom fontWeight="bold" sx={{ fontSize: { xs: "1.35rem", sm: "1.75rem", md: "2.125rem" } }}>
             Performance Evaluation with DSS
           </Typography>
           <Typography variant="body2" color="text.secondary">
-            {user?.role === "supervisor"
-              ? "Evaluate your team members using the HR-published performance criteria"
-              : user?.role === "gm"
-              ? "Review DSS results and approve / designate Employee of the Month"
-              : user?.role === "employee"
-              ? "View your evaluation results"
-              : "Decision Support System — Weighted scoring per HRIS Capstone documentation"}
+            Supabase-connected evaluation criteria, scoring, ranking, and Employee of the Month decision support.
           </Typography>
         </Box>
+
         <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap" }}>
           <Tooltip title="Refresh">
             <span>
-              <IconButton onClick={fetchEvaluations} disabled={loading}><Sync /></IconButton>
+              <IconButton onClick={refreshAll} disabled={loading}>
+                <Sync />
+              </IconButton>
             </span>
           </Tooltip>
-          {user?.role === "hr" && (
-            <Button
-              variant="contained"
-              startIcon={<AddCircleOutline />}
-              onClick={() => { setForm(buildEmptyForm(customCriteria)); setOpenEvalForm(true); }}
-            >
+
+          {isHR && (
+            <Button variant="outlined" startIcon={<Edit />} onClick={openCriteriaDialog}>
+              Manage Criteria
+            </Button>
+          )}
+
+          {(isSupervisor || isHR) && (
+            <Button variant="contained" startIcon={<AddCircleOutline />} onClick={() => openEvaluateForEmployee()}>
               New Evaluation
+            </Button>
+          )}
+
+          {(isHR || isGM) && (
+            <Button variant="contained" color="success" startIcon={<Insights />} onClick={() => setDssDialogOpen(true)}>
+              Generate DSS
             </Button>
           )}
         </Box>
       </Box>
 
       {error && (
-        <Alert severity="error" sx={{ mb: 2 }}
-          action={<Button size="small" onClick={fetchEvaluations}>Retry</Button>}>
+        <Alert severity="error" sx={{ mb: 2 }} action={<Button size="small" onClick={refreshAll}>Retry</Button>}>
           {error}
         </Alert>
       )}
 
-      {/* ══════════════════════════════════════════════════════════════ */}
-      {/* SUPERVISOR VIEW                                               */}
-      {/* ══════════════════════════════════════════════════════════════ */}
-      {user?.role === "supervisor" && (
-        <>
-          {/* Published template banner */}
-          {publishedTemplate ? (
-            <Paper variant="outlined" sx={{ p: 2, mb: 3, bgcolor: "#e8f5e9" }}>
-              <Box sx={{ display: "flex", alignItems: "center", gap: 1, flexWrap: "wrap" }}>
-                <TaskAlt color="success" sx={{ fontSize: 20 }} />
-                <Typography variant="subtitle2" fontWeight={700} color="success.dark">
-                  Published Evaluation Period: {publishedTemplate.periodStart} — {publishedTemplate.periodEnd}
-                </Typography>
-                {publishedTemplate.position && (
-                  <Chip label={`For: ${publishedTemplate.position}`} size="small" color="success" variant="outlined" />
-                )}
-                <Typography variant="caption" color="text.secondary" sx={{ ml: "auto" }}>
-                  Published: {new Date(publishedTemplate.publishedAt).toLocaleDateString()}
-                </Typography>
-              </Box>
-            </Paper>
-          ) : (
-            <Alert severity="info" sx={{ mb: 3 }}>
-              No evaluation form has been published by HR yet. You can still evaluate employees using the default DSS criteria.
-            </Alert>
-          )}
-
-          {/* Employee list for evaluation */}
-          <Paper sx={{ mb: 4 }}>
-            <Box sx={{ p: 2, borderBottom: "1px solid", borderColor: "divider", display: "flex", alignItems: "center", gap: 1 }}>
-              <Groups color="primary" />
-              <Typography variant="h6" fontWeight={700}>Employee List — Select an Employee to Evaluate</Typography>
-            </Box>
-            <TableContainer sx={{ overflowX: "auto" }}>
-              {employeesLoading ? (
-                <Box sx={{ display: "flex", justifyContent: "center", py: 5, gap: 2 }}>
-                  <CircularProgress size={24} />
-                  <Typography color="text.secondary">Loading employees…</Typography>
-                </Box>
-              ) : (
-                <Table>
-                  <TableHead>
-                    <TableRow sx={{ bgcolor: "primary.main" }}>
-                      {["Employee ID", "Name", "Position", "Outlet", "Status", "Action"].map((h) => (
-                        <TableCell key={h} sx={{ color: "white", fontWeight: 700, whiteSpace: "nowrap" }}>{h}</TableCell>
-                      ))}
-                    </TableRow>
-                  </TableHead>
-                  <TableBody>
-                    {employeesList.length === 0 ? (
-                      <TableRow>
-                        <TableCell colSpan={6} align="center" sx={{ py: 5, color: "text.secondary" }}>
-                          No employees found.
-                        </TableCell>
-                      </TableRow>
-                    ) : (
-                      employeesList.map((emp) => (
-                        <TableRow key={emp.id} hover>
-                          <TableCell><Chip label={emp.id} size="small" variant="outlined" /></TableCell>
-                          <TableCell sx={{ fontWeight: 600 }}>{emp.name}</TableCell>
-                          <TableCell>{emp.position}</TableCell>
-                          <TableCell>{emp.outlet}</TableCell>
-                          <TableCell>
-                            <Chip
-                              label={emp.status}
-                              size="small"
-                              color={emp.status === "Active" ? "success" : emp.status === "On Leave" ? "warning" : "default"}
-                            />
-                          </TableCell>
-                          <TableCell>
-                            {(() => {
-                              const evalRecord = results.find(
-                                (r) => r.evaluatedBy === user?.name && r.employee === emp.name
-                              );
-                              const alreadyEvaluated = !!evalRecord;
-                              const canEval = !alreadyEvaluated && isWithinPeriod;
-                              return (
-                                <Box sx={{ display: "flex", flexDirection: "column", gap: 0.5, alignItems: "flex-start" }}>
-                                  <Tooltip
-                                    title={
-                                      alreadyEvaluated
-                                        ? "Already evaluated"
-                                        : !isWithinPeriod
-                                        ? `Evaluation period: ${publishedTemplate?.periodStart ?? "—"} to ${publishedTemplate?.periodEnd ?? "—"}`
-                                        : "Evaluate this employee"
-                                    }
-                                  >
-                                    <span>
-                                      <Chip
-                                        label={alreadyEvaluated ? "Evaluated" : "Evaluate"}
-                                        size="small"
-                                        clickable={canEval}
-                                        variant="outlined"
-                                        color={alreadyEvaluated ? "default" : canEval ? "primary" : "default"}
-                                        disabled={!canEval}
-                                        onClick={canEval ? () => openEvaluateForEmployee(emp) : undefined}
-                                        sx={{ minWidth: 100 }}
-                                      />
-                                    </span>
-                                  </Tooltip>
-                                  {alreadyEvaluated && evalRecord && (
-                                    <Chip
-                                      label="Delete"
-                                      size="small"
-                                      clickable
-                                      variant="outlined"
-                                      color="error"
-                                      onClick={() => handleDelete(evalRecord.id)}
-                                      sx={{ minWidth: 100 }}
-                                    />
-                                  )}
-                                </Box>
-                              );
-                            })()}
-                          </TableCell>
-                        </TableRow>
-                      ))
-                    )}
-                  </TableBody>
-                </Table>
-              )}
-            </TableContainer>
-          </Paper>
-
-          {/* Supervisor's own submitted evaluations */}
-          {results.filter((r) => r.evaluatedBy === user?.name).length > 0 && (
-            <>
-              <Typography variant="h6" fontWeight={700} sx={{ mb: 1.5 }}>My Submitted Evaluations</Typography>
-              <TableContainer component={Paper} sx={{ overflowX: "auto", mb: 3 }}>
-                <Table sx={{ minWidth: 700 }}>
-                  <TableHead>
-                    <TableRow sx={{ bgcolor: "grey.100" }}>
-                      {["Employee", "Position", "Period", "Final Score", "Status"].map((h) => (
-                        <TableCell key={h} sx={{ fontWeight: 700 }}>{h}</TableCell>
-                      ))}
-                    </TableRow>
-                  </TableHead>
-                  <TableBody>
-                    {results.filter((r) => r.evaluatedBy === user?.name).map((r) => (
-                      <TableRow key={r.id} hover>
-                        <TableCell sx={{ fontWeight: 600 }}>{r.employee}</TableCell>
-                        <TableCell>{r.position}</TableCell>
-                        <TableCell>{r.period}</TableCell>
-                        <TableCell>
-                          <Typography fontWeight="bold" color="primary.main">{r.finalScore.toFixed(2)}%</Typography>
-                        </TableCell>
-                        <TableCell>
-                          <Chip
-                            label={r.status}
-                            size="small"
-                            color={r.status === "Employee of the Month" ? "warning" : r.status === "Approved" ? "success" : "default"}
-                          />
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </TableContainer>
-            </>
-          )}
-        </>
+      {criteriaReady && (
+        <Alert severity={criteriaReady.is_ready ? "success" : "error"} sx={{ mb: 2 }}>
+          DSS Criteria Weight Check: <strong>{money(criteriaReady.total_weight)}%</strong> — {criteriaReady.message}
+        </Alert>
       )}
 
-      {/* ══════════════════════════════════════════════════════════════ */}
-      {/* HR / GM / EMPLOYEE VIEW                                       */}
-      {/* ══════════════════════════════════════════════════════════════ */}
-      {user?.role !== "supervisor" && (
-        <>
-          {/* DSS formula banner */}
-          <Paper variant="outlined" sx={{ p: 2, mb: 3, bgcolor: "#f0f7f0" }}>
-            <Typography variant="subtitle2" fontWeight={700} color="primary.dark" gutterBottom>
-              DSS Weighted Scoring Formula (Capstone Chapter II):
-            </Typography>
-            <Typography variant="caption" color="text.secondary">
-              Final Score = {customCriteria.map((c) => `(${c.label} × ${(c.weight * 100).toFixed(0)}%)`).join(" + ")}
-            </Typography>
-          </Paper>
+      {/* DSS Formula Banner */}
+      <Paper variant="outlined" sx={{ p: 2, mb: 3, bgcolor: "#f0f7f0" }}>
+        <Typography variant="subtitle2" fontWeight={700} color="primary.dark" gutterBottom>
+          DSS Weighted Scoring Formula:
+        </Typography>
+        <Typography variant="caption" color="text.secondary">
+          Final Score ={" "}
+          {criteria.length > 0
+            ? criteria.map((c) => `(${c.criteria_name} × ${Number(c.weight || 0)}%)`).join(" + ")
+            : "No active criteria found."}
+        </Typography>
+      </Paper>
 
-          {/* Stat cards */}
-          <Grid container spacing={3} sx={{ mb: 3 }}>
-            <Grid size={{ xs: 12, md: 3 }}>
-              <Card elevation={2}>
-                <CardContent>
-                  <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                    <Box>
-                      <Typography variant="body2" color="text.secondary">Total Evaluated</Typography>
-                      <Typography variant="h5" fontWeight="bold">{results.length}</Typography>
-                    </Box>
-                    <TaskAlt color="success" sx={{ fontSize: 36 }} />
-                  </Box>
-                </CardContent>
-              </Card>
-            </Grid>
-            <Grid size={{ xs: 12, md: 3 }}>
-              <Card elevation={2}>
-                <CardContent>
-                  <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                    <Box>
-                      <Typography variant="body2" color="text.secondary">Pending GM Approval</Typography>
-                      <Typography variant="h5" fontWeight="bold">
-                        {results.filter((r) => r.status === "Pending GM Approval").length}
-                      </Typography>
-                    </Box>
-                    <Insights color="warning" sx={{ fontSize: 36 }} />
-                  </Box>
-                </CardContent>
-              </Card>
-            </Grid>
-            <Grid size={{ xs: 12, md: 6 }}>
-              <Card elevation={2} sx={{ bgcolor: "warning.main", color: "white" }}>
-                <CardContent>
-                  <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                    <Box>
-                      <Typography variant="body2" sx={{ opacity: 0.9 }}>🏆 Employee of the Month</Typography>
-                      <Typography variant="h6" fontWeight="bold">
-                        {eotm ? `${eotm.employee} — ${eotm.finalScore.toFixed(2)}%` : "Not yet designated"}
-                      </Typography>
-                      {eotm && (
-                        <Typography variant="caption" sx={{ opacity: 0.85 }}>
-                          {eotm.position} • {eotm.period}
-                        </Typography>
-                      )}
-                    </Box>
-                    <Grade sx={{ fontSize: 44 }} />
-                  </Box>
-                </CardContent>
-              </Card>
-            </Grid>
-          </Grid>
+      {/* Stat cards */}
+      <Grid container spacing={3} sx={{ mb: 3 }}>
+        <Grid size={{ xs: 12, md: 3 }}>
+          <Card elevation={2}>
+            <CardContent>
+              <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                <Box>
+                  <Typography variant="body2" color="text.secondary">Total Evaluations</Typography>
+                  <Typography variant="h5" fontWeight="bold">{displayedEvaluations.length}</Typography>
+                </Box>
+                <TaskAlt color="success" sx={{ fontSize: 36 }} />
+              </Box>
+            </CardContent>
+          </Card>
+        </Grid>
 
-          {/* Results table */}
-          <TableContainer component={Paper} sx={{ overflowX: "auto" }}>
-            {loading ? (
-              <Box sx={{ display: "flex", justifyContent: "center", py: 6, gap: 2 }}>
-                <CircularProgress size={28} />
-                <Typography color="text.secondary">Loading…</Typography>
+        <Grid size={{ xs: 12, md: 3 }}>
+          <Card elevation={2}>
+            <CardContent>
+              <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                <Box>
+                  <Typography variant="body2" color="text.secondary">Submitted / Pending</Typography>
+                  <Typography variant="h5" fontWeight="bold">
+                    {evaluations.filter((r) => r.status === "Submitted" || r.status === "Reviewed").length}
+                  </Typography>
+                </Box>
+                <Insights color="warning" sx={{ fontSize: 36 }} />
+              </Box>
+            </CardContent>
+          </Card>
+        </Grid>
+
+        <Grid size={{ xs: 12, md: 3 }}>
+          <Card elevation={2}>
+            <CardContent>
+              <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                <Box>
+                  <Typography variant="body2" color="text.secondary">Latest DSS Average</Typography>
+                  <Typography variant="h5" fontWeight="bold">
+                    {latestDss ? `${Number(latestDss.average_score || 0).toFixed(2)}%` : "—"}
+                  </Typography>
+                </Box>
+                <Grade color="primary" sx={{ fontSize: 36 }} />
+              </Box>
+            </CardContent>
+          </Card>
+        </Grid>
+
+        <Grid size={{ xs: 12, md: 3 }}>
+          <Card elevation={2} sx={{ bgcolor: "warning.main", color: "white" }}>
+            <CardContent>
+              <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                <Box>
+                  <Typography variant="body2" sx={{ opacity: 0.9 }}>🏆 Employee of the Month</Typography>
+                  <Typography variant="subtitle1" fontWeight="bold">
+                    {topDssItem ? `${topDssItem.employee_name} — ${Number(topDssItem.final_weighted_score || 0).toFixed(2)}%` : "Not yet generated"}
+                  </Typography>
+                </Box>
+                <EmojiEvents sx={{ fontSize: 44 }} />
+              </Box>
+            </CardContent>
+          </Card>
+        </Grid>
+      </Grid>
+
+      {/* Supervisor employee list */}
+      {isSupervisor && (
+        <Paper sx={{ mb: 4 }}>
+          <Box sx={{ p: 2, borderBottom: "1px solid", borderColor: "divider", display: "flex", alignItems: "center", gap: 1 }}>
+            <Groups color="primary" />
+            <Typography variant="h6" fontWeight={700}>Employee List — Select an Employee to Evaluate</Typography>
+          </Box>
+
+          <TableContainer sx={{ overflowX: "auto" }}>
+            {employeesLoading ? (
+              <Box sx={{ display: "flex", justifyContent: "center", py: 5, gap: 2 }}>
+                <CircularProgress size={24} />
+                <Typography color="text.secondary">Loading employees…</Typography>
               </Box>
             ) : (
-              <Table sx={{ minWidth: 1400 }}>
+              <Table>
                 <TableHead>
                   <TableRow sx={{ bgcolor: "primary.main" }}>
-                    {[
-                      "Rank", "Employee", "Position", "Period",
-                      "Work Quality (15%)", "Job Knowledge (10%)", "Teamwork (10%)",
-                      "Initiative (10%)", "Peer Eval (10%)", "Conduct (10%)",
-                      "Attendance (20%)", "Performance (25%)", "Final Score", "Status",
-                      ...(user?.role === "gm" || user?.role === "hr" ? ["Actions"] : []),
-                    ].map((h) => (
-                      <TableCell key={h} sx={{ color: "white", fontWeight: 700, whiteSpace: "nowrap", fontSize: "0.78rem" }}>
-                        {h}
-                      </TableCell>
+                    {["Employee ID", "Name", "Position", "Outlet", "Status", "Action"].map((h) => (
+                      <TableCell key={h} sx={{ color: "white", fontWeight: 700, whiteSpace: "nowrap" }}>{h}</TableCell>
                     ))}
                   </TableRow>
                 </TableHead>
                 <TableBody>
-                  {displayResults.length === 0 ? (
+                  {employees.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={15} align="center" sx={{ py: 5, color: "text.secondary" }}>
-                        {user?.role === "employee"
-                          ? "No evaluations found for your account."
-                          : 'No evaluations yet. Click "New Evaluation" to add one.'}
+                      <TableCell colSpan={6} align="center" sx={{ py: 5, color: "text.secondary" }}>
+                        No employees found.
                       </TableCell>
                     </TableRow>
                   ) : (
-                    displayResults.map((r, i) => (
-                      <TableRow key={r.id} hover sx={{
-                        bgcolor: r.status === "Employee of the Month" ? "#fff8e1" : i === 0 ? "#f0f7f0" : "inherit",
-                      }}>
+                    employees.map((emp) => (
+                      <TableRow key={emp.employee_id} hover>
+                        <TableCell><Chip label={emp.employee_id} size="small" variant="outlined" /></TableCell>
+                        <TableCell sx={{ fontWeight: 600 }}>{emp.name}</TableCell>
+                        <TableCell>{emp.position}</TableCell>
+                        <TableCell>{emp.outlet}</TableCell>
                         <TableCell>
-                          <Chip
-                            label={r.status === "Employee of the Month" ? "🏆 #1" : `#${i + 1}`}
-                            color={r.status === "Employee of the Month" ? "warning" : i === 0 ? "success" : "default"}
-                            size="small"
-                          />
-                        </TableCell>
-                        <TableCell sx={{ fontWeight: i === 0 ? "bold" : "normal" }}>{r.employee}</TableCell>
-                        <TableCell sx={{ whiteSpace: "nowrap", fontSize: "0.82rem" }}>{r.position}</TableCell>
-                        <TableCell>{r.period}</TableCell>
-                        <TableCell align="center">{r.workQuality}%</TableCell>
-                        <TableCell align="center">{r.jobKnowledge}%</TableCell>
-                        <TableCell align="center">{r.teamwork}%</TableCell>
-                        <TableCell align="center">{r.initiative}%</TableCell>
-                        <TableCell align="center">{r.peerEvaluation}%</TableCell>
-                        <TableCell align="center">{r.conduct}%</TableCell>
-                        <TableCell align="center">{r.attendance}%</TableCell>
-                        <TableCell align="center">{r.performanceOutput}%</TableCell>
-                        <TableCell>
-                          <Typography fontWeight="bold" color="primary.main" sx={{ whiteSpace: "nowrap" }}>
-                            {r.finalScore.toFixed(2)}%
-                          </Typography>
+                          <Chip label={emp.status} size="small" color={emp.status === "Active" ? "success" : "default"} />
                         </TableCell>
                         <TableCell>
-                          <Chip
-                            label={
-                              user?.role === "employee" && r.status === "Pending GM Approval"
-                                ? "Under Review"
-                                : r.status
-                            }
-                            size="small"
-                            color={r.status === "Employee of the Month" ? "warning" : r.status === "Approved" ? "success" : "default"}
-                            sx={{ fontSize: "0.72rem" }}
-                          />
+                          <Button size="small" variant="outlined" onClick={() => openEvaluateForEmployee(emp)}>
+                            Evaluate
+                          </Button>
                         </TableCell>
-                        {(user?.role === "gm" || user?.role === "hr") && (
-                          <TableCell>
-                            <Box sx={{ display: "flex", flexDirection: "column", gap: 0.5, alignItems: "flex-start" }}>
-                              {r.status === "Pending GM Approval" && (
-                                <Chip
-                                  label="Approve"
-                                  size="small"
-                                  clickable
-                                  variant="outlined"
-                                  color="success"
-                                  sx={{ minWidth: 110 }}
-                                  onClick={() => handleApprove(r.id)}
-                                />
-                              )}
-                              {r.status === "Approved" && user?.role === "gm" && (
-                                <Chip
-                                  label="Mark EOTM"
-                                  size="small"
-                                  clickable
-                                  variant="outlined"
-                                  color="warning"
-                                  sx={{ minWidth: 110 }}
-                                  onClick={() => handleEOTM(r.id)}
-                                />
-                              )}
-                              <Chip
-                                label="Delete"
-                                size="small"
-                                clickable
-                                variant="outlined"
-                                color="error"
-                                sx={{ minWidth: 110 }}
-                                onClick={() => handleDelete(r.id)}
-                              />
-                            </Box>
-                          </TableCell>
-                        )}
                       </TableRow>
                     ))
                   )}
@@ -734,40 +958,229 @@ export default function PerformanceEvaluation() {
               </Table>
             )}
           </TableContainer>
-        </>
+        </Paper>
       )}
 
-      {/* ════════════════════════════════════════���═════════════════════ */}
-      {/* EVALUATION FORM DIALOG (HR publish / Supervisor evaluate)     */}
-      {/* ══════════════════════════════════════════════════════════════ */}
-      <Dialog open={openEvalForm} onClose={() => setOpenEvalForm(false)} maxWidth="md" fullWidth>
-        <DialogTitle fontWeight={700}>
-          <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-            Performance Evaluation Form — DSS
-            {user?.role === "hr" && (
-              <Button size="small" variant="outlined" startIcon={<Edit />} onClick={openCriteriaDialog}>
-                Edit Criteria
+      {/* Evaluation Results Table */}
+      <TableContainer component={Paper} sx={{ overflowX: "auto", mb: 4 }}>
+        {loading ? (
+          <Box sx={{ display: "flex", justifyContent: "center", py: 6, gap: 2 }}>
+            <CircularProgress size={28} />
+            <Typography color="text.secondary">Loading evaluations…</Typography>
+          </Box>
+        ) : (
+          <Table sx={{ minWidth: 1200 }}>
+            <TableHead>
+              <TableRow sx={{ bgcolor: "primary.main" }}>
+                {[
+                  "Rank",
+                  "Employee",
+                  "Position",
+                  "Outlet",
+                  "Period",
+                  ...criteria.map((c) => `${c.criteria_name} (${Number(c.weight || 0)}%)`),
+                  "Final Score",
+                  "Rating",
+                  "Status",
+                  ...(isHR || isGM ? ["Actions"] : []),
+                ].map((h) => (
+                  <TableCell key={h} sx={{ color: "white", fontWeight: 700, whiteSpace: "nowrap", fontSize: "0.78rem" }}>
+                    {h}
+                  </TableCell>
+                ))}
+              </TableRow>
+            </TableHead>
+
+            <TableBody>
+              {displayedEvaluations.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={10 + criteria.length} align="center" sx={{ py: 5, color: "text.secondary" }}>
+                    No evaluations found.
+                  </TableCell>
+                </TableRow>
+              ) : (
+                displayedEvaluations.map((r, i) => (
+                  <TableRow key={r.evaluation_id} hover sx={{ bgcolor: i === 0 ? "#f0f7f0" : "inherit" }}>
+                    <TableCell>
+                      <Chip label={`#${i + 1}`} color={i === 0 ? "success" : "default"} size="small" />
+                    </TableCell>
+                    <TableCell sx={{ fontWeight: 600 }}>{r.employee_name}</TableCell>
+                    <TableCell>{r.position}</TableCell>
+                    <TableCell>{r.outlet}</TableCell>
+                    <TableCell sx={{ whiteSpace: "nowrap" }}>{formatPeriod(r)}</TableCell>
+                    {criteria.map((c) => {
+                      const s = r.scores[c.criteria_id];
+                      return (
+                        <TableCell key={`${r.evaluation_id}-${c.criteria_id}`} align="center" sx={{ whiteSpace: "nowrap" }}>
+                          {s ? `${Number(s.raw_score || 0).toFixed(0)}%` : "—"}
+                        </TableCell>
+                      );
+                    })}
+                    <TableCell>
+                      <Typography fontWeight="bold" color="primary.main" sx={{ whiteSpace: "nowrap" }}>
+                        {Number(r.final_weighted_score || 0).toFixed(2)}%
+                      </Typography>
+                    </TableCell>
+                    <TableCell>
+                      <Chip
+                        label={r.rating_label || labelForScore(Number(r.final_weighted_score || 0))}
+                        size="small"
+                        color={Number(r.final_weighted_score || 0) >= 85 ? "success" : Number(r.final_weighted_score || 0) >= 75 ? "warning" : "default"}
+                      />
+                    </TableCell>
+                    <TableCell>
+                      <Chip
+                        label={isEmployee && r.status === "Submitted" ? "Under Review" : r.status}
+                        size="small"
+                        color={r.status === "Approved" ? "success" : r.status === "Submitted" || r.status === "Reviewed" ? "warning" : "default"}
+                      />
+                    </TableCell>
+                    {(isHR || isGM) && (
+                      <TableCell>
+                        <Box sx={{ display: "flex", flexDirection: "column", gap: 0.5, alignItems: "flex-start" }}>
+                          {(r.status === "Submitted" || r.status === "Reviewed") && (
+                            <Chip
+                              label="Approve"
+                              size="small"
+                              clickable
+                              variant="outlined"
+                              color="success"
+                              sx={{ minWidth: 110 }}
+                              onClick={() => handleApprove(r.evaluation_id)}
+                            />
+                          )}
+                          <Chip
+                            label="Delete"
+                            size="small"
+                            clickable
+                            variant="outlined"
+                            color="error"
+                            sx={{ minWidth: 110 }}
+                            onClick={() => handleDelete(r.evaluation_id)}
+                          />
+                        </Box>
+                      </TableCell>
+                    )}
+                  </TableRow>
+                ))
+              )}
+            </TableBody>
+          </Table>
+        )}
+      </TableContainer>
+
+      {/* DSS Ranking */}
+      {(isHR || isGM || ranking.length > 0) && (
+        <Paper sx={{ mb: 4 }}>
+          <Box sx={{ p: 2, borderBottom: "1px solid", borderColor: "divider", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 1, flexWrap: "wrap" }}>
+            <Box>
+              <Typography variant="h6" fontWeight={700}>DSS Ranking Results</Typography>
+              <Typography variant="caption" color="text.secondary">
+                {latestDss
+                  ? `${latestDss.result_period_label || "Latest DSS Result"} • ${latestDss.result_period_start} to ${latestDss.result_period_end}`
+                  : "Generate a DSS ranking to view employee recommendations."}
+              </Typography>
+            </Box>
+            {(isHR || isGM) && (
+              <Button size="small" variant="outlined" startIcon={<Insights />} onClick={() => setDssDialogOpen(true)}>
+                Generate Ranking
               </Button>
             )}
           </Box>
-        </DialogTitle>
+
+          <TableContainer sx={{ overflowX: "auto" }}>
+            <Table sx={{ minWidth: 900 }}>
+              <TableHead>
+                <TableRow sx={{ bgcolor: "grey.100" }}>
+                  {["Rank", "Employee", "Position", "Outlet", "Score", "Rating", "Recommendation", ...(isGM ? ["Action"] : [])].map((h) => (
+                    <TableCell key={h} sx={{ fontWeight: 700, whiteSpace: "nowrap" }}>{h}</TableCell>
+                  ))}
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {ranking.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={8} align="center" sx={{ py: 5, color: "text.secondary" }}>
+                      No DSS ranking generated yet.
+                    </TableCell>
+                  </TableRow>
+                ) : (
+                  ranking.map((item) => (
+                    <TableRow key={`${item.result_id}-${item.evaluation_id}`} hover sx={{ bgcolor: item.rank_no === 1 ? "#fff8e1" : "inherit" }}>
+                      <TableCell>
+                        <Chip
+                          label={item.rank_no === 1 ? "🏆 #1" : `#${item.rank_no}`}
+                          color={item.rank_no === 1 ? "warning" : "default"}
+                          size="small"
+                        />
+                      </TableCell>
+                      <TableCell sx={{ fontWeight: 600 }}>{item.employee_name}</TableCell>
+                      <TableCell>{item.position}</TableCell>
+                      <TableCell>{item.outlet}</TableCell>
+                      <TableCell>
+                        <Typography fontWeight="bold" color="primary.main">{Number(item.final_weighted_score || 0).toFixed(2)}%</Typography>
+                      </TableCell>
+                      <TableCell>{item.rating_label || "—"}</TableCell>
+                      <TableCell>
+                        <Chip
+                          label={item.recommendation || "—"}
+                          size="small"
+                          color={(item.recommendation || "").includes("Employee of the Month") ? "warning" : item.rank_no === 1 ? "success" : "default"}
+                        />
+                      </TableCell>
+                      {isGM && (
+                        <TableCell>
+                          <Button size="small" variant="outlined" color="warning" onClick={() => handleMarkEOTM(item)}>
+                            Mark EOTM
+                          </Button>
+                        </TableCell>
+                      )}
+                    </TableRow>
+                  ))
+                )}
+              </TableBody>
+            </Table>
+          </TableContainer>
+        </Paper>
+      )}
+
+      {/* Evaluation Dialog */}
+      <Dialog open={evalDialogOpen} onClose={() => setEvalDialogOpen(false)} maxWidth="md" fullWidth>
+        <DialogTitle fontWeight={700}>Employee Performance Evaluation</DialogTitle>
         <DialogContent>
           <Grid container spacing={2} sx={{ mt: 1 }}>
-            {/* Supervisor: employee name pre-filled (read-only) */}
-            {user?.role === "supervisor" && (
-              <Grid size={12}>
-                <TextField
-                  fullWidth
-                  label="Employee Name"
-                  value={form.employee}
-                  disabled
-                  sx={{ "& .MuiInputBase-input.Mui-disabled": { WebkitTextFillColor: "rgba(0,0,0,0.87)", fontWeight: 600 } }}
-                />
-              </Grid>
-            )}
+            <Grid size={{ xs: 12, md: 6 }}>
+              <TextField
+                fullWidth
+                select
+                label="Employee"
+                value={form.employee_id}
+                onChange={(e) => {
+                  const selected = employees.find((emp) => emp.employee_id === e.target.value);
+                  setForm({
+                    ...form,
+                    employee_id: selected?.employee_id || "",
+                    employee_name: selected?.name || "",
+                    position: selected?.position || "",
+                    outlet: selected?.outlet || "",
+                  });
+                }}
+                InputLabelProps={{ shrink: true }}
+              >
+                <MenuItem value="">Select employee…</MenuItem>
+                {employees.map((emp) => (
+                  <MenuItem key={emp.employee_id} value={emp.employee_id}>
+                    {emp.employee_id} — {emp.name}
+                  </MenuItem>
+                ))}
+              </TextField>
+            </Grid>
 
-            {/* Position */}
-            <Grid size={{ xs: 12, md: user?.role === "hr" ? 6 : 12 }}>
+            <Grid size={{ xs: 12, md: 6 }}>
+              <TextField fullWidth label="Employee Name" value={form.employee_name} disabled InputLabelProps={{ shrink: true }} />
+            </Grid>
+
+            <Grid size={{ xs: 12, md: 6 }}>
               <TextField
                 fullWidth
                 select
@@ -775,84 +1188,86 @@ export default function PerformanceEvaluation() {
                 value={form.position}
                 onChange={(e) => setForm({ ...form, position: e.target.value })}
                 InputLabelProps={{ shrink: true }}
-                disabled={user?.role === "supervisor"}
               >
-                <MenuItem key="pos-empty" value="">Select position…</MenuItem>
-                {POSITIONS.map((p) => <MenuItem key={p} value={p}>{p}</MenuItem>)}
+                <MenuItem value="">Select position…</MenuItem>
+                {AVAILABLE_POSITIONS.map((p) => <MenuItem key={p} value={p}>{p}</MenuItem>)}
               </TextField>
             </Grid>
 
-            {/* Outlet (HR only) */}
-            {user?.role === "hr" && (
-              <Grid size={{ xs: 12, md: 6 }}>
-                <TextField
-                  fullWidth
-                  select
-                  label="Outlet / Branch (Optional)"
-                  value={form.outlet}
-                  onChange={(e) => setForm({ ...form, outlet: e.target.value })}
-                  InputLabelProps={{ shrink: true }}
-                >
-                  <MenuItem key="outlet-empty" value="">All Outlets</MenuItem>
-                  {OUTLETS.map((o) => <MenuItem key={o} value={o}>{o}</MenuItem>)}
-                </TextField>
-              </Grid>
-            )}
-
-            {/* Period start */}
             <Grid size={{ xs: 12, md: 6 }}>
               <TextField
                 fullWidth
-                label="Period Start Date"
+                select
+                label="Outlet"
+                value={form.outlet}
+                onChange={(e) => setForm({ ...form, outlet: e.target.value })}
+                InputLabelProps={{ shrink: true }}
+              >
+                <MenuItem value="">Select outlet…</MenuItem>
+                {OUTLETS.map((o) => <MenuItem key={o} value={o}>{o}</MenuItem>)}
+              </TextField>
+            </Grid>
+
+            <Grid size={{ xs: 12, md: 4 }}>
+              <TextField
+                fullWidth
+                label="Period Start"
                 type="date"
                 value={form.periodStart}
                 onChange={(e) => setForm({ ...form, periodStart: e.target.value })}
                 InputLabelProps={{ shrink: true }}
-                disabled={user?.role === "supervisor" && !!publishedTemplate?.periodStart}
               />
             </Grid>
 
-            {/* Period end */}
-            <Grid size={{ xs: 12, md: 6 }}>
+            <Grid size={{ xs: 12, md: 4 }}>
               <TextField
                 fullWidth
-                label="Period End Date"
+                label="Period End"
                 type="date"
                 value={form.periodEnd}
                 onChange={(e) => setForm({ ...form, periodEnd: e.target.value })}
                 InputLabelProps={{ shrink: true }}
-                disabled={user?.role === "supervisor" && !!publishedTemplate?.periodEnd}
+              />
+            </Grid>
+
+            <Grid size={{ xs: 12, md: 4 }}>
+              <TextField
+                fullWidth
+                label="Period Label"
+                value={form.periodLabel}
+                onChange={(e) => setForm({ ...form, periodLabel: e.target.value })}
+                InputLabelProps={{ shrink: true }}
               />
             </Grid>
           </Grid>
 
           <Divider sx={{ my: 3 }}>
             <Typography variant="caption" color="text.secondary" fontWeight={700}>
-              EVALUATION CRITERIA (Drag sliders to score 0–100)
+              DSS CRITERIA SCORES
             </Typography>
           </Divider>
 
           <Grid container spacing={1.5}>
-            {activeCriteria.map((c) => (
-              <Grid key={c.key} size={{ xs: 12, md: 6 }}>
+            {criteria.map((c) => (
+              <Grid key={c.criteria_id} size={{ xs: 12, md: 6 }}>
                 <Box sx={{ p: 1.5, border: "1px solid", borderColor: "divider", borderRadius: 2 }}>
                   <Box sx={{ display: "flex", justifyContent: "space-between", mb: 0.5 }}>
                     <Box>
-                      <Typography variant="body2" fontWeight={600}>{c.label}</Typography>
-                      <Typography variant="caption" color="text.secondary">Weight: {(c.weight * 100).toFixed(0)}%</Typography>
+                      <Typography variant="body2" fontWeight={600}>{c.criteria_name}</Typography>
+                      <Typography variant="caption" color="text.secondary">Weight: {Number(c.weight || 0)}%</Typography>
                     </Box>
                     <Typography variant="h6" fontWeight="bold" color="primary">
-                      {form.scores[c.key] ?? 50}%
+                      {form.scores[c.criteria_id] ?? 0}%
                     </Typography>
                   </Box>
                   <Slider
-                    value={form.scores[c.key] ?? 50}
-                    onChange={(_, v) => setForm({ ...form, scores: { ...form.scores, [c.key]: v as number } })}
+                    value={form.scores[c.criteria_id] ?? 0}
+                    onChange={(_, v) => setForm({ ...form, scores: { ...form.scores, [c.criteria_id]: v as number } })}
                     valueLabelDisplay="auto"
                     min={0}
-                    max={100}
+                    max={Number(c.max_score || 100)}
                     size="small"
-                    sx={{ color: (form.scores[c.key] ?? 50) >= 75 ? "success.main" : "primary.main" }}
+                    sx={{ color: (form.scores[c.criteria_id] ?? 0) >= 75 ? "success.main" : "primary.main" }}
                   />
                   <Typography variant="caption" color="text.secondary">{c.description}</Typography>
                 </Box>
@@ -860,100 +1275,127 @@ export default function PerformanceEvaluation() {
             ))}
           </Grid>
 
-          {/* Score preview */}
-          <Paper sx={{
-            p: 2.5, mt: 3,
-            bgcolor: previewScore >= 90 ? "warning.light" : previewScore >= 75 ? "success.light" : "primary.light",
-            borderRadius: 2,
-          }}>
+          <TextField
+            fullWidth
+            label="Remarks"
+            multiline
+            rows={3}
+            value={form.remarks}
+            onChange={(e) => setForm({ ...form, remarks: e.target.value })}
+            sx={{ mt: 3 }}
+          />
+
+          <Paper
+            sx={{
+              p: 2.5,
+              mt: 3,
+              bgcolor: previewScore >= 90 ? "warning.light" : previewScore >= 75 ? "success.light" : "primary.light",
+              borderRadius: 2,
+            }}
+          >
             <Typography variant="h5" color="white" fontWeight="bold">
-              Projected Final Score: {previewScore.toFixed(2)}%
-              {previewScore >= 90 && " 🏆 Eligible for EOTM"}
+              Projected Final Score: {previewScore.toFixed(2)}% {previewScore >= 90 && "🏆"}
             </Typography>
             <Typography variant="body2" sx={{ color: "rgba(255,255,255,0.9)", mt: 0.5 }}>
-              {previewScore >= 90
-                ? "Excellent — Recommended for Employee of the Month"
-                : previewScore >= 75
-                ? "Good performance"
-                : previewScore >= 60
-                ? "Satisfactory"
-                : "Needs improvement"}
+              {labelForScore(previewScore)}
             </Typography>
           </Paper>
         </DialogContent>
+
         <DialogActions sx={{ px: 3, pb: 2 }}>
-          <Button onClick={() => setOpenEvalForm(false)}>Cancel</Button>
+          <Button onClick={() => setEvalDialogOpen(false)}>Cancel</Button>
           <Button
             variant="contained"
-            onClick={handleSubmit}
-            disabled={saving || (user?.role !== "hr" && !form.employee)}
+            onClick={handleSubmitEvaluation}
+            disabled={saving || !form.employee_id || criteria.length === 0}
             startIcon={saving ? <CircularProgress size={16} color="inherit" /> : undefined}
-            sx={user?.role === "hr" ? { color: "white" } : {}}
           >
-            {saving
-              ? "Submitting…"
-              : user?.role === "hr"
-              ? "Published Evaluation"
-              : "Submit Evaluation"}
+            {saving ? "Submitting…" : "Submit Evaluation"}
           </Button>
         </DialogActions>
       </Dialog>
 
-      {/* ══════════════════════════════════════════════════════════════ */}
-      {/* EDIT CRITERIA DIALOG                                          */}
-      {/* ══════════════════════════════════════════════════════════════ */}
+      {/* Criteria Dialog */}
       <Dialog open={criteriaDialogOpen} onClose={() => setCriteriaDialogOpen(false)} maxWidth="md" fullWidth>
         <DialogTitle fontWeight={700}>
-          <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-            Edit Evaluation Criteria
+          <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 1 }}>
+            Manage DSS Criteria
             <Button size="small" variant="outlined" startIcon={<Add />} onClick={addNewCriterion}>
               Add Criterion
             </Button>
           </Box>
         </DialogTitle>
+
         <DialogContent>
           <Alert severity="info" sx={{ mb: 2 }}>
-            Edit criterion labels, weights, and descriptions, or add new ones. Current total weight:{" "}
-            <strong>{(editCriteriaTemp.reduce((s, c) => s + c.weight, 0) * 100).toFixed(0)}%</strong>
+            Current draft total weight:{" "}
+            <strong>{criteriaDraft.reduce((s, c) => s + Number(c.weight || 0), 0).toFixed(2)}%</strong>. It must equal <strong>100%</strong>.
           </Alert>
-          {editCriteriaTemp.map((c, i) => (
-            <Paper key={c.key} variant="outlined" sx={{ p: 2, mb: 2 }}>
+
+          {criteriaDraft.map((c, i) => (
+            <Paper key={c.criteria_id} variant="outlined" sx={{ p: 2, mb: 2 }}>
               <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 1.5 }}>
                 <Chip label={`#${i + 1}`} size="small" />
-                <Typography variant="subtitle2" fontWeight={700} sx={{ flex: 1 }}>{c.label}</Typography>
+                <Typography variant="subtitle2" fontWeight={700} sx={{ flex: 1 }}>{c.criteria_name}</Typography>
                 <Tooltip title="Remove criterion">
                   <IconButton size="small" color="error" onClick={() => removeCriterion(i)}>
                     <DeleteOutline fontSize="small" />
                   </IconButton>
                 </Tooltip>
               </Box>
+
               <Grid container spacing={2}>
-                <Grid size={{ xs: 12, md: 7 }}>
+                <Grid size={{ xs: 12, md: 6 }}>
                   <TextField
                     fullWidth
-                    label="Criterion Label"
+                    label="Criterion Name"
                     size="small"
-                    value={c.label}
-                    onChange={(e) =>
-                      setEditCriteriaTemp((prev) => prev.map((x, j) => j === i ? { ...x, label: e.target.value } : x))
-                    }
+                    value={c.criteria_name}
+                    onChange={(e) => setCriteriaDraft((prev) => prev.map((x, j) => (j === i ? { ...x, criteria_name: e.target.value } : x)))}
                   />
                 </Grid>
+
+                <Grid size={{ xs: 12, md: 3 }}>
+                  <TextField
+                    fullWidth
+                    label="Category"
+                    size="small"
+                    value={c.category}
+                    onChange={(e) => setCriteriaDraft((prev) => prev.map((x, j) => (j === i ? { ...x, category: e.target.value } : x)))}
+                  />
+                </Grid>
+
                 <Grid size={{ xs: 12, md: 3 }}>
                   <TextField
                     fullWidth
                     label="Weight (%)"
                     size="small"
                     type="number"
-                    value={(c.weight * 100).toFixed(0)}
-                    inputProps={{ min: 1, max: 100, step: 1 }}
+                    value={c.weight}
+                    inputProps={{ min: 0, max: 100, step: 1 }}
                     onChange={(e) => {
-                      const v = Math.max(1, Math.min(100, parseInt(e.target.value) || 0));
-                      setEditCriteriaTemp((prev) => prev.map((x, j) => j === i ? { ...x, weight: v / 100 } : x));
+                      const v = Math.max(0, Math.min(100, Number(e.target.value) || 0));
+                      setCriteriaDraft((prev) => prev.map((x, j) => (j === i ? { ...x, weight: v } : x)));
                     }}
                   />
                 </Grid>
-                <Grid size={12}>
+
+                <Grid size={{ xs: 12, md: 3 }}>
+                  <TextField
+                    fullWidth
+                    label="Max Score"
+                    size="small"
+                    type="number"
+                    value={c.max_score}
+                    inputProps={{ min: 1, max: 100, step: 1 }}
+                    onChange={(e) => {
+                      const v = Math.max(1, Math.min(100, Number(e.target.value) || 100));
+                      setCriteriaDraft((prev) => prev.map((x, j) => (j === i ? { ...x, max_score: v } : x)));
+                    }}
+                  />
+                </Grid>
+
+                <Grid size={{ xs: 12, md: 9 }}>
                   <TextField
                     fullWidth
                     label="Description"
@@ -961,24 +1403,74 @@ export default function PerformanceEvaluation() {
                     multiline
                     rows={2}
                     value={c.description}
-                    onChange={(e) =>
-                      setEditCriteriaTemp((prev) => prev.map((x, j) => j === i ? { ...x, description: e.target.value } : x))
-                    }
+                    onChange={(e) => setCriteriaDraft((prev) => prev.map((x, j) => (j === i ? { ...x, description: e.target.value } : x)))}
                   />
                 </Grid>
               </Grid>
             </Paper>
           ))}
         </DialogContent>
+
         <DialogActions sx={{ px: 3, pb: 2 }}>
           <Button onClick={() => setCriteriaDialogOpen(false)}>Cancel</Button>
-          <Button variant="contained" startIcon={<Save />} onClick={saveCriteria}>
+          <Button variant="contained" startIcon={<Save />} onClick={saveCriteria} disabled={saving}>
             Save Criteria
           </Button>
         </DialogActions>
       </Dialog>
 
-      {/* ── Snackbar ─────────────────────────────────────────────────── */}
+      {/* DSS Generate Dialog */}
+      <Dialog open={dssDialogOpen} onClose={() => setDssDialogOpen(false)} maxWidth="sm" fullWidth>
+        <DialogTitle fontWeight={700}>Generate DSS Ranking</DialogTitle>
+        <DialogContent>
+          <Alert severity="info" sx={{ mb: 2 }}>
+            This will rank employees based on approved/submitted evaluations for the selected period.
+          </Alert>
+
+          <Grid container spacing={2}>
+            <Grid size={{ xs: 12, md: 6 }}>
+              <TextField
+                fullWidth
+                label="Period Start"
+                type="date"
+                value={dssPeriodStart}
+                onChange={(e) => setDssPeriodStart(e.target.value)}
+                InputLabelProps={{ shrink: true }}
+              />
+            </Grid>
+
+            <Grid size={{ xs: 12, md: 6 }}>
+              <TextField
+                fullWidth
+                label="Period End"
+                type="date"
+                value={dssPeriodEnd}
+                onChange={(e) => setDssPeriodEnd(e.target.value)}
+                InputLabelProps={{ shrink: true }}
+              />
+            </Grid>
+
+            <Grid size={12}>
+              <TextField
+                fullWidth
+                label="Period Label"
+                value={dssPeriodLabel}
+                onChange={(e) => setDssPeriodLabel(e.target.value)}
+                placeholder="Example: May 2026 DSS Ranking"
+                InputLabelProps={{ shrink: true }}
+              />
+            </Grid>
+          </Grid>
+        </DialogContent>
+
+        <DialogActions sx={{ px: 3, pb: 2 }}>
+          <Button onClick={() => setDssDialogOpen(false)}>Cancel</Button>
+          <Button variant="contained" color="success" onClick={handleGenerateDss} disabled={saving} startIcon={saving ? <CircularProgress size={16} color="inherit" /> : undefined}>
+            Generate
+          </Button>
+        </DialogActions>
+      </Dialog>
+
       <Snackbar
         open={snackbar.open}
         autoHideDuration={5000}

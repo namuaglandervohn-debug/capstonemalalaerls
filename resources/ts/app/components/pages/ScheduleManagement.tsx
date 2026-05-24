@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   Box, Typography, Paper, Button, Table, TableBody, TableCell,
   TableContainer, TableHead, TableRow, Dialog, DialogTitle,
@@ -14,6 +14,8 @@ import { CalendarMonth } from '@mui/icons-material';
 import * as XLSX from 'xlsx';
 import { supabase } from "../../lib/supabaseClient";
 import { OUTLETS, POSITIONS } from '../../lib/constants';
+
+const AVAILABLE_POSITIONS = POSITIONS.filter(position => position !== 'Payroll Staff');
 import { useAuth } from '../../context/AuthContext';
 
 interface Schedule {
@@ -101,8 +103,11 @@ export default function ScheduleManagement() {
   const excelRef = useRef<HTMLInputElement>(null);
   const [importingExcel, setImportingExcel] = useState(false);
 
-  const canPublish = user?.role === 'hr' || user?.role === 'supervisor';
-  const canConfirm = user?.role === 'employee';
+  const currentRole = String((user as any)?.role ?? '').toLowerCase();
+  const currentEmployeeId = String((user as any)?.employee_id ?? (user as any)?.employeeId ?? '');
+  const currentUserName = String((user as any)?.name ?? (user as any)?.full_name ?? (user as any)?.email ?? 'User');
+  const canPublish = currentRole === 'hr_admin' || currentRole.includes('hr') || currentRole.includes('admin') || currentRole.includes('supervisor') || currentRole === 'general_manager';
+  const canConfirm = currentRole === 'employee' || currentRole.includes('employee');
 
   // ── Push a schedule notification to an employee (fire-and-forget) ──────
   const pushNotification = async (
@@ -153,8 +158,8 @@ export default function ScheduleManagement() {
     );
 
     const visibleSchedules =
-    user?.role === "employee"
-    ? (scheduleData ?? []).filter((s: any) => s.employee_id === user.employeeId)
+    canConfirm
+    ? (scheduleData ?? []).filter((s: any) => s.employee_id === currentEmployeeId)
     : (scheduleData ?? []);
 
     const mappedSchedules: Schedule[] = visibleSchedules.map((s: any) => ({
@@ -342,7 +347,7 @@ const scheduleId =
       .from("schedule")
       .update({
         status: "Confirmed",
-        confirmed_by: user?.name ?? "",
+        confirmed_by: currentUserName,
         confirmed_at: confirmedAt,
       })
       .eq("schedule_id", id);
@@ -352,7 +357,7 @@ const scheduleId =
     setSchedules(prev =>
       prev.map(s =>
         s.id === id
-          ? { ...s, status: "Confirmed", confirmedBy: user?.name, confirmedAt }
+          ? { ...s, status: "Confirmed", confirmedBy: currentUserName, confirmedAt }
           : s
       )
     );
@@ -379,7 +384,7 @@ const scheduleId =
       .from("schedule")
       .update({
         status: "Declined",
-        declined_by: user?.name ?? "",
+        declined_by: currentUserName,
         declined_at: declinedAt,
       })
       .eq("schedule_id", id);
@@ -389,7 +394,7 @@ const scheduleId =
     setSchedules(prev =>
       prev.map(s =>
         s.id === id
-          ? { ...s, status: "Declined", declinedBy: user?.name, declinedAt }
+          ? { ...s, status: "Declined", declinedBy: currentUserName, declinedAt }
           : s
       )
     );
@@ -502,8 +507,8 @@ const scheduleId =
 };
 
   const filtered = schedules.filter(s => {
-  if (user?.role === "employee") {
-    if (s.employeeId !== user.employeeId) return false;
+  if (canConfirm) {
+    if (s.employeeId !== currentEmployeeId) return false;
 
     if (!["Published", "Confirmed", "Declined"].includes(s.status)) {
       return false;
@@ -513,54 +518,103 @@ const scheduleId =
   return filterOutlet === "all" || s.outlet === filterOutlet;
 });
 
+  const nextScheduleIds = async (count: number) => {
+    const year = new Date().getFullYear();
+    const { data, error } = await supabase
+      .from("schedule")
+      .select("schedule_id")
+      .like("schedule_id", `SCH-${year}-%`);
+
+    if (error) throw error;
+
+    const numbers = (data ?? [])
+      .map((row: any) => String(row.schedule_id ?? "").match(/SCH-\d{4}-(\d+)$/)?.[1])
+      .map((value: string | undefined) => Number(value || 0))
+      .filter((value: number) => value > 0);
+
+    const startNumber = numbers.length > 0 ? Math.max(...numbers) + 1 : 1;
+    return Array.from({ length: count }, (_, index) => `SCH-${year}-${String(startNumber + index).padStart(4, "0")}`);
+  };
+
   const handleExcelImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
     e.target.value = '';
     setImportingExcel(true);
+
     try {
       const data = await file.arrayBuffer();
       const wb = XLSX.read(data, { type: 'array' });
       const ws = wb.Sheets[wb.SheetNames[0]];
       const rows: any[] = XLSX.utils.sheet_to_json(ws, { defval: '' });
 
-      const COL = (row: any, ...keys: string[]) => {
-        for (const k of keys) {
-          const v = row[k] ?? row[k.toLowerCase()] ?? row[k.toUpperCase()];
-          if (v !== undefined && v !== '') return String(v).trim();
+      const getCell = (row: any, ...keys: string[]) => {
+        for (const key of keys) {
+          const exact = row[key];
+          const lower = row[key.toLowerCase()];
+          const upper = row[key.toUpperCase()];
+          const value = exact ?? lower ?? upper;
+          if (value !== undefined && String(value).trim() !== '') return String(value).trim();
         }
         return '';
       };
 
-      let created = 0;
-      for (const row of rows) {
-        const employee = COL(row, 'Employee', 'employee', 'EMPLOYEE', 'Name', 'name');
-        if (!employee) continue;
-        const payload = {
-          employee,
-          position: COL(row, 'Position', 'position'),
-          outlet: COL(row, 'Outlet', 'outlet', 'Branch', 'branch'),
-          week: COL(row, 'Week', 'week', 'WeekPeriod', 'Week Period'),
-          breakTime: COL(row, 'BreakTime', 'break_time', 'Break', 'break') || '1 hour',
-          monday: COL(row, 'Monday', 'Mon', 'mon'),
-          tuesday: COL(row, 'Tuesday', 'Tue', 'tue'),
-          wednesday: COL(row, 'Wednesday', 'Wed', 'wed'),
-          thursday: COL(row, 'Thursday', 'Thu', 'thu'),
-          friday: COL(row, 'Friday', 'Fri', 'fri'),
-          saturday: COL(row, 'Saturday', 'Sat', 'sat'),
-          sunday: COL(row, 'Sunday', 'Sun', 'sun'),
-        };
-        const res = await fetch(`${API}/schedules`, { method: 'POST', headers: HEADERS, body: JSON.stringify(payload) });
-        const result = await res.json();
-        if (res.ok) {
-          setSchedules(prev => [...prev, result.record]);
-          created++;
-        }
+      const validRows = rows.filter(row => getCell(row, 'Employee ID', 'employee_id', 'EmployeeId', 'Employee', 'Name'));
+      if (validRows.length === 0) {
+        throw new Error('No valid rows found. Include an Employee ID or Employee/Name column.');
       }
-      setSnackbar({ open: true, message: `✅ Excel import complete — ${created} schedule(s) created from ${rows.length} row(s)!`, severity: 'success' });
+
+      const ids = await nextScheduleIds(validRows.length);
+      const payloads = validRows.map((row, index) => {
+        const employeeKey = getCell(row, 'Employee ID', 'employee_id', 'EmployeeId', 'ID');
+        const employeeName = getCell(row, 'Employee', 'Name', 'Employee Name');
+        const matchedEmployee = employeeList.find(emp =>
+          emp.employeeId === employeeKey ||
+          emp.name.toLowerCase() === employeeName.toLowerCase()
+        );
+
+        const employeeId = matchedEmployee?.employeeId || employeeKey;
+
+        return {
+          schedule_id: ids[index],
+          employee_id: employeeId,
+          position: getCell(row, 'Position', 'position') || matchedEmployee?.position || '',
+          outlet: getCell(row, 'Outlet', 'outlet', 'Branch', 'branch') || matchedEmployee?.outlet || '',
+          week: getCell(row, 'Week', 'week', 'Week Period', 'WeekPeriod') || getWeekRange(0),
+          time_in: getCell(row, 'Time In', 'time_in', 'TimeIn') || null,
+          time_out: getCell(row, 'Time Out', 'time_out', 'TimeOut') || null,
+          break_time: getCell(row, 'Break Time', 'break_time', 'BreakTime', 'Break') || '1 hour',
+          monday: getCell(row, 'Monday', 'Mon'),
+          tuesday: getCell(row, 'Tuesday', 'Tue'),
+          wednesday: getCell(row, 'Wednesday', 'Wed'),
+          thursday: getCell(row, 'Thursday', 'Thu'),
+          friday: getCell(row, 'Friday', 'Fri'),
+          saturday: getCell(row, 'Saturday', 'Sat'),
+          sunday: getCell(row, 'Sunday', 'Sun'),
+          status: 'Draft',
+          is_finalized: false,
+        };
+      });
+
+      const missingEmployees = payloads.filter(row => !row.employee_id).length;
+      if (missingEmployees > 0) {
+        throw new Error(`${missingEmployees} row(s) have no employee_id. Please use Employee ID or exact employee name.`);
+      }
+
+      const { error: insertError } = await supabase.from('schedule').insert(payloads);
+      if (insertError) throw insertError;
+
+      await fetchSchedules();
+      setSnackbar({
+        open: true,
+        message: `✅ Excel import complete — ${payloads.length} schedule(s) saved as Draft.`,
+        severity: 'success',
+      });
     } catch (err: any) {
       setSnackbar({ open: true, message: `Excel import failed: ${err.message}`, severity: 'error' });
-    } finally { setImportingExcel(false); }
+    } finally {
+      setImportingExcel(false);
+    }
   };
 
   return (
@@ -786,7 +840,7 @@ const scheduleId =
                 onChange={e => setForm({ ...form, position: e.target.value })}
                 InputLabelProps={{ shrink: true }}>
                 <MenuItem key="pos-empty" value="">Select position…</MenuItem>
-                {POSITIONS.map(p => <MenuItem key={p} value={p}>{p}</MenuItem>)}
+                {AVAILABLE_POSITIONS.map(p => <MenuItem key={p} value={p}>{p}</MenuItem>)}
               </TextField>
             </Grid>
             <Grid size={{ xs: 12, md: 4 }}>
@@ -866,7 +920,7 @@ const scheduleId =
                 onChange={e => setEditForm({ ...editForm, position: e.target.value })}
                 InputLabelProps={{ shrink: true }}>
                 <MenuItem key="edit-pos-empty" value="">Select position…</MenuItem>
-                {POSITIONS.map(p => <MenuItem key={p} value={p}>{p}</MenuItem>)}
+                {AVAILABLE_POSITIONS.map(p => <MenuItem key={p} value={p}>{p}</MenuItem>)}
               </TextField>
             </Grid>
             <Grid size={{ xs: 12, md: 4 }}>

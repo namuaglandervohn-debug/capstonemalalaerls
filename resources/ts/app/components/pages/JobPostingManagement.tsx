@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
   Alert,
   Box,
@@ -87,7 +87,6 @@ const JOB_TITLES = [
   "Laundry Attendant",
   "Gardener",
   "HR and Admin Manager",
-  "Payroll Staff",
   "Driver/Liaison",
   "Purchaser",
   "Stockman",
@@ -120,6 +119,7 @@ const REQUIRED_FIELDS: Array<keyof JobForm> = [
   "department",
   "location",
   "employment_type",
+  "salary_range",
   "description",
 ];
 
@@ -128,7 +128,7 @@ const FIELD_LABELS: Record<keyof JobForm, string> = {
   department: "Department",
   location: "Location",
   employment_type: "Employment Type",
-  salary_range: "Salary Range",
+  salary_range: "Salary Range / Daily Rate",
   description: "Description",
   qualifications: "Qualifications",
   responsibilities: "Responsibilities",
@@ -152,7 +152,7 @@ function getMissingRequiredFields(form: JobForm) {
 }
 
 function formatSalary(salary?: string | null) {
-  if (!salary?.trim()) return "Salary Negotiable";
+  if (!salary?.trim()) return "Salary not set";
   return salary.includes("₱") ? salary : `₱ ${salary}`;
 }
 
@@ -540,7 +540,7 @@ export default function JobPostingManagement() {
                       }}
                     >
                       <Box component="span">
-                        <strong>Salary Range:</strong> {formatSalary(job.salary_range)}
+                        <strong>Salary Range / Daily Rate:</strong> {formatSalary(job.salary_range)}
                       </Box>
                     </Typography>
                   </Stack>
@@ -706,9 +706,11 @@ export default function JobPostingManagement() {
 
             <TextField
               fullWidth
-              label="Salary Range"
+              required
+              label="Salary Range / Daily Rate"
               value={form.salary_range}
-              helperText="Example: 15,000 - 18,000 or leave blank if negotiable."
+              error={hasFieldError("salary_range")}
+              helperText={hasFieldError("salary_range") ? "Salary rate is required for payroll computation." : "Example: 510 for Service Crew daily rate. Payroll uses this to compute hourly pay, OT, late, and undertime deductions."}
               onChange={(e) => updateFormField("salary_range", e.target.value)}
             />
 

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Box, Typography, Paper, Button, Table, TableBody, TableCell,
   TableContainer, TableHead, TableRow, TextField, Chip, Dialog,
@@ -6,7 +6,7 @@ import {
   Alert, Snackbar, Tooltip, IconButton, MenuItem,
 } from '@mui/material';
 import { Calculate, Visibility, Send, AddCircleOutline, Sync, Payments, TaskAlt, DeleteOutline, Print } from '@mui/icons-material';
-import { API, HEADERS } from '../../lib/api';
+import { supabase } from '../../lib/supabaseClient';
 import { useAuth } from '../../context/AuthContext';
 import { POSITIONS } from '../../lib/constants';
 
@@ -17,7 +17,7 @@ const POSITION_SALARIES: Record<string, number> = {
   'Chef/Cook': 22000, 'Commis Chef': 18000, 'Dispatcher/Steward': 16000,
   'Public/Room Attendant': 15000, 'Pool Attendant': 15000,
   'Laundry Attendant': 15000, 'Gardener': 15000,
-  'HR and Admin Manager': 40000, 'Payroll Staff': 25000,
+  'HR and Admin Manager': 40000,
   'Driver/Liaison': 18000, 'Purchaser': 20000, 'Stockman': 16000,
   'Accounting and Finance Manager': 45000, 'Accounting Officer': 28000,
   'Finance Officer': 28000, 'Compliance Officer': 28000,
@@ -25,10 +25,26 @@ const POSITION_SALARIES: Record<string, number> = {
   'HR Assistant': 18000, 'Security Guard': 16000, 'Maintenance Staff': 15000,
 };
 
+const AVAILABLE_POSITIONS = POSITIONS.filter(position => position !== 'Payroll Staff');
+
 interface Payroll {
-  id: string; employee: string; position: string; period: string;
-  totalHours: string; overtime: string; deductions: string;
-  grossPay: string; netPay: string; status: 'Draft' | 'For Review' | 'Processed' | 'Released';
+  id: string;
+  displayId?: string;
+  payrollId?: string;
+  payrollItemId?: string;
+  employeeId?: string;
+  attendanceSummaryId?: string | null;
+  employee: string;
+  position: string;
+  outlet?: string;
+  period: string;
+  cutoffLabel?: string;
+  totalHours: string;
+  overtime: string;
+  deductions: string;
+  grossPay: string;
+  netPay: string;
+  status: 'Draft' | 'For Review' | 'Processed' | 'Released';
   // Extended payslip fields
   payslipDate?: string;
   basicPayAmt?: string;
@@ -54,6 +70,98 @@ interface Payroll {
 
 const EMPTY = { employee: '', position: '', period: new Date().toISOString().slice(0, 7), totalHours: '', overtime: '0', deductions: '0', grossPay: '', netPay: '' };
 
+const money = (value: number | string | null | undefined) => {
+  const n = typeof value === 'number'
+    ? value
+    : parseFloat(String(value ?? '').replace(/[₱,]/g, '')) || 0;
+  return `₱${n.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+};
+
+const toNumber = (value: number | string | null | undefined) =>
+  typeof value === 'number'
+    ? value
+    : parseFloat(String(value ?? '').replace(/[₱,]/g, '')) || 0;
+
+const dbStatusToUi = (status?: string | null): Payroll['status'] => {
+  switch ((status ?? '').toLowerCase()) {
+    case 'reviewed':
+      return 'For Review';
+    case 'approved':
+      return 'Processed';
+    case 'endorsed':
+    case 'exported':
+      return 'Released';
+    case 'draft':
+    default:
+      return 'Draft';
+  }
+};
+
+const uiStatusToDb = (status: string) => {
+  switch (status) {
+    case 'For Review':
+      return 'Reviewed';
+    case 'Processed':
+      return 'Approved';
+    case 'Released':
+      return 'Endorsed';
+    case 'Draft':
+    default:
+      return 'Draft';
+  }
+};
+
+const formatPayrollDisplayId = (payrollId?: string | null, periodStart?: string | null, fallbackIndex = 1) => {
+  const year = String(periodStart ?? new Date().toISOString().slice(0, 10)).slice(0, 4);
+  const raw = String(payrollId ?? '').trim();
+  const formatted = raw.match(/^PAY-(\d{4})-(\d+)$/i);
+  if (formatted) return `PAY-${formatted[1]}-${String(Number(formatted[2])).padStart(4, '0')}`;
+  const numberMatch = raw.match(/(\d+)$/);
+  const seq = numberMatch ? Number(numberMatch[1]) : fallbackIndex;
+  return `PAY-${year}-${String(seq || fallbackIndex).padStart(4, '0')}`;
+};
+
+const parseSalaryRate = (value: unknown) => {
+  if (typeof value === 'number') return value;
+  const cleaned = String(value ?? '').replace(/,/g, '');
+  const matches = cleaned.match(/\d+(?:\.\d+)?/g);
+  if (!matches?.length) return 0;
+  return Number(matches[0]) || 0;
+};
+
+const roundMoney = (value: number) => Number((Number.isFinite(value) ? value : 0).toFixed(2));
+
+const fullNameFromEmployee = (row: any) => [row?.first_name, row?.middle_name, row?.last_name, row?.suffix]
+  .map((part) => String(part ?? '').trim())
+  .filter(Boolean)
+  .join(' ');
+
+const statusColor = (status: Payroll['status']) => {
+  if (status === 'Released') return 'success';
+  if (status === 'Processed') return 'info';
+  if (status === 'For Review') return 'warning';
+  return 'default';
+};
+
+const getMonthRange = (monthValue: string) => {
+  const [year, month] = monthValue.split('-').map(Number);
+  const mm = String(month).padStart(2, '0');
+  const lastDay = new Date(year, month, 0).getDate();
+  return {
+    start: `${year}-${mm}-01`,
+    end: `${year}-${mm}-${String(lastDay).padStart(2, '0')}`,
+    year,
+  };
+};
+
+const monthFromDate = (dateValue?: string | null) =>
+  dateValue ? dateValue.slice(0, 7) : new Date().toISOString().slice(0, 7);
+
+const parsePayslipDetails = (value: unknown): Record<string, string> => {
+  if (!value || typeof value !== 'object') return {};
+  return value as Record<string, string>;
+};
+
 export default function PayrollComputation() {
   const [payrolls, setPayrolls] = useState<Payroll[]>([]);
   const [loading, setLoading] = useState(true);
@@ -63,7 +171,7 @@ export default function PayrollComputation() {
   const [addDialog, setAddDialog] = useState(false);
   const [generateDialog, setGenerateDialog] = useState(false);
   const [generatePeriod, setGeneratePeriod] = useState(new Date().toISOString().slice(0, 7));
-  const [generateBase, setGenerateBase] = useState('18000');
+  const [generateBase, setGenerateBase] = useState('510');
   const [form, setForm] = useState(EMPTY);
   const [saving, setSaving] = useState(false);
   const [generating, setGenerating] = useState(false);
@@ -95,98 +203,586 @@ export default function PayrollComputation() {
   const pef = (k: keyof typeof EDIT_EMPTY) => (e: React.ChangeEvent<HTMLInputElement>) =>
     setPayslipEditForm(f => ({ ...f, [k]: e.target.value }));
 
+  const currentUserName = (user as any)?.name ?? (user as any)?.full_name ?? (user as any)?.email ?? 'System User';
+  const currentUserRole = (user as any)?.role ?? 'user';
+  const normalizedRole = String(currentUserRole).toLowerCase();
+  const isHRAdmin = normalizedRole === 'hr_admin' || normalizedRole.includes('hr') || normalizedRole.includes('admin');
+  const isAccountingFinance = normalizedRole === 'accounting_finance' || normalizedRole.includes('accounting') || normalizedRole.includes('finance');
+  const isGeneralManager = normalizedRole === 'general_manager' || normalizedRole.includes('general_manager') || normalizedRole.includes('general manager');
+  const isEmployee = normalizedRole === 'employee' || normalizedRole.includes('employee');
+  const canManagePayroll = isHRAdmin || isGeneralManager;
+  const canReleasePayroll = isAccountingFinance || isGeneralManager;
+
+  const resolveCurrentUserAccountUserId = async (): Promise<string | null> => {
+    const authUser = user as any;
+    if (!authUser) return null;
+
+    const tryLookup = async (column: string, value: unknown) => {
+      const cleanValue = String(value ?? '').trim();
+      if (!cleanValue) return null;
+
+      const { data, error } = await supabase
+        .from('user_accounts')
+        .select('user_id')
+        .eq(column, cleanValue)
+        .maybeSingle();
+
+      if (error) {
+        console.warn(`Could not verify user_accounts.${column}:`, error.message);
+        return null;
+      }
+
+      return data?.user_id ? String(data.user_id) : null;
+    };
+
+    return (
+      await tryLookup('user_id', authUser.user_id) ||
+      await tryLookup('id', authUser.id) ||
+      await tryLookup('email', authUser.email) ||
+      await tryLookup('employee_id', authUser.employee_id) ||
+      null
+    );
+  };
+
+  const getNextPayrollId = async (year: number | string) => {
+    const yearText = String(year);
+    const { data, error } = await supabase
+      .from('payroll_summaries')
+      .select('payroll_id')
+      .ilike('payroll_id', `PAY-${yearText}-%`);
+
+    if (error) throw error;
+
+    const maxSeq = (data ?? []).reduce((max: number, row: any) => {
+      const match = String(row?.payroll_id ?? '').match(new RegExp(`^PAY-${yearText}-(\\d+)$`, 'i'));
+      return match ? Math.max(max, Number(match[1])) : max;
+    }, 0);
+
+    return `PAY-${yearText}-${String(maxSeq + 1).padStart(4, '0')}`;
+  };
+
+  const mapItemToPayroll = (item: any, summariesById: Map<string, any>): Payroll => {
+    const summary = summariesById.get(item.payroll_id);
+    const details = parsePayslipDetails(item.payslip_details);
+
+    return {
+      id: item.payroll_item_id,
+      displayId: formatPayrollDisplayId(item.payroll_id, summary?.period_start),
+      payrollId: item.payroll_id,
+      payrollItemId: item.payroll_item_id,
+      employeeId: item.employee_id,
+      attendanceSummaryId: item.attendance_summary_id,
+      employee: item.employee_name || item.employee_id || 'Unnamed Employee',
+      position: item.position || '',
+      outlet: item.outlet || '',
+      period: monthFromDate(summary?.period_start),
+      cutoffLabel: summary?.cutoff_label ?? '',
+      totalHours: String(item.total_work_hours ?? item.regular_hours ?? '0'),
+      overtime: String(item.overtime_hours ?? '0'),
+      deductions: money(item.total_deductions),
+      grossPay: money(item.gross_pay),
+      netPay: money(item.net_pay),
+      status: dbStatusToUi(summary?.status),
+      payslipDate: summary?.endorsed_at ? String(summary.endorsed_at).slice(0, 10) : undefined,
+      basicPayAmt: money(item.basic_pay),
+      otAmt: money(item.overtime_pay),
+      tardinessMin: String(item.total_late_minutes ?? ''),
+      undertimeHours: item.total_undertime_minutes ? String(Number(item.total_undertime_minutes) / 60) : '',
+      nsdHours: details.nsdHours ?? '',
+      nsdAmt: details.nsdAmt ?? '',
+      regularHolidayDays: details.regularHolidayDays ?? '',
+      regularHolidayAmt: details.regularHolidayAmt ?? '',
+      specialHolidayDays: details.specialHolidayDays ?? '',
+      specialHolidayAmt: details.specialHolidayAmt ?? '',
+      silDays: details.silDays ?? '',
+      silAmt: details.silAmt ?? '',
+      allowanceAmt: details.allowanceAmt ?? '',
+      retroAmt: details.retroAmt ?? '',
+      sssAmt: details.sssAmt ?? '',
+      phicAmt: details.phicAmt ?? '',
+      hdmfAmt: details.hdmfAmt ?? '',
+      cashAdvance: details.cashAdvance ?? '',
+      atd: details.atd ?? '',
+      otherCharges: details.otherCharges ?? '',
+      breakages: details.breakages ?? '',
+      amesco: details.amesco ?? '',
+      pagibigLoan: details.pagibigLoan ?? '',
+    };
+  };
+
   const fetchPayroll = async () => {
     setLoading(true); setError(null);
     try {
-      const res = await fetch(`${API}/payroll`, { headers: HEADERS });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error ?? 'Server error');
-      // Deduplicate by id to prevent React key collisions
-      const raw: Payroll[] = (data.payrolls ?? []).filter((p: any) => p != null);
+      const { data: summaries, error: summariesError } = await supabase
+        .from('payroll_summaries')
+        .select('payroll_id, period_start, period_end, cutoff_label, status, endorsed_at, reviewed_at, created_at')
+        .order('period_start', { ascending: false });
+
+      if (summariesError) throw summariesError;
+
+      const summaryMap = new Map<string, any>((summaries ?? []).map((s: any) => [s.payroll_id, s]));
+
+      const { data: items, error: itemsError } = await supabase
+        .from('payroll_items')
+        .select(`
+          payroll_item_id,
+          payroll_id,
+          attendance_summary_id,
+          employee_id,
+          employee_name,
+          position,
+          outlet,
+          salary_rate,
+          total_work_hours,
+          regular_hours,
+          overtime_hours,
+          total_late_minutes,
+          total_undertime_minutes,
+          total_absent_days,
+          total_incomplete_days,
+          basic_pay,
+          overtime_pay,
+          late_deduction,
+          undertime_deduction,
+          absence_deduction,
+          other_deductions,
+          gross_pay,
+          total_deductions,
+          net_pay,
+          remarks,
+          payslip_details,
+          created_at,
+          updated_at
+        `)
+        .order('created_at', { ascending: false });
+
+      if (itemsError) throw itemsError;
+
+      const mapped = (items ?? []).map((item: any) => mapItemToPayroll(item, summaryMap));
       const seen = new Set<string>();
-      const deduped = raw.filter(p => { if (seen.has(p.id)) return false; seen.add(p.id); return true; });
-      setPayrolls(deduped);
-    } catch (e: any) { setError(`Could not load payroll: ${e.message}`); }
-    finally { setLoading(false); }
+      setPayrolls(mapped.filter((p: Payroll) => {
+        if (seen.has(p.id)) return false;
+        seen.add(p.id);
+        return true;
+      }));
+    } catch (e: any) {
+      setError(`Could not load payroll: ${e.message ?? e}`);
+    } finally {
+      setLoading(false);
+    }
   };
 
   useEffect(() => { fetchPayroll(); }, []);
 
   const handleAdd = async () => {
-    if (!form.employee || !form.grossPay) return;
+    if (!form.employee || !form.grossPay) {
+      setSnackbar({ open: true, message: 'Please enter an Employee ID and Gross Pay.', severity: 'error' });
+      return;
+    }
+
     setSaving(true);
     try {
-      const res = await fetch(`${API}/payroll`, { method: 'POST', headers: HEADERS, body: JSON.stringify(form) });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error ?? 'Server error');
-      // Guard against duplicate id
-      setPayrolls(prev => prev.some(p => p.id === data.record?.id) ? prev : [...prev, data.record]);
+      const { start, end } = getMonthRange(form.period);
+      const preparedByUserId = await resolveCurrentUserAccountUserId();
+
+      const { data: employee, error: empError } = await supabase
+        .from('employees')
+        .select('employee_id, first_name, middle_name, last_name, suffix, position, outlet, salary')
+        .eq('employee_id', form.employee.trim())
+        .single();
+
+      if (empError || !employee) {
+        throw new Error('Employee ID was not found in the employees table.');
+      }
+
+      const { data: summary, error: summaryError } = await supabase
+        .from('payroll_summaries')
+        .upsert({
+          period_start: start,
+          period_end: end,
+          cutoff_label: form.period,
+          status: 'Draft',
+          prepared_by_user_id: preparedByUserId,
+        }, { onConflict: 'period_start,period_end' })
+        .select('payroll_id')
+        .single();
+
+      if (summaryError) throw summaryError;
+
+      const employeeName = [employee.first_name, employee.middle_name, employee.last_name, employee.suffix].filter(Boolean).join(' ');
+      const gross = toNumber(form.grossPay);
+      const deductions = toNumber(form.deductions);
+      const net = toNumber(form.netPay) || Math.max(gross - deductions, 0);
+
+      const { data: item, error: itemError } = await supabase
+        .from('payroll_items')
+        .insert({
+          payroll_id: summary.payroll_id,
+          employee_id: employee.employee_id,
+          employee_name: employeeName,
+          position: form.position || employee.position,
+          outlet: employee.outlet,
+          salary_rate: toNumber(employee.salary),
+          rate_type: 'Monthly',
+          total_work_hours: toNumber(form.totalHours),
+          regular_hours: toNumber(form.totalHours),
+          overtime_hours: toNumber(form.overtime),
+          basic_pay: gross,
+          overtime_pay: 0,
+          gross_pay: gross,
+          total_deductions: deductions,
+          net_pay: net,
+          payslip_details: {},
+          remarks: 'Manual payroll entry',
+        })
+        .select()
+        .single();
+
+      if (itemError) throw itemError;
+
+      await fetchPayroll();
       setAddDialog(false); setForm(EMPTY);
-      setSnackbar({ open: true, message: 'Payroll record saved to Supabase!', severity: 'success' });
-    } catch (e: any) { setSnackbar({ open: true, message: `Failed: ${e.message}`, severity: 'error' }); }
-    finally { setSaving(false); }
+      setSnackbar({ open: true, message: `Payroll record saved for ${employeeName}!`, severity: 'success' });
+    } catch (e: any) {
+      setSnackbar({ open: true, message: `Failed: ${e.message ?? e}`, severity: 'error' });
+    } finally {
+      setSaving(false);
+    }
   };
 
   const handleGenerate = async () => {
     setGenerating(true);
     try {
-      const res = await fetch(`${API}/payroll/generate`, {
-        method: 'POST', headers: HEADERS,
-        body: JSON.stringify({ period: generatePeriod, baseSalary: parseFloat(generateBase) || 18000, position: generatePosition || undefined }),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error ?? 'Server error');
-      if (data.count === 0) {
-        setSnackbar({ open: true, message: 'All active employees already have payroll for this period.', severity: 'success' });
-      } else {
-        // Only append records whose ids are not already in state
-        setPayrolls(prev => {
-          const existingIds = new Set(prev.map(p => p.id));
-          const newRecords = (data.created ?? []).filter((r: any) => r && !existingIds.has(r.id));
-          return [...prev, ...newRecords];
-        });
-        setSnackbar({ open: true, message: `✅ Generated ${data.count} payroll record(s) for ${generatePeriod}!`, severity: 'success' });
+      const { start, end, year } = getMonthRange(generatePeriod);
+      const preparedByUserId = await resolveCurrentUserAccountUserId();
+
+      const { data: attendanceLogs, error: logsError } = await supabase
+        .from('attendance_logs')
+        .select('log_id, employee_id, employee_name, attendance_date, total_hours, late_minutes, undertime_minutes, overtime_minutes, is_absent, is_incomplete')
+        .gte('attendance_date', start)
+        .lte('attendance_date', end)
+        .not('employee_id', 'is', null);
+
+      if (logsError) throw logsError;
+      if (!attendanceLogs || attendanceLogs.length === 0) {
+        throw new Error('No attendance logs were found in Supabase attendance_logs for the selected payroll period. Save/import attendance in Attendance Monitoring first, then generate payroll again.');
       }
+
+      const employeeIds = [...new Set(attendanceLogs.map((log: any) => String(log.employee_id)).filter(Boolean))];
+      const { data: employees, error: employeesError } = await supabase
+        .from('employees')
+        .select('employee_id, first_name, middle_name, last_name, suffix, position, outlet, salary, status')
+        .in('employee_id', employeeIds);
+
+      if (employeesError) throw employeesError;
+
+      const employeeMap = new Map<string, any>((employees ?? []).map((employee: any) => [employee.employee_id, employee]));
+      const targetEmployeeIds = new Set(
+        employeeIds.filter((employeeId) => {
+          const employee = employeeMap.get(employeeId);
+          const isActive = String(employee?.status ?? 'Active').toLowerCase() === 'active';
+          const matchesPosition = !generatePosition || String(employee?.position ?? '') === generatePosition;
+          return isActive && matchesPosition;
+        }),
+      );
+
+      const usableLogs = attendanceLogs.filter((log: any) => targetEmployeeIds.has(String(log.employee_id)));
+      if (usableLogs.length === 0) {
+        throw new Error(generatePosition
+          ? `Attendance logs were found, but none are for active ${generatePosition} employees in the selected period.`
+          : 'Attendance logs were found, but none belong to active employees in the selected period.');
+      }
+
+      const positions = [...new Set([...targetEmployeeIds].map((employeeId) => employeeMap.get(employeeId)?.position).filter(Boolean))];
+      const { data: jobPostings, error: jobsError } = positions.length > 0
+        ? await supabase
+            .from('job_postings')
+            .select('title, salary_range, is_active')
+            .in('title', positions)
+        : { data: [], error: null } as any;
+
+      if (jobsError) throw jobsError;
+
+      const jobSalaryMap = new Map<string, number>();
+      (jobPostings ?? []).forEach((job: any) => {
+        const rate = parseSalaryRate(job.salary_range);
+        if (job.title && rate > 0 && !jobSalaryMap.has(job.title)) jobSalaryMap.set(job.title, rate);
+      });
+
+      const groupedLogs = usableLogs.reduce((map: Map<string, any[]>, log: any) => {
+        const employeeId = String(log.employee_id);
+        map.set(employeeId, [...(map.get(employeeId) ?? []), log]);
+        return map;
+      }, new Map<string, any[]>());
+
+      const summaryPayloads = [...groupedLogs.entries()].map(([employeeId, logs]) => {
+        const employee = employeeMap.get(employeeId);
+        const totalWorkHours = logs.reduce((sum, log) => sum + toNumber(log.total_hours), 0);
+        const totalOvertimeMinutes = logs.reduce((sum, log) => sum + Math.round(toNumber(log.overtime_minutes)), 0);
+        const totalLateMinutes = logs.reduce((sum, log) => sum + Math.round(toNumber(log.late_minutes)), 0);
+        const totalUndertimeMinutes = logs.reduce((sum, log) => sum + Math.round(toNumber(log.undertime_minutes)), 0);
+        const totalAbsentDays = logs.filter((log) => Boolean(log.is_absent)).length;
+        const totalIncompleteDays = logs.filter((log) => Boolean(log.is_incomplete)).length;
+        const overtimeHours = roundMoney(totalOvertimeMinutes / 60);
+        const regularHours = roundMoney(Math.max(totalWorkHours - overtimeHours, 0));
+        const employeeName = logs.find((log) => log.employee_name)?.employee_name || fullNameFromEmployee(employee) || employeeId;
+
+        return {
+          employee_id: employeeId,
+          employee_name: employeeName,
+          position: employee?.position ?? '',
+          outlet: employee?.outlet ?? '',
+          period_start: start,
+          period_end: end,
+          period_type: 'Monthly',
+          total_attendance_days: new Set(logs.map((log) => String(log.attendance_date))).size,
+          total_present_days: logs.filter((log) => !log.is_absent).length,
+          total_absent_days: totalAbsentDays,
+          total_incomplete_days: totalIncompleteDays,
+          total_late_count: logs.filter((log) => Number(log.late_minutes ?? 0) > 0).length,
+          total_undertime_count: logs.filter((log) => Number(log.undertime_minutes ?? 0) > 0).length,
+          total_overtime_count: logs.filter((log) => Number(log.overtime_minutes ?? 0) > 0).length,
+          total_late_minutes: totalLateMinutes,
+          total_undertime_minutes: totalUndertimeMinutes,
+          total_overtime_minutes: totalOvertimeMinutes,
+          total_work_hours: roundMoney(totalWorkHours),
+          regular_hours: regularHours,
+          overtime_hours: overtimeHours,
+          source_log_ids: logs.map((log) => log.log_id).filter(Boolean),
+          status: 'Draft',
+          generated_by_user_id: preparedByUserId,
+        };
+      });
+
+      const { data: summaries, error: summariesError } = await supabase
+        .from('attendance_summaries')
+        .upsert(summaryPayloads, { onConflict: 'employee_id,period_start,period_end' })
+        .select('summary_id, employee_id, employee_name, position, outlet, total_work_hours, regular_hours, overtime_hours, total_late_minutes, total_undertime_minutes, total_absent_days, total_incomplete_days');
+
+      if (summariesError) throw summariesError;
+      if (!summaries || summaries.length === 0) throw new Error('Attendance logs were found, but no attendance summaries could be created.');
+
+      const { data: existingPeriodPayrolls, error: existingPeriodError } = await supabase
+        .from('payroll_summaries')
+        .select('payroll_id')
+        .eq('period_start', start)
+        .eq('period_end', end);
+
+      if (existingPeriodError) throw existingPeriodError;
+
+      const existingPayrollIds = (existingPeriodPayrolls ?? []).map((row: any) => row.payroll_id).filter(Boolean);
+      if (existingPayrollIds.length > 0) {
+        const { error: deleteOldError } = await supabase
+          .from('payroll_summaries')
+          .delete()
+          .in('payroll_id', existingPayrollIds);
+        if (deleteOldError) throw deleteOldError;
+      }
+
+      const payrollId = await getNextPayrollId(year);
+      const fallbackRate = parseSalaryRate(generateBase);
+
+      const payrollItems = summaries.map((summary: any) => {
+        const employee = employeeMap.get(summary.employee_id);
+        const position = String(summary.position || employee?.position || '');
+        const salaryRate = jobSalaryMap.get(position) || fallbackRate || parseSalaryRate(employee?.salary) || 0;
+        const hourlyRate = salaryRate > 0 ? salaryRate / 8 : 0;
+        const regularHours = toNumber(summary.regular_hours);
+        const overtimeHours = toNumber(summary.overtime_hours);
+        const lateMinutes = Math.round(toNumber(summary.total_late_minutes));
+        const undertimeMinutes = Math.round(toNumber(summary.total_undertime_minutes));
+        const absentDays = Math.round(toNumber(summary.total_absent_days));
+        const basicPay = roundMoney(regularHours * hourlyRate);
+        const overtimePay = roundMoney(overtimeHours * hourlyRate * 1.25);
+        const lateDeduction = roundMoney((lateMinutes / 60) * hourlyRate);
+        const undertimeDeduction = roundMoney((undertimeMinutes / 60) * hourlyRate);
+        const absenceDeduction = roundMoney(absentDays * salaryRate);
+        const grossPay = roundMoney(basicPay + overtimePay);
+        const totalDeductions = roundMoney(lateDeduction + undertimeDeduction + absenceDeduction);
+        const netPay = roundMoney(Math.max(grossPay - totalDeductions, 0));
+
+        return {
+          payroll_id: payrollId,
+          attendance_summary_id: summary.summary_id,
+          employee_id: summary.employee_id,
+          employee_name: summary.employee_name || fullNameFromEmployee(employee) || summary.employee_id,
+          position,
+          outlet: summary.outlet || employee?.outlet || '',
+          salary_rate: salaryRate,
+          rate_type: 'Daily',
+          total_work_hours: toNumber(summary.total_work_hours),
+          regular_hours: regularHours,
+          overtime_hours: overtimeHours,
+          total_late_minutes: lateMinutes,
+          total_undertime_minutes: undertimeMinutes,
+          total_absent_days: absentDays,
+          total_incomplete_days: Math.round(toNumber(summary.total_incomplete_days)),
+          basic_pay: basicPay,
+          overtime_pay: overtimePay,
+          late_deduction: lateDeduction,
+          undertime_deduction: undertimeDeduction,
+          absence_deduction: absenceDeduction,
+          other_deductions: 0,
+          gross_pay: grossPay,
+          total_deductions: totalDeductions,
+          net_pay: netPay,
+          payslip_details: { payrollDisplayId: payrollId, hourlyRate: roundMoney(hourlyRate) },
+          remarks: `Generated from Attendance Monitoring logs for ${generatePeriod}.`,
+        };
+      });
+
+      const totals = payrollItems.reduce((acc: any, item: any) => ({
+        total_employees: acc.total_employees + 1,
+        total_regular_hours: acc.total_regular_hours + toNumber(item.regular_hours),
+        total_overtime_hours: acc.total_overtime_hours + toNumber(item.overtime_hours),
+        total_late_minutes: acc.total_late_minutes + toNumber(item.total_late_minutes),
+        total_undertime_minutes: acc.total_undertime_minutes + toNumber(item.total_undertime_minutes),
+        total_gross_pay: acc.total_gross_pay + toNumber(item.gross_pay),
+        total_deductions: acc.total_deductions + toNumber(item.total_deductions),
+        total_overtime_pay: acc.total_overtime_pay + toNumber(item.overtime_pay),
+        total_net_pay: acc.total_net_pay + toNumber(item.net_pay),
+      }), {
+        total_employees: 0,
+        total_regular_hours: 0,
+        total_overtime_hours: 0,
+        total_late_minutes: 0,
+        total_undertime_minutes: 0,
+        total_gross_pay: 0,
+        total_deductions: 0,
+        total_overtime_pay: 0,
+        total_net_pay: 0,
+      });
+
+      const { error: summaryInsertError } = await supabase
+        .from('payroll_summaries')
+        .insert({
+          payroll_id: payrollId,
+          period_start: start,
+          period_end: end,
+          cutoff_label: `${generatePeriod} Payroll`,
+          status: 'Draft',
+          prepared_by_user_id: preparedByUserId,
+          total_employees: totals.total_employees,
+          total_regular_hours: roundMoney(totals.total_regular_hours),
+          total_overtime_hours: roundMoney(totals.total_overtime_hours),
+          total_late_minutes: Math.round(totals.total_late_minutes),
+          total_undertime_minutes: Math.round(totals.total_undertime_minutes),
+          total_gross_pay: roundMoney(totals.total_gross_pay),
+          total_deductions: roundMoney(totals.total_deductions),
+          total_overtime_pay: roundMoney(totals.total_overtime_pay),
+          total_net_pay: roundMoney(totals.total_net_pay),
+          endorsed_to: 'Accounting and Finance Personnel',
+          remarks: 'Generated directly from Attendance Monitoring attendance_logs.',
+        });
+
+      if (summaryInsertError) throw summaryInsertError;
+
+      const { error: itemInsertError } = await supabase
+        .from('payroll_items')
+        .insert(payrollItems);
+
+      if (itemInsertError) throw itemInsertError;
+
+      await fetchPayroll();
       setGenerateDialog(false);
       setGeneratePosition('');
-    } catch (e: any) { setSnackbar({ open: true, message: `Failed: ${e.message}`, severity: 'error' }); }
-    finally { setGenerating(false); }
+      setSnackbar({
+        open: true,
+        message: `✅ Payroll generated from Attendance Monitoring. Payroll ID: ${payrollId}`,
+        severity: 'success',
+      });
+    } catch (e: any) {
+      setSnackbar({ open: true, message: `Failed: ${e.message ?? e}`, severity: 'error' });
+    } finally {
+      setGenerating(false);
+    }
   };
 
   const handleStatusChange = async (id: string, status: string) => {
     try {
-      const res = await fetch(`${API}/payroll/${id}`, { method: 'PUT', headers: HEADERS, body: JSON.stringify({ status }) });
-      if (!res.ok) throw new Error('Update failed');
-      setPayrolls(prev => prev.map(p => p.id === id ? { ...p, status: status as Payroll['status'] } : p));
-      if (selectedPayroll?.id === id) setSelectedPayroll(p => p ? { ...p, status: status as Payroll['status'] } : p);
+      const target = payrolls.find(p => p.id === id);
+      if (!target?.payrollId) throw new Error('Payroll summary ID not found.');
+
+      const dbStatus = uiStatusToDb(status);
+      const updates: any = {
+        status: dbStatus,
+        updated_at: new Date().toISOString(),
+      };
+
+      if (dbStatus === 'Reviewed' || dbStatus === 'Approved') {
+        updates.reviewed_by_user_id = await resolveCurrentUserAccountUserId();
+        updates.reviewed_at = new Date().toISOString();
+      }
+
+      if (dbStatus === 'Endorsed') {
+        updates.endorsed_at = new Date().toISOString();
+      }
+
+      const { error: updateError } = await supabase
+        .from('payroll_summaries')
+        .update(updates)
+        .eq('payroll_id', target.payrollId);
+
+      if (updateError) throw updateError;
+
+      setPayrolls(prev => prev.map(p => p.payrollId === target.payrollId ? { ...p, status: status as Payroll['status'] } : p));
+      if (selectedPayroll?.payrollId === target.payrollId) {
+        setSelectedPayroll(p => p ? { ...p, status: status as Payroll['status'] } : p);
+      }
       setSnackbar({ open: true, message: `Status updated to "${status}"!`, severity: 'success' });
-    } catch (e: any) { setSnackbar({ open: true, message: `Failed: ${e.message}`, severity: 'error' }); }
+    } catch (e: any) {
+      setSnackbar({ open: true, message: `Failed: ${e.message ?? e}`, severity: 'error' });
+    }
   };
 
   const handleReleaseSalary = async (ids?: string[]) => {
-    const targets = ids ? payrolls.filter(p => ids.includes(p.id)) : filtered.filter(p => p.status === 'For Review');
-    if (targets.length === 0) { setSnackbar({ open: true, message: 'No "For Review" payrolls to release.', severity: 'success' }); return; }
-    const today = new Date().toISOString().split('T')[0];
-    let count = 0;
-    for (const p of targets) {
-      try {
-        await fetch(`${API}/payroll/${p.id}`, { method: 'PUT', headers: HEADERS, body: JSON.stringify({ status: 'Released', releasedBy: user?.name ?? 'Accounting', payslipDate: today }) });
-        setPayrolls(prev => prev.map(x => x.id === p.id ? { ...x, status: 'Released' as any, payslipDate: today } : x));
-        count++;
-      } catch (_) {}
+    const targets = ids ? payrolls.filter(p => ids.includes(p.id)) : filtered.filter(p => p.status === 'For Review' || p.status === 'Processed');
+    if (targets.length === 0) {
+      setSnackbar({ open: true, message: 'No payrolls ready for release.', severity: 'success' });
+      return;
     }
-    setSnackbar({ open: true, message: `✅ ${count} salary record(s) marked as Released!`, severity: 'success' });
+
+    const today = new Date().toISOString().split('T')[0];
+    const payrollIds = [...new Set(targets.map(p => p.payrollId).filter(Boolean))];
+
+    try {
+      const { error: updateError } = await supabase
+        .from('payroll_summaries')
+        .update({
+          status: 'Endorsed',
+          endorsed_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        })
+        .in('payroll_id', payrollIds);
+
+      if (updateError) throw updateError;
+
+      setPayrolls(prev => prev.map(x => payrollIds.includes(x.payrollId) ? { ...x, status: 'Released' as any, payslipDate: today } : x));
+      if (selectedPayroll?.payrollId && payrollIds.includes(selectedPayroll.payrollId)) {
+        setSelectedPayroll(p => p ? { ...p, status: 'Released', payslipDate: today } : p);
+      }
+
+      setSnackbar({ open: true, message: `✅ ${targets.length} salary record(s) marked as Released!`, severity: 'success' });
+    } catch (e: any) {
+      setSnackbar({ open: true, message: `Failed: ${e.message ?? e}`, severity: 'error' });
+    }
   };
 
   const handleDelete = async (id: string) => {
-    if (!window.confirm(`Delete payroll record ${id}? This cannot be undone.`)) return;
+    if (!window.confirm(`Delete payroll item ${id}? This cannot be undone.`)) return;
     try {
-      const res = await fetch(`${API}/payroll/${id}`, { method: 'DELETE', headers: HEADERS });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error ?? 'Server error');
+      const { error: deleteError } = await supabase
+        .from('payroll_items')
+        .delete()
+        .eq('payroll_item_id', id);
+
+      if (deleteError) throw deleteError;
+
       setPayrolls(prev => prev.filter(p => p.id !== id));
-      setSnackbar({ open: true, message: `🗑️ Payroll record ${id} deleted.`, severity: 'success' });
-    } catch (e: any) { setSnackbar({ open: true, message: `Failed: ${e.message}`, severity: 'error' }); }
+      setSnackbar({ open: true, message: `🗑️ Payroll item ${id} deleted.`, severity: 'success' });
+    } catch (e: any) {
+      setSnackbar({ open: true, message: `Failed: ${e.message ?? e}`, severity: 'error' });
+    }
   };
 
   const filtered = payrolls.filter(p => {
@@ -204,16 +800,31 @@ export default function PayrollComputation() {
 
   const handleForwardToAccounting = async () => {
     const drafts = filtered.filter(p => p.status === 'Draft');
-    if (drafts.length === 0) { setSnackbar({ open: true, message: 'No Draft payrolls to forward.', severity: 'success' }); return; }
-    let count = 0;
-    for (const p of drafts) {
-      try {
-        await fetch(`${API}/payroll/${p.id}`, { method: 'PUT', headers: HEADERS, body: JSON.stringify({ status: 'For Review' }) });
-        setPayrolls(prev => prev.map(x => x.id === p.id ? { ...x, status: 'For Review' } : x));
-        count++;
-      } catch (_) {}
+    if (drafts.length === 0) {
+      setSnackbar({ open: true, message: 'No Draft payrolls to forward.', severity: 'success' });
+      return;
     }
-    setSnackbar({ open: true, message: `${count} payroll record(s) forwarded to Accounting (For Review).`, severity: 'success' });
+
+    const payrollIds = [...new Set(drafts.map(p => p.payrollId).filter(Boolean))];
+
+    try {
+      const { error: updateError } = await supabase
+        .from('payroll_summaries')
+        .update({
+          status: 'Reviewed',
+          reviewed_by_user_id: await resolveCurrentUserAccountUserId(),
+          reviewed_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        })
+        .in('payroll_id', payrollIds);
+
+      if (updateError) throw updateError;
+
+      setPayrolls(prev => prev.map(x => payrollIds.includes(x.payrollId) ? { ...x, status: 'For Review' } : x));
+      setSnackbar({ open: true, message: `${drafts.length} payroll record(s) forwarded to Accounting (For Review).`, severity: 'success' });
+    } catch (e: any) {
+      setSnackbar({ open: true, message: `Failed: ${e.message ?? e}`, severity: 'error' });
+    }
   };
 
   const handlePrintPayslip = (p: Payroll) => {
@@ -292,7 +903,7 @@ export default function PayrollComputation() {
           <div style="font-size:9px; margin-top:3px;">${p.position || '—'}</div>
         </div>
       </div>
-      <div class="footer">Generated: ${new Date().toLocaleString()} &nbsp;·&nbsp; Payroll ID: ${p.id} &nbsp;·&nbsp; Electronically generated payslip.</div>
+      <div class="footer">Generated: ${new Date().toLocaleString()} &nbsp;·&nbsp; Payroll ID: ${p.displayId ?? p.payrollId ?? p.id} &nbsp;·&nbsp; Electronically generated payslip.</div>
       </body></html>`);
     win.document.close();
     win.print();
@@ -309,12 +920,12 @@ export default function PayrollComputation() {
         </Box>
         <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
           <Tooltip title="Refresh"><span><IconButton onClick={fetchPayroll} disabled={loading}><Sync /></IconButton></span></Tooltip>
-          {(user?.role === 'accounting') && (
+          {canReleasePayroll && (
             <Button variant="contained" color="success" startIcon={<Payments />} onClick={() => handleReleaseSalary()}>
               Release Salary
             </Button>
           )}
-          {(user?.role === 'hr') && (
+          {canManagePayroll && (
             <>
               <Button variant="outlined" startIcon={<Send />} onClick={handleForwardToAccounting}>Forward to Accounting</Button>
               <Button variant="outlined" startIcon={<AddCircleOutline />} onClick={() => setAddDialog(true)}>Manual Entry</Button>
@@ -359,7 +970,7 @@ export default function PayrollComputation() {
             <TableHead>
               <TableRow>
                 <TableCell>ID</TableCell><TableCell>Employee</TableCell><TableCell>Position</TableCell>
-                <TableCell>Period</TableCell><TableCell>Base Rate (₱)</TableCell><TableCell>OT (hrs)</TableCell>
+                <TableCell>Period</TableCell><TableCell>Total Hours</TableCell><TableCell>OT (hrs)</TableCell>
                 <TableCell>Deductions</TableCell><TableCell>Gross Pay</TableCell><TableCell>Net Pay</TableCell>
                 <TableCell>Status</TableCell><TableCell>Actions</TableCell>
               </TableRow>
@@ -371,19 +982,19 @@ export default function PayrollComputation() {
                 </TableCell></TableRow>
               ) : filtered.map(p => (
                 <TableRow key={p.id} hover>
-                  <TableCell><Chip label={p.id} size="small" variant="outlined" /></TableCell>
+                  <TableCell><Chip label={p.displayId ?? p.id} size="small" variant="outlined" /></TableCell>
                   <TableCell>{p.employee}</TableCell><TableCell>{p.position}</TableCell>
                   <TableCell>{p.period}</TableCell><TableCell>{p.totalHours}</TableCell>
                   <TableCell>{p.overtime} hrs</TableCell><TableCell sx={{ color: 'error.main' }}>{p.deductions}</TableCell>
                   <TableCell>{p.grossPay}</TableCell>
                   <TableCell sx={{ fontWeight: 'bold', color: 'success.main' }}>{p.netPay}</TableCell>
                   <TableCell>
-                    <Chip label={p.status} size="small" color={p.status === 'Processed' ? 'success' : p.status === 'For Review' ? 'warning' : 'default'} />
+                    <Chip label={p.status} size="small" color={statusColor(p.status) as any} />
                   </TableCell>
                   <TableCell>
                     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5, alignItems: 'flex-start' }}>
                       <Chip
-                        label={user?.role === 'employee' ? 'View' : 'View Payslip'}
+                        label={isEmployee ? 'View' : 'View Payslip'}
                         size="small"
                         clickable
                         variant="outlined"
@@ -391,7 +1002,7 @@ export default function PayrollComputation() {
                         onClick={() => { setSelectedPayroll(p); setViewDialog(true); }}
                         sx={{ minWidth: 110 }}
                       />
-                      {(user?.role === 'accounting' || user?.role === 'hr' || user?.role === 'supervisor') && p.status !== 'Released' && (
+                      {canReleasePayroll && p.status !== 'Released' && (
                         <Chip
                           label="Release"
                           size="small"
@@ -402,7 +1013,7 @@ export default function PayrollComputation() {
                           sx={{ minWidth: 110 }}
                         />
                       )}
-                      {(user?.role === 'hr' || user?.role === 'supervisor' || user?.role === 'accounting') && (
+                      {(canManagePayroll || canReleasePayroll) && (
                         <Chip
                           label="Delete"
                           size="small"
@@ -441,7 +1052,7 @@ export default function PayrollComputation() {
         <DialogTitle fontWeight={700}>Generate Payroll</DialogTitle>
         <DialogContent sx={{ display: 'flex', flexDirection: 'column', gap: 2, pt: '12px !important' }}>
           <Alert severity="info" sx={{ fontSize: '0.8rem' }}>
-            Auto-generates payroll for <strong>Active</strong> employees. Select a position to target only that role, or leave blank for all. The <em>Base Monthly Salary</em> auto-fills when a position is chosen and reflects as <strong>Basic Pay</strong> in each payslip.
+            Auto-generates payroll for <strong>Active</strong> employees. Select a position to target only that role, or leave blank for all. This generates payroll directly from Attendance Monitoring records saved in Supabase attendance_logs for the selected month.
           </Alert>
           <TextField label="Payroll Period" type="month" fullWidth value={generatePeriod}
             onChange={e => setGeneratePeriod(e.target.value)} InputLabelProps={{ shrink: true }} />
@@ -451,18 +1062,16 @@ export default function PayrollComputation() {
             onChange={e => {
               const pos = e.target.value;
               setGeneratePosition(pos);
-              if (pos && POSITION_SALARIES[pos]) setGenerateBase(String(POSITION_SALARIES[pos]));
-              else if (!pos) setGenerateBase('18000');
             }}
             InputLabelProps={{ shrink: true }}
             helperText="Leave blank to generate for all active employees"
           >
             <MenuItem key="all-pos" value="">All Positions</MenuItem>
-            {POSITIONS.map(p => <MenuItem key={p} value={p}>{p}</MenuItem>)}
+            {AVAILABLE_POSITIONS.map(p => <MenuItem key={p} value={p}>{p}</MenuItem>)}
           </TextField>
-          <TextField label="Base Monthly Salary (₱)" type="number" fullWidth value={generateBase}
+          <TextField label="Fallback Daily Salary Rate (₱)" type="number" fullWidth value={generateBase}
             onChange={e => setGenerateBase(e.target.value)}
-            helperText={generatePosition && POSITION_SALARIES[generatePosition] ? `Auto-filled from position salary table (₱${POSITION_SALARIES[generatePosition]?.toLocaleString()}) — editable` : 'Default base salary per employee'} />
+            helperText="Used only if the selected job posting has no Salary Range / Daily Rate saved." />
         </DialogContent>
         <DialogActions sx={{ px: 3, pb: 2 }}>
           <Button onClick={() => { setGenerateDialog(false); setGeneratePosition(''); }}>Cancel</Button>
@@ -477,7 +1086,7 @@ export default function PayrollComputation() {
       <Dialog open={addDialog} onClose={() => setAddDialog(false)} maxWidth="sm" fullWidth>
         <DialogTitle fontWeight={700}>Manual Payroll Entry</DialogTitle>
         <DialogContent sx={{ display: 'flex', flexDirection: 'column', gap: 2, pt: '12px !important' }}>
-          <TextField label="Employee Name" fullWidth required value={form.employee} onChange={e => setForm({ ...form, employee: e.target.value })} />
+          <TextField label="Employee ID" fullWidth required value={form.employee} onChange={e => setForm({ ...form, employee: e.target.value })} />
           <TextField label="Position" fullWidth value={form.position} onChange={e => setForm({ ...form, position: e.target.value })} />
           <TextField label="Period" type="month" fullWidth value={form.period} onChange={e => setForm({ ...form, period: e.target.value })} InputLabelProps={{ shrink: true }} />
           <Grid container spacing={2}>
@@ -812,19 +1421,68 @@ export default function PayrollComputation() {
                 if (!selectedPayroll) return;
                 setSaving(true);
                 try {
-                  const res = await fetch(`${API}/payroll/${selectedPayroll.id}`, {
-                    method: 'PUT', headers: HEADERS,
-                    body: JSON.stringify({ ...payslipEditForm, id: selectedPayroll.id }),
-                  });
-                  const data = await res.json();
-                  if (!res.ok) throw new Error(data.error ?? 'Server error');
-                  const updated: Payroll = data.record ?? { ...selectedPayroll, ...payslipEditForm };
+                  const gross = toNumber(payslipEditForm.grossPay);
+                  const deductions = toNumber(payslipEditForm.deductions);
+                  const net = toNumber(payslipEditForm.netPay) || Math.max(gross - deductions, 0);
+
+                  const details = {
+                    nsdHours: payslipEditForm.nsdHours,
+                    nsdAmt: payslipEditForm.nsdAmt,
+                    regularHolidayDays: payslipEditForm.regularHolidayDays,
+                    regularHolidayAmt: payslipEditForm.regularHolidayAmt,
+                    specialHolidayDays: payslipEditForm.specialHolidayDays,
+                    specialHolidayAmt: payslipEditForm.specialHolidayAmt,
+                    silDays: payslipEditForm.silDays,
+                    silAmt: payslipEditForm.silAmt,
+                    allowanceAmt: payslipEditForm.allowanceAmt,
+                    retroAmt: payslipEditForm.retroAmt,
+                    sssAmt: payslipEditForm.sssAmt,
+                    phicAmt: payslipEditForm.phicAmt,
+                    hdmfAmt: payslipEditForm.hdmfAmt,
+                    cashAdvance: payslipEditForm.cashAdvance,
+                    atd: payslipEditForm.atd,
+                    otherCharges: payslipEditForm.otherCharges,
+                    breakages: payslipEditForm.breakages,
+                    amesco: payslipEditForm.amesco,
+                    pagibigLoan: payslipEditForm.pagibigLoan,
+                  };
+
+                  const { error: updateError } = await supabase
+                    .from('payroll_items')
+                    .update({
+                      employee_name: payslipEditForm.employee,
+                      position: payslipEditForm.position,
+                      total_work_hours: toNumber(payslipEditForm.totalHours),
+                      regular_hours: toNumber(payslipEditForm.totalHours),
+                      overtime_hours: toNumber(payslipEditForm.overtime),
+                      total_late_minutes: Math.round(toNumber(payslipEditForm.tardinessMin)),
+                      total_undertime_minutes: Math.round(toNumber(payslipEditForm.undertimeHours) * 60),
+                      basic_pay: toNumber(payslipEditForm.basicPayAmt),
+                      overtime_pay: toNumber(payslipEditForm.otAmt),
+                      gross_pay: gross,
+                      total_deductions: deductions,
+                      net_pay: net,
+                      payslip_details: details,
+                      updated_at: new Date().toISOString(),
+                    })
+                    .eq('payroll_item_id', selectedPayroll.id);
+
+                  if (updateError) throw updateError;
+
+                  const updated: Payroll = {
+                    ...selectedPayroll,
+                    ...payslipEditForm,
+                    deductions: money(deductions),
+                    grossPay: money(gross),
+                    netPay: money(net),
+                  };
+
                   setPayrolls(prev => prev.map(p => p.id === selectedPayroll.id ? updated : p));
                   setSelectedPayroll(updated);
                   setEditingPayslip(false);
                   setSnackbar({ open: true, message: '✅ Payslip saved successfully!', severity: 'success' });
                 } catch (e: any) {
-                  setSnackbar({ open: true, message: `Failed: ${e.message}`, severity: 'error' });
+                  setSnackbar({ open: true, message: `Failed: ${e.message ?? e}`, severity: 'error' });
                 } finally { setSaving(false); }
               }}>
               {saving ? 'Saving…' : 'Save Changes'}

@@ -485,7 +485,7 @@ export default function UserManagement() {
   </TableCell>
 
  {/* FULL NAME */}
-  <TableCell sx={{ opacity: u.active === false ? 0.45 : 1, fontWeight: 600 }}>
+  <TableCell sx={{ opacity: u.active === false ? 0.45 : 1}}>
     {u.name}
   </TableCell>
 

@@ -1515,7 +1515,7 @@ export default function RecruitmentManagement() {
                     <TableCell>
                       <Chip label={app.id} size="small" variant="outlined" />
                     </TableCell>
-                    <TableCell sx={{ fontWeight: 600, whiteSpace: 'nowrap' }}>{app.name}</TableCell>
+                    <TableCell sx={{ whiteSpace: 'nowrap' }}>{app.name}</TableCell>
                     <TableCell sx={{ whiteSpace: 'nowrap' }}>{app.position}</TableCell>
                     <TableCell sx={{ whiteSpace: 'nowrap' }}>{formatDateTime(app.dateApplied)}</TableCell>
                     <TableCell sx={{ whiteSpace: 'nowrap' }}>

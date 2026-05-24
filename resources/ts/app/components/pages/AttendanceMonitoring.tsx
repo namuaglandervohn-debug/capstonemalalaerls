@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useMemo } from "react";
+import React, { useState, useEffect, useRef, useMemo } from "react";
 import * as XLSX from "xlsx";
 import {
   Box,
@@ -40,11 +40,13 @@ import {
   ArrowBackIosNew,
   ArrowForwardIos,
 } from "@mui/icons-material";
-import { API, HEADERS } from "../../lib/api";
+import { supabase } from "../../lib/supabaseClient";
 import { useAuth } from "../../context/AuthContext";
 
 interface Attendance {
   id: string;
+  displayId?: string;
+  employeeId?: string;
   employee: string;
   date: string;
   timeIn: string;
@@ -56,7 +58,15 @@ interface Attendance {
   status: "Present" | "Late" | "Absent" | "On Leave";
 }
 
-type AttendanceDraft = Omit<Attendance, "id">;
+type AttendanceDraft = Omit<Attendance, "id" | "displayId" | "employeeId">;
+
+type EmployeeOption = {
+  employee_id: string;
+  name: string;
+  position?: string | null;
+  outlet?: string | null;
+  status?: string | null;
+};
 type SheetRow = Array<string | number | boolean | Date | null | undefined>;
 
 const EMPTY: AttendanceDraft = {
@@ -159,7 +169,9 @@ function computeAttendanceFromPunches(
     result.late = String(lateMin);
     result.undertime = String(undertimeMin);
     result.overtime = String(overtimeMin);
-    result.status = lateMin > 0 ? "Late" : "Present";
+    // Keep the attendance status as Present even when late, undertime, or overtime minutes exist.
+    // The metrics are still stored separately and used by payroll computations.
+    result.status = "Present";
   }
 
   return result;
@@ -490,6 +502,154 @@ function getStatusValue(value: unknown): Attendance["status"] {
   return "Present";
 }
 
+function toSafeNumber(value: unknown): number {
+  const n = Number(String(value ?? "").replace(/[^0-9.-]/g, ""));
+  return Number.isFinite(n) ? n : 0;
+}
+
+function toDbTime(value: string) {
+  const minutes = parseClockToMinutes(value || "");
+  if (minutes === null) return null;
+  return formatMinutesAs24Hour(minutes);
+}
+
+function fromDbTime(value: unknown) {
+  if (!value) return "";
+  const text = String(value).slice(0, 5);
+  const minutes = parseClockToMinutes(text);
+  return minutes === null ? String(value) : formatMinutesAsTime(minutes);
+}
+
+function formatEmployeeName(row: any) {
+  return [row?.first_name, row?.middle_name, row?.last_name, row?.suffix]
+    .map((part) => String(part ?? "").trim())
+    .filter(Boolean)
+    .join(" ");
+}
+
+function getAttendanceYear(date?: string | null) {
+  return String(date || new Date().toISOString().slice(0, 10)).slice(0, 4);
+}
+
+function formatAttendanceDisplayId(logId?: string | null, date?: string | null, fallbackIndex = 1) {
+  const year = getAttendanceYear(date);
+  const raw = String(logId ?? "").trim();
+  const formattedMatch = raw.match(/^ATT-(\d{4})-(\d+)$/i);
+  if (formattedMatch) {
+    return `ATT-${formattedMatch[1]}-${String(Number(formattedMatch[2])).padStart(4, "0")}`;
+  }
+  const numberMatch = raw.match(/(\d+)$/);
+  const seq = numberMatch ? Number(numberMatch[1]) : fallbackIndex;
+  return `ATT-${year}-${String(seq || fallbackIndex).padStart(4, "0")}`;
+}
+
+function attendanceStatusFromDb(row: any): Attendance["status"] {
+  if (row?.is_absent) return "Absent";
+  if (String(row?.remarks ?? "").toLowerCase().includes("leave")) return "On Leave";
+  // Late, undertime, and overtime are payroll/attendance metrics, not the main status.
+  // A record can still be marked Present while keeping non-zero late/undertime/overtime values.
+  return "Present";
+}
+
+function mapAttendanceLogToRow(row: any, index = 0): Attendance {
+  const date = normalizeDateForFilter(row?.attendance_date ?? row?.date);
+  const logId = String(row?.log_id ?? row?.id ?? "");
+  return {
+    id: logId,
+    displayId: formatAttendanceDisplayId(logId, date, index + 1),
+    employeeId: row?.employee_id ?? undefined,
+    employee: row?.employee_name || row?.employee || row?.employee_id || "Unknown Employee",
+    date,
+    timeIn: fromDbTime(row?.time_in ?? row?.timeIn),
+    timeOut: fromDbTime(row?.time_out ?? row?.timeOut),
+    totalHours: String(row?.total_hours ?? row?.totalHours ?? "0"),
+    late: String(row?.late_minutes ?? row?.late ?? "0"),
+    undertime: String(row?.undertime_minutes ?? row?.undertime ?? "0"),
+    overtime: String(row?.overtime_minutes ?? row?.overtime ?? "0"),
+    status: getStatusValue(row?.status ?? attendanceStatusFromDb(row)),
+  };
+}
+
+async function getNextAttendanceLogId(dateValue: string) {
+  const year = getAttendanceYear(dateValue);
+  const { data, error } = await supabase
+    .from("attendance_logs")
+    .select("log_id")
+    .ilike("log_id", `ATT-${year}-%`);
+
+  if (error) throw error;
+
+  const maxSeq = (data ?? []).reduce((max: number, row: any) => {
+    const match = String(row?.log_id ?? "").match(new RegExp(`^ATT-${year}-(\\d+)$`, "i"));
+    return match ? Math.max(max, Number(match[1])) : max;
+  }, 0);
+
+  return `ATT-${year}-${String(maxSeq + 1).padStart(4, "0")}`;
+}
+
+async function resolveEmployeeForAttendance(employeeValue: unknown): Promise<EmployeeOption | null> {
+  const clean = normalizeCell(employeeValue);
+  if (!clean) return null;
+
+  if (/^EMP-\d{4}-\d+$/i.test(clean)) {
+    const { data, error } = await supabase
+      .from("employees")
+      .select("employee_id, first_name, middle_name, last_name, suffix, position, outlet, status")
+      .eq("employee_id", clean)
+      .maybeSingle();
+    if (error) throw error;
+    return data ? { ...data, name: formatEmployeeName(data) || data.employee_id } : null;
+  }
+
+  const { data, error } = await supabase
+    .from("employees")
+    .select("employee_id, first_name, middle_name, last_name, suffix, position, outlet, status")
+    .limit(1000);
+
+  if (error) throw error;
+
+  const normalizedNeedle = clean.toLowerCase().replace(/\s+/g, " ").trim();
+  const match = (data ?? []).find((row: any) => {
+    const name = formatEmployeeName(row).toLowerCase().replace(/\s+/g, " ").trim();
+    return name === normalizedNeedle || name.includes(normalizedNeedle) || normalizedNeedle.includes(name);
+  });
+
+  return match ? { ...match, name: formatEmployeeName(match) || match.employee_id } : null;
+}
+
+function buildAttendancePayload(row: Partial<Attendance>, employee: EmployeeOption | null, logId?: string) {
+  const status = getStatusValue(row.status);
+  const lateMinutes = Math.round(toSafeNumber(row.late));
+  const undertimeMinutes = Math.round(toSafeNumber(row.undertime));
+  const overtimeMinutes = Math.round(toSafeNumber(row.overtime));
+  const isAbsent = status === "Absent";
+  const isOnLeave = status === "On Leave";
+
+  return {
+    ...(logId ? { log_id: logId } : {}),
+    employee_id: employee?.employee_id ?? (String(row.employee ?? "").match(/^EMP-/i) ? String(row.employee) : null),
+    employee_name: employee?.name ?? String(row.employee ?? ""),
+    attendance_date: normalizeDateForFilter(row.date),
+    time_in: toDbTime(String(row.timeIn ?? "")),
+    time_out: toDbTime(String(row.timeOut ?? "")),
+    raw_time_in: String(row.timeIn ?? ""),
+    raw_time_out: String(row.timeOut ?? ""),
+    total_hours: toSafeNumber(row.totalHours),
+    late_minutes: lateMinutes,
+    undertime_minutes: undertimeMinutes,
+    overtime_minutes: overtimeMinutes,
+    is_late: lateMinutes > 0 || status === "Late",
+    is_undertime: undertimeMinutes > 0,
+    is_overtime: overtimeMinutes > 0,
+    is_absent: isAbsent,
+    is_incomplete: !isAbsent && (!row.timeIn || !row.timeOut),
+    source: "Manual Encoding",
+    validation_status: "Validated",
+    remarks: isOnLeave ? "On Leave" : null,
+    updated_at: new Date().toISOString(),
+  };
+}
+
 function parseSimpleAttendanceRows(rows: SheetRow[]): Partial<Attendance>[] {
   const headerIndex = rows.findIndex((row) => {
     const headers = row.map(normalizeHeader);
@@ -691,46 +851,35 @@ async function readErrorMessage(res: Response, fallback: string) {
 }
 
 async function saveImportTask(task: SaveImportTask): Promise<ImportSaveResult> {
-  const url =
-    task.kind === "update" && task.existingId
-      ? `${API}/attendance/${task.existingId}`
-      : `${API}/attendance`;
+  const employee = await resolveEmployeeForAttendance(task.row.employee);
+  const date = normalizeDateForFilter(task.row.date);
+  // For imports, let the database generate the raw log_id to avoid duplicate IDs during concurrent batch saves.
+  // The UI still displays the friendly ATT-YYYY-0001 format through displayId.
+  const logId = undefined;
+  const payload = buildAttendancePayload(task.row, employee, logId);
 
-  const res = await fetch(url, {
-    method: task.kind === "update" ? "PUT" : "POST",
-    headers: HEADERS,
-    body: JSON.stringify(task.row),
-  });
+  const query = task.kind === "update" && task.existingId
+    ? supabase.from("attendance_logs").update(payload).eq("log_id", task.existingId).select().single()
+    : supabase.from("attendance_logs").insert(payload).select().single();
 
-  if (!res.ok) {
-    return {
-      ok: false,
-      key: task.key,
-      error: await readErrorMessage(
-        res,
-        task.kind === "update" ? "Update failed" : "Import failed",
-      ),
-    };
+  const { data, error } = await query;
+
+  if (error) {
+    return { ok: false, key: task.key, error: error.message };
   }
 
-  const data = await res.json();
-
-  if (!data?.record?.id) {
-    return {
-      ok: false,
-      key: task.key,
-      error:
-        "Server saved the row but did not return a valid attendance record.",
-    };
+  if (!data?.log_id) {
+    return { ok: false, key: task.key, error: "Supabase saved the row but did not return a valid attendance log." };
   }
 
   return {
     ok: true,
     kind: task.kind,
-    record: data.record,
+    record: mapAttendanceLogToRow(data),
     key: task.key,
   };
 }
+
 
 export default function AttendanceMonitoring() {
   const { user } = useAuth();
@@ -771,25 +920,46 @@ export default function AttendanceMonitoring() {
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(50);
   const fileRef = useRef<HTMLInputElement>(null);
+  const [employeeOptions, setEmployeeOptions] = useState<EmployeeOption[]>([]);
+
+  const normalizedUserRole = String(user?.role ?? "").toLowerCase();
+  const canManageAttendance = ["hr", "hr_admin", "general_manager", "admin"].includes(normalizedUserRole) || normalizedUserRole.includes("hr") || normalizedUserRole.includes("admin");
+
+  const fetchEmployeeOptions = async () => {
+    const { data, error } = await supabase
+      .from("employees")
+      .select("employee_id, first_name, middle_name, last_name, suffix, position, outlet, status")
+      .order("last_name", { ascending: true });
+
+    if (error) {
+      console.warn("Could not load active employees:", error.message);
+      setEmployeeOptions([]);
+      return;
+    }
+
+    setEmployeeOptions((data ?? [])
+      .filter((row: any) => String(row.status ?? "Active").toLowerCase() === "active")
+      .map((row: any) => ({
+        employee_id: row.employee_id,
+        name: formatEmployeeName(row) || row.employee_id,
+        position: row.position,
+        outlet: row.outlet,
+        status: row.status,
+      })));
+  };
 
   const fetchAttendance = async () => {
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch(`${API}/attendance`, {
-        headers: HEADERS,
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error ?? "Server error");
-      setAttendances(
-        (data.attendance ?? [])
-          .filter((a: any) => a != null)
-          .map((a: any) => ({
-            ...a,
-            date: normalizeDateForFilter(a.date),
-            status: getStatusValue(a.status),
-          })),
-      );
+      const { data, error } = await supabase
+        .from("attendance_logs")
+        .select("log_id, employee_id, employee_name, attendance_date, time_in, time_out, total_hours, late_minutes, undertime_minutes, overtime_minutes, is_late, is_absent, is_undertime, is_overtime, is_incomplete, remarks, validation_status, created_at")
+        .order("attendance_date", { ascending: false })
+        .order("created_at", { ascending: false });
+
+      if (error) throw error;
+      setAttendances((data ?? []).map((row: any, index: number) => mapAttendanceLogToRow(row, index)));
     } catch (e: any) {
       setError(`Could not load attendance: ${e.message}`);
     } finally {
@@ -798,6 +968,7 @@ export default function AttendanceMonitoring() {
   };
 
   useEffect(() => {
+    fetchEmployeeOptions();
     fetchAttendance();
   }, []);
 
@@ -816,27 +987,33 @@ export default function AttendanceMonitoring() {
   };
 
   const handleSave = async () => {
-    if (!form.employee || !form.date) return;
+    if (!form.employee || !form.date) {
+      setSnackbar({ open: true, message: "Please select an employee and date.", severity: "error" });
+      return;
+    }
     setSaving(true);
     try {
-      const res = await fetch(`${API}/attendance`, {
-        method: "POST",
-        headers: HEADERS,
-        body: JSON.stringify(form),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error ?? "Server error");
-      const savedRecord: Attendance = {
-        ...data.record,
-        date: normalizeDateForFilter(data.record.date),
-        status: getStatusValue(data.record.status),
-      };
-      setAttendances((prev) => [...prev, savedRecord]);
+      const employee = employeeOptions.find((emp) => emp.employee_id === form.employee) ?? await resolveEmployeeForAttendance(form.employee);
+      if (!employee?.employee_id) throw new Error("Selected employee was not found in the employees table.");
+
+      const logId = await getNextAttendanceLogId(form.date);
+      const payload = buildAttendancePayload(form, employee, logId);
+
+      const { data, error } = await supabase
+        .from("attendance_logs")
+        .insert(payload)
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      const savedRecord = mapAttendanceLogToRow(data);
+      setAttendances((prev) => [savedRecord, ...prev]);
       setDialogOpen(false);
       setForm(EMPTY);
       setSnackbar({
         open: true,
-        message: "Attendance record saved to Supabase!",
+        message: `Attendance record ${savedRecord.displayId ?? savedRecord.id} saved to Supabase attendance_logs.`,
         severity: "success",
       });
     } catch (e: any) {
@@ -1124,9 +1301,12 @@ export default function AttendanceMonitoring() {
     return attendances.filter((a) => {
       const recordDate = normalizeDateForFilter(a.date);
       const dateMatch = !selectedDate || recordDate === selectedDate;
+      const hasLateMetric = toSafeNumber(a.late) > 0;
       const statusMatch =
         filterStatus === "all" ||
-        normalizeStatusForFilter(a.status) === filterStatus;
+        (filterStatus === "late"
+          ? hasLateMetric || normalizeStatusForFilter(a.status) === "late"
+          : normalizeStatusForFilter(a.status) === filterStatus);
 
       return dateMatch && statusMatch;
     });
@@ -1177,7 +1357,7 @@ export default function AttendanceMonitoring() {
         totals.present++;
       }
 
-      if (record.status === "Late") totals.late++;
+      if (record.status === "Late" || toSafeNumber(record.late) > 0) totals.late++;
       if (record.status === "Absent") totals.absent++;
       if (record.status === "On Leave") totals.onLeave++;
     }
@@ -1201,21 +1381,23 @@ export default function AttendanceMonitoring() {
     if (!editRecord) return;
     setSaving(true);
     try {
-      const res = await fetch(`${API}/attendance/${editRecord.id}`, {
-        method: "PUT",
-        headers: HEADERS,
-        body: JSON.stringify({
-          ...editForm,
-          correctedBy: user?.name ?? "HR Admin",
-        }),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error ?? "Server error");
-      const correctedRecord: Attendance = {
-        ...data.record,
-        date: normalizeDateForFilter(data.record.date),
-        status: getStatusValue(data.record.status),
-      };
+      const employee = editRecord.employeeId
+        ? await resolveEmployeeForAttendance(editRecord.employeeId)
+        : await resolveEmployeeForAttendance(editRecord.employee);
+      const payload = buildAttendancePayload(
+        { ...editRecord, ...editForm, employee: editRecord.employeeId ?? editRecord.employee },
+        employee,
+      );
+
+      const { data, error } = await supabase
+        .from("attendance_logs")
+        .update({ ...payload, validation_status: "Corrected" })
+        .eq("log_id", editRecord.id)
+        .select()
+        .single();
+
+      if (error) throw error;
+      const correctedRecord = mapAttendanceLogToRow(data);
       setAttendances((prev) =>
         prev.map((a) => (a.id === editRecord.id ? correctedRecord : a)),
       );
@@ -1236,6 +1418,7 @@ export default function AttendanceMonitoring() {
     }
   };
 
+
   const openEdit = (att: Attendance) => {
     setEditRecord(att);
     setEditForm({
@@ -1251,21 +1434,20 @@ export default function AttendanceMonitoring() {
   };
 
   const handleDelete = async (id: string) => {
-    if (
-      !window.confirm(`Delete attendance record ${id}? This cannot be undone.`)
-    )
-      return;
+    const target = attendances.find((record) => record.id === id);
+    const label = target?.displayId ?? id;
+    if (!window.confirm(`Delete attendance record ${label}? This cannot be undone.`)) return;
     try {
-      const res = await fetch(`${API}/attendance/${id}`, {
-        method: "DELETE",
-        headers: HEADERS,
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error ?? "Server error");
+      const { error } = await supabase
+        .from("attendance_logs")
+        .delete()
+        .eq("log_id", id);
+
+      if (error) throw error;
       setAttendances((prev) => prev.filter((a) => a.id !== id));
       setSnackbar({
         open: true,
-        message: `🗑️ Record ${id} deleted.`,
+        message: `🗑️ Record ${label} deleted.`,
         severity: "success",
       });
     } catch (e: any) {
@@ -1276,6 +1458,7 @@ export default function AttendanceMonitoring() {
       });
     }
   };
+
 
   const handleDeleteAll = async () => {
     if (deleteAllConfirm.trim().toLowerCase() !== "delete" || deletingAll)
@@ -1301,14 +1484,14 @@ export default function AttendanceMonitoring() {
         const results = await Promise.all(
           batch.map(async (record) => {
             try {
-              const res = await fetch(`${API}/attendance/${record.id}`, {
-                method: "DELETE",
-                headers: HEADERS,
-              });
+              const { error } = await supabase
+                .from("attendance_logs")
+                .delete()
+                .eq("log_id", record.id);
 
               return {
                 id: record.id,
-                ok: res.ok,
+                ok: !error,
               };
             } catch {
               return {
@@ -1422,7 +1605,7 @@ export default function AttendanceMonitoring() {
           >
             Import Biometric Data
           </Button>
-          {user?.role === "hr" && (
+          {canManageAttendance && (
             <Button
               variant="outlined"
               color="error"
@@ -1587,7 +1770,7 @@ export default function AttendanceMonitoring() {
                     ))}
                   </Grid>
 
-                  {user?.role === "hr" && (
+                  {canManageAttendance && (
                     <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap" }}>
                       <Chip
                         label="Correct"
@@ -1627,14 +1810,14 @@ export default function AttendanceMonitoring() {
                 <TableCell>Undertime (min)</TableCell>
                 <TableCell>Overtime (min)</TableCell>
                 <TableCell>Status</TableCell>
-                {user?.role === "hr" && <TableCell>Actions</TableCell>}
+                {canManageAttendance && <TableCell>Actions</TableCell>}
               </TableRow>
             </TableHead>
             <TableBody>
               {filtered.length === 0 ? (
                 <TableRow>
                   <TableCell
-                    colSpan={user?.role === "hr" ? 11 : 10}
+                    colSpan={canManageAttendance ? 11 : 10}
                     align="center"
                     sx={{ py: 5, color: "text.secondary" }}
                   >
@@ -1647,7 +1830,7 @@ export default function AttendanceMonitoring() {
                 paginatedFiltered.map((att) => (
                   <TableRow key={att.id} hover>
                     <TableCell>
-                      <Chip label={att.id} size="small" variant="outlined" />
+                      <Chip label={att.displayId ?? att.id} size="small" variant="outlined" />
                     </TableCell>
                     <TableCell>{att.employee}</TableCell>
                     <TableCell>{normalizeDateForFilter(att.date)}</TableCell>
@@ -1695,7 +1878,7 @@ export default function AttendanceMonitoring() {
                         }
                       />
                     </TableCell>
-                    {user?.role === "hr" && (
+                    {canManageAttendance && (
                       <TableCell>
                         <Box
                           sx={{
@@ -1868,11 +2051,27 @@ export default function AttendanceMonitoring() {
         >
           <TextField
             label="Employee Name"
+            select
             fullWidth
             required
             value={form.employee}
             onChange={(e) => setForm({ ...form, employee: e.target.value })}
-          />
+            helperText={
+              form.employee
+                ? `Employee ID saved: ${form.employee}`
+                : employeeOptions.length === 0
+                  ? "No active employees found in employees table."
+                  : "Display shows the name; backend saves the Employee ID."
+            }
+            InputLabelProps={{ shrink: true }}
+          >
+            <MenuItem value="">Select employee…</MenuItem>
+            {employeeOptions.map((emp) => (
+              <MenuItem key={emp.employee_id} value={emp.employee_id}>
+                {emp.name} — {emp.employee_id}
+              </MenuItem>
+            ))}
+          </TextField>
           <TextField
             label="Date"
             type="date"
