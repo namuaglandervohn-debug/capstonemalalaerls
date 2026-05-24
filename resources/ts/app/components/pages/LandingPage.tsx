@@ -267,7 +267,7 @@ export default function LandingPage() {
     color: "#23372b",
     fontWeight: 800,
     textTransform: "none",
-    borderRadius: 999,
+    borderRadius: '12px',
     px: 2,
     "&:hover": {
       bgcolor: "rgba(31,122,71,0.08)",
@@ -361,7 +361,7 @@ export default function LandingPage() {
                 display: { xs: "none", md: "flex" },
                 bgcolor: "rgba(255,255,255,0.66)",
                 border: "1px solid rgba(31,122,71,0.10)",
-                borderRadius: 999,
+                borderRadius: '12px',
                 p: 0.5,
               }}
             >
@@ -389,7 +389,6 @@ export default function LandingPage() {
               sx={{
                 px: { xs: 1.8, sm: 3 },
                 py: 1.15,
-                borderRadius: 999,
                 fontWeight: 900,
                 textTransform: "none",
                 background: "linear-gradient(135deg, #154f31 0%, #1F7A47 55%, #41a767 100%)",
@@ -481,7 +480,6 @@ export default function LandingPage() {
                   sx={{
                     px: 4,
                     py: 1.55,
-                    borderRadius: 999,
                     fontWeight: 950,
                     textTransform: "none",
                     background: "linear-gradient(135deg, #154f31 0%, #1F7A47 60%, #4fb474 100%)",
@@ -500,7 +498,6 @@ export default function LandingPage() {
                   sx={{
                     px: 4,
                     py: 1.55,
-                    borderRadius: 999,
                     fontWeight: 950,
                     textTransform: "none",
                     color: "#174f32",
@@ -536,7 +533,7 @@ export default function LandingPage() {
                         alignItems: "center",
                         justifyContent: "center",
                         p: 2,
-                        borderRadius: 4,
+                        borderRadius: 2,
                         bgcolor: "rgba(255,255,255,0.72)",
                         border: "1px solid rgba(31,122,71,0.10)",
                         boxShadow: "0 16px 34px rgba(15,23,42,0.06)",
@@ -729,7 +726,7 @@ export default function LandingPage() {
                     <Card
                       sx={{
                         height: "100%",
-                        borderRadius: 5,
+                        borderRadius: 2.5,
                         border: "1px solid rgba(31,122,71,0.11)",
                         boxShadow: "0 18px 44px rgba(16,32,22,0.08)",
                         background:
@@ -801,7 +798,7 @@ export default function LandingPage() {
                   elevation={0}
                   sx={{
                     minHeight: { xs: 260, md: index === 0 ? 420 : 300 },
-                    borderRadius: { xs: 4, md: 5 },
+                    borderRadius: { xs: 2, md: 2.5 },
                     overflow: "hidden",
                     backgroundImage: `linear-gradient(180deg, transparent 42%, rgba(0,0,0,0.52)), url(${image})`,
                     backgroundSize: { xs: "cover", md: "112%" },
@@ -879,7 +876,7 @@ export default function LandingPage() {
             zIndex: 4,
             boxShadow: "0 24px 60px rgba(31,122,71,0.16)",
             border: "1px solid rgba(31,122,71,0.12)",
-            borderRadius: { xs: 4, md: 5 },
+            borderRadius: { xs: 2, md: 2.5 },
             bgcolor: "rgba(255,255,255,0.92)",
             backdropFilter: "blur(18px)",
           }}
@@ -898,7 +895,7 @@ export default function LandingPage() {
             }}
             sx={{
               "& .MuiOutlinedInput-root": {
-                borderRadius: 3.5,
+                borderRadius: 1.5,
                 bgcolor: "#f8fbf8",
                 fontWeight: 700,
               },
@@ -913,7 +910,7 @@ export default function LandingPage() {
             sx={{
               px: 4,
               py: 1.7,
-              borderRadius: 3.5,
+              borderRadius: 1.5,
               fontWeight: 950,
               whiteSpace: "nowrap",
               textTransform: "none",
@@ -954,7 +951,7 @@ export default function LandingPage() {
                 onClick={handleOpenCreate}
                 fullWidth={isMobile}
                 sx={{
-                  borderRadius: 999,
+                  borderRadius: '12px',
                   px: 3,
                   py: 1.25,
                   fontWeight: 950,
@@ -977,7 +974,7 @@ export default function LandingPage() {
                 justifyContent: "center",
                 alignItems: "center",
                 py: 9,
-                borderRadius: 5,
+                borderRadius: 2.5,
                 border: "1px solid rgba(31,122,71,0.10)",
                 bgcolor: "rgba(255,255,255,0.85)",
               }}
@@ -996,7 +993,7 @@ export default function LandingPage() {
                 p: { xs: 4, md: 7 },
                 textAlign: "center",
                 border: "1px solid rgba(31,122,71,0.12)",
-                borderRadius: 5,
+                borderRadius: 2.5,
                 bgcolor: "rgba(255,255,255,0.86)",
               }}
             >
@@ -1030,7 +1027,7 @@ export default function LandingPage() {
                   <Card
                     sx={{
                       height: "100%",
-                      borderRadius: 5,
+                      borderRadius: 2.5,
                       boxShadow: "0 20px 52px rgba(15,23,42,0.08)",
                       border: "1px solid rgba(31,122,71,0.11)",
                       background: "linear-gradient(180deg, #ffffff 0%, #f8fbf8 100%)",
@@ -1168,7 +1165,7 @@ export default function LandingPage() {
                         onClick={() => handleApplyForPosition(job)}
                         sx={{
                           py: 1.35,
-                          borderRadius: 3.2,
+                          borderRadius: 1,
                           fontWeight: 950,
                           textTransform: "none",
                           background: "linear-gradient(135deg, #154f31 0%, #1F7A47 65%, #4caf70 100%)",
@@ -1214,7 +1211,7 @@ export default function LandingPage() {
           elevation={0}
           sx={{
             p: { xs: 3, md: 5 },
-            borderRadius: { xs: 5, md: 7 },
+            borderRadius: { xs: 2.5, md: 3.5 },
             color: "#fff",
             overflow: "hidden",
             position: "relative",
@@ -1256,7 +1253,6 @@ export default function LandingPage() {
                   sx={{
                     bgcolor: "#fff",
                     color: "#1F7A47",
-                    borderRadius: 999,
                     py: 1.45,
                     fontWeight: 950,
                     textTransform: "none",
@@ -1273,7 +1269,6 @@ export default function LandingPage() {
                   sx={{
                     borderColor: "rgba(255,255,255,0.55)",
                     color: "#fff",
-                    borderRadius: 999,
                     py: 1.45,
                     fontWeight: 950,
                     textTransform: "none",

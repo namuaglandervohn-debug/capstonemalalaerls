@@ -147,7 +147,7 @@ const innerCardSx = {
 };
 
 const pillButtonSx = {
-  borderRadius: 999,
+  borderRadius: '12px',
   textTransform: 'none',
   fontWeight: 700,
   px: 2,
@@ -179,7 +179,6 @@ const statusChipSx = (value: any) => {
     color: selected.color,
     borderColor: selected.border,
     fontWeight: 800,
-    borderRadius: 999,
     '& .MuiChip-label': { px: 1.25 },
   };
 };
@@ -670,7 +669,6 @@ export default function Reports() {
                 bgcolor: GREEN_UI.greenSoft,
                 color: GREEN_UI.greenDark,
                 fontWeight: 900,
-                borderRadius: 999,
                 '& .MuiChip-icon': { color: GREEN_UI.greenDark },
               }}
             />
@@ -944,7 +942,6 @@ export default function Reports() {
                         size="small"
                         variant="outlined"
                         sx={{
-                          borderRadius: 999,
                           fontWeight: 900,
                           bgcolor: active ? 'rgba(255,255,255,0.15)' : '#ffffff',
                           color: active ? '#ffffff' : GREEN_UI.greenDark,
@@ -1001,7 +998,7 @@ export default function Reports() {
             label={`${filtered.length} record${filtered.length !== 1 ? 's' : ''}`}
             size="small"
             variant="outlined"
-            sx={{ borderRadius: 999, fontWeight: 900, color: GREEN_UI.greenDark, borderColor: GREEN_UI.borderStrong, bgcolor: '#ffffff' }}
+            sx={{ fontWeight: 900, color: GREEN_UI.greenDark, borderColor: GREEN_UI.borderStrong, bgcolor: '#ffffff' }}
           />
         </Box>
 
@@ -1041,7 +1038,7 @@ export default function Reports() {
                 sx={{
                   overflowX: 'auto',
                   '&::-webkit-scrollbar': { height: 10 },
-                  '&::-webkit-scrollbar-thumb': { bgcolor: '#cfe8d1', borderRadius: 999 },
+                  '&::-webkit-scrollbar-thumb': { bgcolor: '#cfe8d1'},
                 }}
               >
                 <Table sx={{ minWidth: 950, '& th, & td': { borderColor: 'rgba(139, 184, 144, 0.16)' } }} size="small">
@@ -1092,7 +1089,7 @@ export default function Reports() {
                                 label={formatValue(c, row[c])}
                                 size="small"
                                 variant="outlined"
-                                sx={{ borderRadius: 999, fontWeight: 800, bgcolor: '#f8fcf5', borderColor: GREEN_UI.border }}
+                                sx={{ fontWeight: 800, bgcolor: '#f8fcf5', borderColor: GREEN_UI.border }}
                               />
                             ) : (
                               formatValue(c, row[c])

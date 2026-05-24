@@ -165,7 +165,7 @@ const innerCardSx = {
 };
 
 const pillButtonSx = {
-  borderRadius: 999,
+  borderRadius: '12px',
   textTransform: 'none',
   fontWeight: 800,
   px: 2,
@@ -628,7 +628,6 @@ export default function SupervisorDashboard() {
                 bgcolor: GREEN_UI.greenSoft,
                 color: GREEN_UI.greenDark,
                 fontWeight: 900,
-                borderRadius: 999,
                 '& .MuiChip-icon': { color: GREEN_UI.greenDark },
               }}
             />
@@ -738,7 +737,7 @@ export default function SupervisorDashboard() {
                       <Chip
                         label={stats.publishedSchedules}
                         size="small"
-                        sx={{ borderRadius: 999, bgcolor: GREEN_UI.greenSoft, color: GREEN_UI.greenDark, fontWeight: 900 }}
+                        sx={{ bgcolor: GREEN_UI.greenSoft, color: GREEN_UI.greenDark, fontWeight: 900 }}
                       />
                     </Box>
                     <Typography variant="caption" sx={{ color: GREEN_UI.muted, fontWeight: 600 }}>
@@ -785,7 +784,7 @@ export default function SupervisorDashboard() {
                 sx={{
                   overflowX: 'auto',
                   '&::-webkit-scrollbar': { height: 10 },
-                  '&::-webkit-scrollbar-thumb': { bgcolor: '#cfe8d1', borderRadius: 999 },
+                  '&::-webkit-scrollbar-thumb': { bgcolor: '#cfe8d1'},
                 }}
               >
                 <Table sx={tableSx}>
@@ -844,7 +843,6 @@ export default function SupervisorDashboard() {
                                   variant="outlined"
                                   sx={{
                                     height: 23,
-                                    borderRadius: 999,
                                     bgcolor: '#fbfef9',
                                     color: GREEN_UI.greenDark,
                                     borderColor: GREEN_UI.borderStrong,
@@ -863,7 +861,6 @@ export default function SupervisorDashboard() {
                             size="small"
                             icon={<TaskAlt sx={{ fontSize: '1rem !important' }} />}
                             sx={{
-                              borderRadius: 999,
                               bgcolor: GREEN_UI.greenSoft,
                               color: GREEN_UI.greenDark,
                               fontWeight: 900,
@@ -895,7 +892,7 @@ export default function SupervisorDashboard() {
                     <Chip
                       label={stats.pendingRequests}
                       size="small"
-                      sx={{ borderRadius: 999, bgcolor: GREEN_UI.amberSoft, color: GREEN_UI.amberDark, fontWeight: 900 }}
+                      sx={{ bgcolor: GREEN_UI.amberSoft, color: GREEN_UI.amberDark, fontWeight: 900 }}
                     />
                   </Box>
                   <Typography variant="caption" sx={{ color: GREEN_UI.muted, fontWeight: 600 }}>
@@ -943,7 +940,6 @@ export default function SupervisorDashboard() {
                             size="small"
                             sx={{
                               height: 24,
-                              borderRadius: 999,
                               bgcolor: GREEN_UI.amberSoft,
                               color: GREEN_UI.amberDark,
                               fontWeight: 900,

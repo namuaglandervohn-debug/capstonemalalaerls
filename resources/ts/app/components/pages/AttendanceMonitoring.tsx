@@ -141,7 +141,6 @@ const iconTileSx = {
 };
 
 const pillButtonSx = {
-  borderRadius: 999,
   textTransform: "none",
   fontWeight: 800,
   px: 2,
@@ -174,7 +173,6 @@ const statusChipSx = (status: Attendance["status"]) => {
     color: selected.color,
     borderColor: selected.border,
     fontWeight: 800,
-    borderRadius: 999,
     "& .MuiChip-label": { px: 1.25 },
   };
 };
@@ -1698,7 +1696,6 @@ export default function AttendanceMonitoring() {
                 bgcolor: GREEN_UI.greenSoft,
                 color: GREEN_UI.greenDark,
                 fontWeight: 900,
-                borderRadius: 999,
               }}
             />
             <Typography
@@ -1869,7 +1866,7 @@ export default function AttendanceMonitoring() {
 
       <Paper elevation={0} sx={{ ...softCardSx, p: { xs: 1.5, sm: 2 }, mb: 2 }}>
         <Box sx={{ display: "flex", alignItems: "center", gap: 1.25, mb: 1.5 }}>
-          <Box sx={{ ...iconTileSx, width: 38, height: 38, borderRadius: "14px" }}>
+          <Box sx={{ ...iconTileSx, width: 38, height: 38}}>
             <TuneRounded fontSize="small" />
           </Box>
           <Box>
@@ -2047,7 +2044,7 @@ export default function AttendanceMonitoring() {
             ...softCardSx,
             overflowX: "auto",
             "&::-webkit-scrollbar": { height: 10 },
-            "&::-webkit-scrollbar-thumb": { bgcolor: "#cfe8d1", borderRadius: 999 },
+            "&::-webkit-scrollbar-thumb": { bgcolor: "#cfe8d1"},
           }}
         >
           <Table sx={{ minWidth: 960, "& th, & td": { borderColor: "rgba(139, 184, 144, 0.16)" } }}>
@@ -2109,7 +2106,6 @@ export default function AttendanceMonitoring() {
                         size="small"
                         variant="outlined"
                         sx={{
-                          borderRadius: 999,
                           fontWeight: 800,
                           color: GREEN_UI.greenDark,
                           borderColor: GREEN_UI.borderStrong,
@@ -2119,7 +2115,7 @@ export default function AttendanceMonitoring() {
                     </TableCell>
                     <TableCell sx={{ minWidth: 190 }}>
                       <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-                        <Box sx={{ ...iconTileSx, width: 34, height: 34, borderRadius: "13px" }}>
+                        <Box sx={{ ...iconTileSx, width: 34, height: 34}}>
                           <PersonRounded fontSize="small" />
                         </Box>
                         <Typography fontWeight={850} sx={{ color: GREEN_UI.text, whiteSpace: "nowrap" }}>{att.employee}</Typography>
@@ -2315,7 +2311,7 @@ export default function AttendanceMonitoring() {
       {!loading && (
         <Paper elevation={0} sx={{ ...softCardSx, p: 2, mt: 2 }}>
           <Box sx={{ display: "flex", alignItems: "center", gap: 1.25, mb: 1.5 }}>
-            <Box sx={{ ...iconTileSx, width: 38, height: 38, borderRadius: "14px" }}>
+            <Box sx={{ ...iconTileSx, width: 38, height: 38}}>
               <FactCheckRounded fontSize="small" />
             </Box>
             <Box>
@@ -2369,7 +2365,7 @@ export default function AttendanceMonitoring() {
       >
         <DialogTitle fontWeight={900} sx={{ px: 3, pt: 2.5 }}>
           <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-            <Box sx={{ ...iconTileSx, width: 38, height: 38, borderRadius: "14px" }}>
+            <Box sx={{ ...iconTileSx, width: 38, height: 38}}>
               <AddCircleOutline fontSize="small" />
             </Box>
             Manual Attendance Entry
@@ -2547,7 +2543,7 @@ export default function AttendanceMonitoring() {
       >
         <DialogTitle fontWeight={900} sx={{ px: 3, pt: 2.5 }}>
           <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-            <Box sx={{ ...iconTileSx, width: 38, height: 38, borderRadius: "14px" }}>
+            <Box sx={{ ...iconTileSx, width: 38, height: 38}}>
               <UploadFileRounded fontSize="small" />
             </Box>
             Import Biometric Data

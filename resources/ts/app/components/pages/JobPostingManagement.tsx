@@ -608,7 +608,7 @@ export default function JobPostingManagement() {
                 onClick={handleOpenCreate}
                 sx={{
                   ...greenButtonSx,
-                  borderRadius: "24px",
+                  borderRadius: "12px",
                   width: { xs: "100%", sm: "auto" },
                   minHeight: 46,
                   whiteSpace: "nowrap",

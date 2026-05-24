@@ -60,7 +60,7 @@ const innerCardSx = {
 };
 
 const pillButtonSx = {
-  borderRadius: 999,
+  borderRadius: '12px',
   textTransform: 'none',
   fontWeight: 700,
   px: 2,
@@ -216,7 +216,6 @@ export default function GMDashboard() {
               label="General Manager Portal"
               sx={{
                 mb: 1.5,
-                borderRadius: 999,
                 bgcolor: GREEN_UI.greenSoft,
                 color: GREEN_UI.greenDark,
                 fontWeight: 800,
@@ -433,7 +432,6 @@ export default function GMDashboard() {
                       size="small"
                       variant="outlined"
                       sx={{
-                        borderRadius: 999,
                         bgcolor: '#e9f6ff',
                         color: '#1d6f9c',
                         borderColor: '#b7dff7',
@@ -490,7 +488,6 @@ export default function GMDashboard() {
                     label={`#${i + 1}`}
                     size="small"
                     sx={{
-                      borderRadius: 999,
                       fontWeight: 900,
                       bgcolor: i === 0 ? '#fff7e0' : GREEN_UI.greenSoft,
                       color: i === 0 ? '#9b6b00' : GREEN_UI.greenDark,

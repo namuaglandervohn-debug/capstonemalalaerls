@@ -214,7 +214,7 @@ const innerCardSx = {
 };
 
 const pillButtonSx = {
-  borderRadius: 999,
+  borderRadius: '12px',
   textTransform: 'none',
   fontWeight: 700,
   px: 2,
@@ -225,7 +225,6 @@ const releasedChipSx = {
   color: '#217a43',
   borderColor: '#a9dfb6',
   fontWeight: 800,
-  borderRadius: 999,
   '& .MuiChip-label': { px: 1.25 },
 };
 
@@ -616,7 +615,6 @@ export default function EmployeePayslips() {
                 bgcolor: GREEN_UI.greenSoft,
                 color: GREEN_UI.greenDark,
                 fontWeight: 900,
-                borderRadius: 999,
                 '& .MuiChip-icon': { color: GREEN_UI.greenDark },
               }}
             />
@@ -835,7 +833,6 @@ export default function EmployeePayslips() {
                         size="small"
                         variant="outlined"
                         sx={{
-                          borderRadius: 999,
                           fontWeight: 800,
                           bgcolor: '#f8fcf5',
                           borderColor: GREEN_UI.border,
@@ -966,7 +963,7 @@ export default function EmployeePayslips() {
                 label={selected.displayId ?? selected.id}
                 size="small"
                 variant="outlined"
-                sx={{ borderRadius: 999, fontWeight: 800, borderColor: GREEN_UI.border, color: GREEN_UI.greenDark }}
+                sx={{ fontWeight: 800, borderColor: GREEN_UI.border, color: GREEN_UI.greenDark }}
               />
             )}
           </Box>

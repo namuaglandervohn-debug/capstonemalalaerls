@@ -816,7 +816,6 @@ export default function ApplyForJobPage() {
                         left: `${100 / (steps.length * 2)}%`,
                         right: `${100 / (steps.length * 2)}%`,
                         height: { xs: 3, sm: 4, md: 5 },
-                        borderRadius: 999,
                         backgroundColor: '#dcfce7',
                         zIndex: 0,
                       }}
@@ -828,7 +827,6 @@ export default function ApplyForJobPage() {
                         left: `${100 / (steps.length * 2)}%`,
                         right: `${100 / (steps.length * 2)}%`,
                         height: { xs: 3, sm: 4, md: 5 },
-                        borderRadius: 999,
                         background: 'linear-gradient(90deg, #16a34a 0%, #22c55e 100%)',
                         transform: `scaleX(${activeStep / (steps.length - 1)})`,
                         transformOrigin: 'left center',

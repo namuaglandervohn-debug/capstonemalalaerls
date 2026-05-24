@@ -235,7 +235,7 @@ const innerCardSx = {
 };
 
 const pillButtonSx = {
-  borderRadius: 999,
+  borderRadius: '12px',
   textTransform: "none",
   fontWeight: 700,
   px: 2,
@@ -307,22 +307,21 @@ const statusChipSx = (status: EvaluationStatus | string) => {
     color: selected.color,
     borderColor: selected.border,
     fontWeight: 800,
-    borderRadius: 999,
     "& .MuiChip-label": { px: 1.25 },
   };
 };
 
 const ratingChipSx = (score: number) => {
   if (score >= 90) {
-    return { bgcolor: "#fff7e0", color: "#9b6b00", borderColor: "#f5d786", fontWeight: 800, borderRadius: 999 };
+    return { bgcolor: "#fff7e0", color: "#9b6b00", borderColor: "#f5d786", fontWeight: 800};
   }
   if (score >= 85) {
-    return { bgcolor: "#e5f8e9", color: "#217a43", borderColor: "#a9dfb6", fontWeight: 800, borderRadius: 999 };
+    return { bgcolor: "#e5f8e9", color: "#217a43", borderColor: "#a9dfb6", fontWeight: 800};
   }
   if (score >= 75) {
-    return { bgcolor: "#eef9ea", color: GREEN_UI.greenDark, borderColor: GREEN_UI.borderStrong, fontWeight: 800, borderRadius: 999 };
+    return { bgcolor: "#eef9ea", color: GREEN_UI.greenDark, borderColor: GREEN_UI.borderStrong, fontWeight: 800};
   }
-  return { bgcolor: GREEN_UI.dangerSoft, color: GREEN_UI.dangerDark, borderColor: "#efb8b8", fontWeight: 800, borderRadius: 999 };
+  return { bgcolor: GREEN_UI.dangerSoft, color: GREEN_UI.dangerDark, borderColor: "#efb8b8", fontWeight: 800};
 };
 
 const actionChipSx = (tone: "primary" | "success" | "danger" | "warning" = "primary") => {
@@ -336,7 +335,6 @@ const actionChipSx = (tone: "primary" | "success" | "danger" | "warning" = "prim
   return {
     minWidth: 92,
     justifyContent: "center",
-    borderRadius: 999,
     fontWeight: 800,
     borderColor: styles.border,
     color: styles.color,
@@ -1006,7 +1004,6 @@ export default function PerformanceEvaluation() {
                 bgcolor: GREEN_UI.greenSoft,
                 color: GREEN_UI.greenDark,
                 fontWeight: 900,
-                borderRadius: 999,
                 "& .MuiChip-icon": { color: GREEN_UI.greenDark },
               }}
             />
@@ -1252,7 +1249,7 @@ export default function PerformanceEvaluation() {
             </Box>
           </Box>
 
-          <TableContainer sx={{ overflowX: "auto", "&::-webkit-scrollbar": { height: 10 }, "&::-webkit-scrollbar-thumb": { bgcolor: "#cfe8d1", borderRadius: 999 } }}>
+          <TableContainer sx={{ overflowX: "auto", "&::-webkit-scrollbar": { height: 10 }, "&::-webkit-scrollbar-thumb": { bgcolor: "#cfe8d1"} }}>
             {employeesLoading ? (
               <Box sx={{ display: "flex", alignItems: "center", justifyContent: "center", py: 7, gap: 2 }}>
                 <CircularProgress size={28} sx={{ color: GREEN_UI.green }} />
@@ -1295,7 +1292,7 @@ export default function PerformanceEvaluation() {
                     employees.map((emp) => (
                       <TableRow key={emp.employee_id} hover>
                         <TableCell>
-                          <Chip label={emp.employee_id} size="small" variant="outlined" sx={{ borderRadius: 999, fontWeight: 800, bgcolor: "#f8fcf5", borderColor: GREEN_UI.border }} />
+                          <Chip label={emp.employee_id} size="small" variant="outlined" sx={{ fontWeight: 800, bgcolor: "#f8fcf5", borderColor: GREEN_UI.border }} />
                         </TableCell>
                         <TableCell sx={{ whiteSpace: "nowrap" }}>
                           <Typography fontWeight={800} sx={{ color: GREEN_UI.text }}>
@@ -1340,7 +1337,7 @@ export default function PerformanceEvaluation() {
           overflowX: "auto",
           mb: 2.5,
           "&::-webkit-scrollbar": { height: 10 },
-          "&::-webkit-scrollbar-thumb": { bgcolor: "#cfe8d1", borderRadius: 999 },
+          "&::-webkit-scrollbar-thumb": { bgcolor: "#cfe8d1"},
         }}
       >
         {loading ? (
@@ -1395,7 +1392,7 @@ export default function PerformanceEvaluation() {
                         label={`#${i + 1}`}
                         size="small"
                         variant="outlined"
-                        sx={i === 0 ? ratingChipSx(90) : { borderRadius: 999, fontWeight: 800, bgcolor: "#f8fcf5", borderColor: GREEN_UI.border }}
+                        sx={i === 0 ? ratingChipSx(90) : { fontWeight: 800, bgcolor: "#f8fcf5", borderColor: GREEN_UI.border }}
                       />
                     </TableCell>
                     <TableCell sx={{ whiteSpace: "nowrap" }}>
@@ -1421,7 +1418,7 @@ export default function PerformanceEvaluation() {
                             label={s ? `${Number(s.raw_score || 0).toFixed(0)}%` : "—"}
                             size="small"
                             variant="outlined"
-                            sx={{ borderRadius: 999, fontWeight: 800, bgcolor: "#ffffff", borderColor: GREEN_UI.border }}
+                            sx={{ fontWeight: 800, bgcolor: "#ffffff", borderColor: GREEN_UI.border }}
                           />
                         </TableCell>
                       );
@@ -1524,7 +1521,7 @@ export default function PerformanceEvaluation() {
             )}
           </Box>
 
-          <TableContainer sx={{ overflowX: "auto", "&::-webkit-scrollbar": { height: 10 }, "&::-webkit-scrollbar-thumb": { bgcolor: "#cfe8d1", borderRadius: 999 } }}>
+          <TableContainer sx={{ overflowX: "auto", "&::-webkit-scrollbar": { height: 10 }, "&::-webkit-scrollbar-thumb": { bgcolor: "#cfe8d1"} }}>
             <Table sx={{ ...tableSx, minWidth: 900 }}>
               <TableHead>
                 <TableRow sx={tableHeadRowSx}>
@@ -1559,7 +1556,7 @@ export default function PerformanceEvaluation() {
                           label={item.rank_no === 1 ? "#1" : `#${item.rank_no}`}
                           size="small"
                           variant="outlined"
-                          sx={item.rank_no === 1 ? ratingChipSx(90) : { borderRadius: 999, fontWeight: 800, bgcolor: "#f8fcf5", borderColor: GREEN_UI.border }}
+                          sx={item.rank_no === 1 ? ratingChipSx(90) : { fontWeight: 800, bgcolor: "#f8fcf5", borderColor: GREEN_UI.border }}
                         />
                       </TableCell>
                       <TableCell sx={{ whiteSpace: "nowrap" }}>
@@ -1702,7 +1699,7 @@ export default function PerformanceEvaluation() {
           </Grid>
 
           <Divider sx={{ my: 3, borderColor: GREEN_UI.border }}>
-            <Chip label="DSS Criteria Scores" size="small" variant="outlined" sx={{ borderRadius: 999, fontWeight: 900, color: GREEN_UI.greenDark, borderColor: GREEN_UI.borderStrong, bgcolor: "#ffffff" }} />
+            <Chip label="DSS Criteria Scores" size="small" variant="outlined" sx={{ fontWeight: 900, color: GREEN_UI.greenDark, borderColor: GREEN_UI.borderStrong, bgcolor: "#ffffff" }} />
           </Divider>
 
           <Grid container spacing={1.5}>
@@ -1810,7 +1807,7 @@ export default function PerformanceEvaluation() {
           {criteriaDraft.map((c, i) => (
             <Paper key={c.criteria_id} elevation={0} sx={{ ...innerCardSx, p: 2, mb: 2 }}>
               <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 1.5 }}>
-                <Chip label={`#${i + 1}`} size="small" variant="outlined" sx={{ borderRadius: 999, fontWeight: 800, bgcolor: "#ffffff", borderColor: GREEN_UI.border }} />
+                <Chip label={`#${i + 1}`} size="small" variant="outlined" sx={{ fontWeight: 800, bgcolor: "#ffffff", borderColor: GREEN_UI.border }} />
                 <Typography variant="subtitle2" fontWeight={900} sx={{ flex: 1, color: GREEN_UI.text }}>{c.criteria_name}</Typography>
                 <Tooltip title="Remove criterion">
                   <IconButton size="small" onClick={() => removeCriterion(i)} sx={{ color: GREEN_UI.dangerDark, bgcolor: "#fffafa", "&:hover": { bgcolor: GREEN_UI.dangerSoft } }}>

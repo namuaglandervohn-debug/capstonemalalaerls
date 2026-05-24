@@ -57,14 +57,14 @@ const innerCardSx = {
 };
 
 const pillButtonSx = {
-  borderRadius: 999,
+  borderRadius: '12px',
   textTransform: 'none',
   fontWeight: 700,
   px: 2,
 };
 
 const softChipSx = {
-  borderRadius: 999,
+  borderRadius: '12px',
   fontWeight: 800,
   bgcolor: GREEN_UI.greenSoft,
   color: GREEN_UI.greenDark,
@@ -276,7 +276,7 @@ export default function EmployeeDashboard() {
           </Box>
         </Box>
 
-        {loading && <LinearProgress sx={{ mt: 2.5, borderRadius: 999, bgcolor: '#e7f3e7', '& .MuiLinearProgress-bar': { bgcolor: GREEN_UI.green } }} />}
+        {loading && <LinearProgress sx={{ mt: 2.5, bgcolor: '#e7f3e7', '& .MuiLinearProgress-bar': { bgcolor: GREEN_UI.green } }} />}
       </Paper>
 
       <Grid container spacing={{ xs: 2, md: 2.5 }} sx={{ mb: 3 }}>
@@ -317,7 +317,6 @@ export default function EmployeeDashboard() {
                     size="small"
                     variant="outlined"
                     sx={{
-                      borderRadius: 999,
                       fontWeight: 800,
                       bgcolor: '#fbfef9',
                       borderColor: GREEN_UI.border,
@@ -414,7 +413,7 @@ export default function EmployeeDashboard() {
                             label={a.status}
                             size="small"
                             variant="outlined"
-                            sx={{ borderRadius: 999, fontWeight: 800, ...statusStyle }}
+                            sx={{ fontWeight: 800, ...statusStyle }}
                           />
                         </Box>
                         <Typography variant="caption" sx={{ color: GREEN_UI.muted, display: 'flex', alignItems: 'center', gap: 0.5 }}>
@@ -493,7 +492,7 @@ export default function EmployeeDashboard() {
                           label={r.status}
                           size="small"
                           variant="outlined"
-                          sx={{ borderRadius: 999, fontWeight: 800, flexShrink: 0, ...statusStyle }}
+                          sx={{ fontWeight: 800, flexShrink: 0, ...statusStyle }}
                         />
                       </Box>
                     </Paper>

@@ -193,7 +193,7 @@ const innerCardSx = {
 };
 
 const pillButtonSx = {
-  borderRadius: 999,
+  borderRadius: "12px",
   textTransform: 'none',
   fontWeight: 700,
   px: 2,
@@ -230,7 +230,6 @@ const statusChipSx = (status: AppStatus) => {
     color: selected.color,
     borderColor: selected.border,
     fontWeight: 800,
-    borderRadius: 999,
     '& .MuiChip-label': { px: 1.25 },
   };
 };
@@ -1186,7 +1185,6 @@ export default function RecruitmentManagement() {
           sx={{
             width: 34,
             height: 6,
-            borderRadius: 999,
             background: `linear-gradient(90deg, ${GREEN_UI.green}, rgba(58, 168, 101, 0.08))`,
           }}
         />
@@ -1643,7 +1641,6 @@ export default function RecruitmentManagement() {
                 bgcolor: GREEN_UI.greenSoft,
                 color: GREEN_UI.greenDark,
                 fontWeight: 900,
-                borderRadius: 999,
               }}
             />
             <Typography
@@ -1768,7 +1765,7 @@ export default function RecruitmentManagement() {
               mx: 0.35,
               my: 0.5,
               px: 1.6,
-              borderRadius: '999px',
+              borderRadius: '10px',
               textTransform: 'none',
               fontWeight: 800,
               color: GREEN_UI.muted,
@@ -1794,7 +1791,7 @@ export default function RecruitmentManagement() {
           ...softCardSx,
           overflowX: 'auto',
           '&::-webkit-scrollbar': { height: 10 },
-          '&::-webkit-scrollbar-thumb': { bgcolor: '#cfe8d1', borderRadius: 999 },
+          '&::-webkit-scrollbar-thumb': { bgcolor: '#cfe8d1'},
         }}
       >
         {refreshing && !loading && <LinearProgress sx={{ bgcolor: '#edf7eb', '& .MuiLinearProgress-bar': { bgcolor: GREEN_UI.green } }} />}
@@ -1905,7 +1902,6 @@ export default function RecruitmentManagement() {
                         variant="outlined"
                         sx={{
                           ...chipIconSx,
-                          borderRadius: 999,
                           fontWeight: 800,
                           bgcolor: '#f8fcf5',
                           borderColor: GREEN_UI.border,
@@ -1978,7 +1974,6 @@ export default function RecruitmentManagement() {
                             ...chipIconSx,
                             minWidth: 110,
                             justifyContent: 'center',
-                            borderRadius: 999,
                             fontWeight: 800,
                             borderColor: GREEN_UI.borderStrong,
                             color: GREEN_UI.greenDark,
@@ -1998,7 +1993,6 @@ export default function RecruitmentManagement() {
                               ...chipIconSx,
                               minWidth: 122,
                               justifyContent: 'center',
-                              borderRadius: 999,
                               fontWeight: 800,
                               borderColor: '#a9dfb6',
                               color: GREEN_UI.greenDark,
@@ -2019,7 +2013,6 @@ export default function RecruitmentManagement() {
                               ...chipIconSx,
                               minWidth: 76,
                               justifyContent: 'center',
-                              borderRadius: 999,
                               fontWeight: 800,
                               borderColor: '#efb8b8',
                               color: '#9c2f2f',

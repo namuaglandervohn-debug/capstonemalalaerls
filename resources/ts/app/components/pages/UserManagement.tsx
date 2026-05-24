@@ -76,7 +76,7 @@ const innerCardSx = {
 };
 
 const pillButtonSx = {
-  borderRadius: 999,
+  borderRadius: "12px",
   textTransform: 'none',
   fontWeight: 800,
   px: 2,
@@ -113,7 +113,6 @@ const roleChipSx = (role: UserRole) => {
     color: selected.color,
     borderColor: selected.border,
     fontWeight: 800,
-    borderRadius: 999,
     '& .MuiChip-label': { px: 1.3 },
   };
 };
@@ -123,7 +122,6 @@ const activeChipSx = (active?: boolean) => ({
   color: active === false ? '#6f786f' : '#217a43',
   borderColor: active === false ? '#dce2d9' : '#a9dfb6',
   fontWeight: 900,
-  borderRadius: 999,
   '& .MuiChip-label': { px: 1.35 },
 });
 
@@ -501,7 +499,6 @@ export default function UserManagement() {
           sx={{
             width: 34,
             height: 6,
-            borderRadius: 999,
             background: `linear-gradient(90deg, ${GREEN_UI.green}, rgba(58, 168, 101, 0.08))`,
           }}
         />
@@ -580,7 +577,6 @@ export default function UserManagement() {
                 bgcolor: GREEN_UI.greenSoft,
                 color: GREEN_UI.greenDark,
                 fontWeight: 900,
-                borderRadius: 999,
               }}
             />
             <Typography
@@ -736,7 +732,7 @@ export default function UserManagement() {
           ...softCardSx,
           overflowX: 'auto',
           '&::-webkit-scrollbar': { height: 10 },
-          '&::-webkit-scrollbar-thumb': { bgcolor: '#cfe8d1', borderRadius: 999 },
+          '&::-webkit-scrollbar-thumb': { bgcolor: '#cfe8d1'},
         }}
       >
         {loading ? (
@@ -814,7 +810,7 @@ export default function UserManagement() {
                         label={u.id || '—'}
                         size="small"
                         variant="outlined"
-                        sx={{ borderRadius: 999, fontWeight: 800, bgcolor: '#f8fcf5', borderColor: GREEN_UI.border, fontFamily: 'monospace' }}
+                        sx={{ fontWeight: 800, bgcolor: '#f8fcf5', borderColor: GREEN_UI.border, fontFamily: 'monospace' }}
                       />
                     </TableCell>
 
@@ -882,7 +878,6 @@ export default function UserManagement() {
                           sx={{
                             minWidth: 118,
                             justifyContent: 'center',
-                            borderRadius: 999,
                             fontWeight: 800,
                             borderColor: u.active === false ? '#a9dfb6' : '#efd69a',
                             color: u.active === false ? '#1f7a46' : '#8a6400',
@@ -918,7 +913,6 @@ export default function UserManagement() {
                           sx={{
                             minWidth: 76,
                             justifyContent: 'center',
-                            borderRadius: 999,
                             fontWeight: 800,
                             borderColor: GREEN_UI.borderStrong,
                             color: GREEN_UI.greenDark,
@@ -938,7 +932,6 @@ export default function UserManagement() {
                           sx={{
                             minWidth: 86,
                             justifyContent: 'center',
-                            borderRadius: 999,
                             fontWeight: 800,
                             borderColor: '#efb8b8',
                             color: '#9c2f2f',

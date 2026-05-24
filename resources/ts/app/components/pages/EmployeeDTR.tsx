@@ -63,7 +63,7 @@ const softCardSx = {
 
 
 const pillButtonSx = {
-  borderRadius: 999,
+  borderRadius: '12px',
   textTransform: "none",
   fontWeight: 800,
   px: 2,
@@ -285,7 +285,6 @@ export default function EmployeeDTR() {
                   bgcolor: GREEN_UI.greenSoft,
                   color: GREEN_UI.greenDark,
                   fontWeight: 900,
-                  borderRadius: 999,
                   "& .MuiChip-icon": { color: GREEN_UI.greenDark },
                 }}
               />

@@ -179,7 +179,7 @@ const innerCardSx = {
 };
 
 const pillButtonSx = {
-  borderRadius: 999,
+  borderRadius: '12px',
   textTransform: 'none',
   fontWeight: 800,
   px: 2,
@@ -202,7 +202,6 @@ const requestStatusChipSx = (status: RequestStatus) => {
     color: selected.color,
     borderColor: selected.border,
     fontWeight: 800,
-    borderRadius: 999,
     '& .MuiChip-label': { px: 1.25 },
   };
 };
@@ -221,7 +220,6 @@ const requestTypeChipSx = (type: RequestType) => {
     color: selected.color,
     borderColor: selected.border,
     fontWeight: 800,
-    borderRadius: 999,
     '& .MuiChip-label': { px: 1.25 },
   };
 };
@@ -849,7 +847,6 @@ export default function RequestManagement() {
                 bgcolor: GREEN_UI.greenSoft,
                 color: GREEN_UI.greenDark,
                 fontWeight: 900,
-                borderRadius: 999,
                 '& .MuiChip-icon': { color: GREEN_UI.greenDark },
               }}
             />
@@ -1010,7 +1007,7 @@ export default function RequestManagement() {
               mx: 0.35,
               my: 0.5,
               px: 1.6,
-              borderRadius: '999px',
+              borderRadius: '12px',
               textTransform: 'none',
               fontWeight: 800,
               color: GREEN_UI.muted,
@@ -1036,7 +1033,7 @@ export default function RequestManagement() {
           ...softCardSx,
           overflowX: 'auto',
           '&::-webkit-scrollbar': { height: 10 },
-          '&::-webkit-scrollbar-thumb': { bgcolor: '#cfe8d1', borderRadius: 999 },
+          '&::-webkit-scrollbar-thumb': { bgcolor: '#cfe8d1'},
         }}
       >
         {loading ? (
@@ -1124,7 +1121,6 @@ export default function RequestManagement() {
                           size="small"
                           variant="outlined"
                           sx={{
-                            borderRadius: 999,
                             fontWeight: 800,
                             bgcolor: '#f8fcf5',
                             borderColor: GREEN_UI.border,
@@ -1210,7 +1206,6 @@ export default function RequestManagement() {
                             sx={{
                               minWidth: 126,
                               justifyContent: 'center',
-                              borderRadius: 999,
                               fontWeight: 800,
                               borderColor: GREEN_UI.borderStrong,
                               color: GREEN_UI.greenDark,
@@ -1235,7 +1230,6 @@ export default function RequestManagement() {
                               sx={{
                                 minWidth: 104,
                                 justifyContent: 'center',
-                                borderRadius: 999,
                                 fontWeight: 800,
                                 borderColor: '#a9dfb6',
                                 color: GREEN_UI.greenDark,
@@ -1257,7 +1251,6 @@ export default function RequestManagement() {
                               sx={{
                                 minWidth: 92,
                                 justifyContent: 'center',
-                                borderRadius: 999,
                                 fontWeight: 800,
                                 borderColor: '#f5d786',
                                 color: '#9b6b00',
@@ -1279,7 +1272,6 @@ export default function RequestManagement() {
                               sx={{
                                 minWidth: 90,
                                 justifyContent: 'center',
-                                borderRadius: 999,
                                 fontWeight: 800,
                                 borderColor: '#efb8b8',
                                 color: '#9c2f2f',

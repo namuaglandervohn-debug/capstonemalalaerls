@@ -635,7 +635,7 @@ export default function HRDashboard() {
                 px: 1.4,
                 py: 0.65,
                 mb: 1.5,
-                borderRadius: 999,
+                borderRadius: 0.8,
                 bgcolor: GREEN_UI.greenSoft,
                 color: GREEN_UI.greenDark,
                 border: `1px solid ${GREEN_UI.borderStrong}`,

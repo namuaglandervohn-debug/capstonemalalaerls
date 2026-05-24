@@ -109,7 +109,7 @@ const innerCardSx = {
 };
 
 const pillButtonSx = {
-  borderRadius: 999,
+  borderRadius: '12px',
   textTransform: 'none',
   fontWeight: 700,
   px: 2,
@@ -117,7 +117,7 @@ const pillButtonSx = {
 
 const softTextFieldSx = {
   '& .MuiOutlinedInput-root': {
-    borderRadius: '16px',
+    borderRadius: '8px',
     backgroundColor: '#fbfef9',
     transition: 'all 180ms ease',
     '& fieldset': { borderColor: GREEN_UI.border },
@@ -144,7 +144,6 @@ const statusChipSx = (status: Schedule['status']) => {
     color: selected.color,
     borderColor: selected.border,
     fontWeight: 800,
-    borderRadius: 999,
     '& .MuiChip-label': { px: 1.25 },
   };
 };
@@ -160,7 +159,6 @@ const actionChipSx = (tone: 'primary' | 'success' | 'danger' | 'neutral' = 'prim
   return {
     minWidth: 110,
     justifyContent: 'center',
-    borderRadius: 999,
     fontWeight: 800,
     borderColor: styles.border,
     color: styles.color,
@@ -170,7 +168,6 @@ const actionChipSx = (tone: 'primary' | 'success' | 'danger' | 'neutral' = 'prim
 };
 
 const outletChipSx = {
-  borderRadius: 999,
   fontWeight: 800,
   bgcolor: '#f8fcf5',
   borderColor: GREEN_UI.border,
@@ -765,7 +762,7 @@ const scheduleId =
         p: { xs: 1.5, sm: 2.25, md: 3 },
         background: GREEN_UI.pageBg,
         color: GREEN_UI.text,
-        borderRadius: { xs: 0, md: '32px' },
+        borderRadius: { xs: 0, md: '24px' },
       }}
     >
       <Paper
@@ -821,7 +818,6 @@ const scheduleId =
                 bgcolor: GREEN_UI.greenSoft,
                 color: GREEN_UI.greenDark,
                 fontWeight: 900,
-                borderRadius: 999,
                 '& .MuiChip-icon': { color: GREEN_UI.greenDark },
               }}
             />
@@ -1044,7 +1040,7 @@ const scheduleId =
           ...softCardSx,
           overflowX: 'auto',
           '&::-webkit-scrollbar': { height: 10 },
-          '&::-webkit-scrollbar-thumb': { bgcolor: '#cfe8d1', borderRadius: 999 },
+          '&::-webkit-scrollbar-thumb': { bgcolor: '#cfe8d1'},
         }}
       >
         {loading ? (
@@ -1126,7 +1122,7 @@ const scheduleId =
                       label={s.id}
                       size="small"
                       variant="outlined"
-                      sx={{ borderRadius: 999, fontWeight: 800, bgcolor: '#f8fcf5', borderColor: GREEN_UI.border, '& .MuiChip-icon': { color: GREEN_UI.greenDark } }}
+                      sx={{fontWeight: 800, bgcolor: '#f8fcf5', borderColor: GREEN_UI.border, '& .MuiChip-icon': { color: GREEN_UI.greenDark } }}
                     />
                   </TableCell>
                   <TableCell sx={{ whiteSpace: 'nowrap' }}>
@@ -1186,7 +1182,7 @@ const scheduleId =
                       label={s.breakTime || '—'}
                       size="small"
                       variant="outlined"
-                      sx={{ borderRadius: 999, fontWeight: 800, bgcolor: '#ffffff', borderColor: GREEN_UI.border, color: GREEN_UI.muted, '& .MuiChip-icon': { color: GREEN_UI.muted } }}
+                      sx={{ fontWeight: 800, bgcolor: '#ffffff', borderColor: GREEN_UI.border, color: GREEN_UI.muted, '& .MuiChip-icon': { color: GREEN_UI.muted } }}
                     />
                   </TableCell>
                   {DAYS.map(d => {
@@ -1201,11 +1197,11 @@ const scheduleId =
                             alignItems: 'center',
                             minHeight: 28,
                             px: 1.1,
-                            borderRadius: 999,
                             bgcolor: isOff ? '#f4f7f3' : '#f8fcf5',
                             color: isOff ? '#9aa6a0' : GREEN_UI.text,
                             border: `1px solid ${GREEN_UI.border}`,
                             fontWeight: 800,
+                            borderRadius: '8px',
                             whiteSpace: 'nowrap',
                           }}
                         >

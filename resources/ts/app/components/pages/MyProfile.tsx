@@ -76,7 +76,7 @@ const innerCardSx = {
 };
 
 const pillButtonSx = {
-  borderRadius: 999,
+  borderRadius: '12px',
   textTransform: 'none',
   fontWeight: 800,
   px: 2,
@@ -352,7 +352,6 @@ export default function MyProfile() {
                   bgcolor: GREEN_UI.greenSoft,
                   color: GREEN_UI.greenDark,
                   fontWeight: 900,
-                  borderRadius: 999,
                 }}
               />
               <Typography
@@ -376,13 +375,13 @@ export default function MyProfile() {
                   icon={<BusinessCenter sx={{ fontSize: '16px !important' }} />}
                   label={employee?.position ?? 'No position linked'}
                   size="small"
-                  sx={{ bgcolor: '#fbfff9', border: `1px solid ${GREEN_UI.border}`, color: GREEN_UI.text, fontWeight: 800, borderRadius: 999 }}
+                  sx={{ bgcolor: '#fbfff9', border: `1px solid ${GREEN_UI.border}`, color: GREEN_UI.text, fontWeight: 800}}
                 />
                 <Chip
                   icon={<LocationOn sx={{ fontSize: '16px !important' }} />}
                   label={employee?.outlet ?? 'No outlet'}
                   size="small"
-                  sx={{ bgcolor: '#fbfff9', border: `1px solid ${GREEN_UI.border}`, color: GREEN_UI.text, fontWeight: 800, borderRadius: 999 }}
+                  sx={{ bgcolor: '#fbfff9', border: `1px solid ${GREEN_UI.border}`, color: GREEN_UI.text, fontWeight: 800}}
                 />
                 <Chip
                   label={profileStatus}
@@ -392,7 +391,6 @@ export default function MyProfile() {
                     color: profileStatus === 'Active' ? '#217a43' : '#9b6b00',
                     border: `1px solid ${profileStatus === 'Active' ? '#a9dfb6' : '#f5d786'}`,
                     fontWeight: 900,
-                    borderRadius: 999,
                   }}
                 />
               </Box>
@@ -517,7 +515,7 @@ export default function MyProfile() {
                 <Chip
                   label="Editing"
                   size="small"
-                  sx={{ bgcolor: '#fff7e0', color: '#9b6b00', border: '1px solid #f5d786', fontWeight: 900, borderRadius: 999 }}
+                  sx={{ bgcolor: '#fff7e0', color: '#9b6b00', border: '1px solid #f5d786', fontWeight: 900}}
                 />
               )}
             </Box>
@@ -698,7 +696,7 @@ export default function MyProfile() {
                 PDF, DOC, DOCX, JPG, PNG · Max 10 MB each
               </Typography>
             </Box>
-            {uploading && <LinearProgress sx={{ mb: 1.5, borderRadius: 999, bgcolor: GREEN_UI.greenSoft }} />}
+            {uploading && <LinearProgress sx={{ mb: 1.5, bgcolor: GREEN_UI.greenSoft }} />}
 
             {docs.length === 0 ? (
               <Paper elevation={0} sx={{ ...innerCardSx, p: 2, textAlign: 'center' }}>
@@ -812,7 +810,6 @@ export default function MyProfile() {
                             color: submitted ? '#217a43' : '#9c2f2f',
                             border: `1px solid ${submitted ? '#a9dfb6' : '#efb8b8'}`,
                             fontWeight: 900,
-                            borderRadius: 999,
                             flexShrink: 0,
                           }}
                         />

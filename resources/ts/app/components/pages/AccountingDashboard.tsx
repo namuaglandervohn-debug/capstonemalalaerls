@@ -115,7 +115,7 @@ const innerCardSx = {
 };
 
 const pillButtonSx = {
-  borderRadius: 999,
+  borderRadius: '12px',
   textTransform: 'none',
   fontWeight: 700,
   px: 2,
@@ -129,7 +129,6 @@ const accountingStatusChipSx = (status: PayrollPreview['status']) => {
     color: isProcessed ? '#217a43' : '#9b6b00',
     borderColor: isProcessed ? '#a9dfb6' : '#f5d786',
     fontWeight: 800,
-    borderRadius: 999,
   };
 };
 
@@ -426,7 +425,6 @@ export default function AccountingDashboard() {
                 mb: 1.5,
                 bgcolor: GREEN_UI.greenSoft,
                 color: GREEN_UI.greenDark,
-                borderRadius: 999,
                 fontWeight: 800,
                 border: `1px solid ${GREEN_UI.borderStrong}`,
                 '& .MuiChip-icon': { color: GREEN_UI.greenDark },
@@ -471,7 +469,6 @@ export default function AccountingDashboard() {
                 icon={<CircularProgress size={14} color="inherit" />}
                 label={loading ? 'Loading indicators…' : 'Refreshing…'}
                 sx={{
-                  borderRadius: 999,
                   bgcolor: 'rgba(255,255,255,0.72)',
                   color: GREEN_UI.greenDark,
                   border: `1px solid ${GREEN_UI.border}`,
@@ -552,7 +549,6 @@ export default function AccountingDashboard() {
                     sx={{
                       width: 34,
                       height: 6,
-                      borderRadius: 999,
                       mt: 1.25,
                       background: `linear-gradient(90deg, ${stat.color}, rgba(58, 168, 101, 0.08))`,
                     }}
@@ -751,7 +747,6 @@ export default function AccountingDashboard() {
                           label={payroll.displayId}
                           size="small"
                           sx={{
-                            borderRadius: 999,
                             bgcolor: GREEN_UI.greenSoft,
                             color: GREEN_UI.greenDark,
                             border: `1px solid ${GREEN_UI.borderStrong}`,

@@ -151,7 +151,7 @@ const iconTileSx = {
 };
 
 const pillButtonSx = {
-  borderRadius: 999,
+  borderRadius: "12px",
   textTransform: 'none',
   fontWeight: 700,
   px: 2,
@@ -185,7 +185,6 @@ const employeeStatusChipSx = (status: Employee['status']) => {
     color: selected.color,
     borderColor: selected.border,
     fontWeight: 800,
-    borderRadius: 999,
     '& .MuiChip-label': { px: 1.25 },
   };
 };
@@ -470,7 +469,6 @@ export default function EmployeeRecords() {
                 bgcolor: GREEN_UI.greenSoft,
                 color: GREEN_UI.greenDark,
                 fontWeight: 900,
-                borderRadius: 999,
               }}
             />
             <Typography
@@ -611,7 +609,7 @@ export default function EmployeeRecords() {
       {/* Search */}
       <Paper elevation={0} sx={{ ...softCardSx, p: { xs: 1.5, sm: 2 }, mb: 2 }}>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.25, mb: 1.5 }}>
-          <Box sx={{ ...iconTileSx, width: 38, height: 38, borderRadius: '14px' }}>
+          <Box sx={{ ...iconTileSx, width: 38, height: 38}}>
             <ManageSearch fontSize="small" />
           </Box>
           <Box>
@@ -647,7 +645,7 @@ export default function EmployeeRecords() {
           ...softCardSx,
           overflowX: 'auto',
           '&::-webkit-scrollbar': { height: 10 },
-          '&::-webkit-scrollbar-thumb': { bgcolor: '#cfe8d1', borderRadius: 999 },
+          '&::-webkit-scrollbar-thumb': { bgcolor: '#cfe8d1'},
         }}
       >
         {loading ? (
@@ -728,7 +726,7 @@ export default function EmployeeRecords() {
                         label={emp.id}
                         size="small"
                         variant="outlined"
-                        sx={{ borderRadius: 999, fontWeight: 800, bgcolor: '#f8fcf5', borderColor: GREEN_UI.border }}
+                        sx={{ fontWeight: 800, bgcolor: '#f8fcf5', borderColor: GREEN_UI.border }}
                       />
                     </TableCell>
                     <TableCell sx={{ whiteSpace: 'nowrap' }}>
@@ -795,7 +793,6 @@ export default function EmployeeRecords() {
                           sx={{
                             minWidth: 116,
                             justifyContent: 'center',
-                            borderRadius: 999,
                             fontWeight: 800,
                             borderColor: GREEN_UI.borderStrong,
                             color: GREEN_UI.greenDark,
@@ -814,7 +811,6 @@ export default function EmployeeRecords() {
                             sx={{
                               minWidth: 86,
                               justifyContent: 'center',
-                              borderRadius: 999,
                               fontWeight: 800,
                               borderColor: '#efb8b8',
                               color: '#9c2f2f',
