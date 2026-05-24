@@ -74,27 +74,27 @@ const EMPTY_FORM = {
 
 const showcaseImages = [
   {
-    title: "Restaurant Service",
+    title: "Maria Clara Restaurant",
     label: "Food & Beverage",
-    url: "https://images.unsplash.com/photo-1552566626-52f8b828add9?auto=format&fit=crop&w=900&q=80",
+    url: '/images/bg1.jpg',
   },
   {
-    title: "Resort Hospitality",
+    title: "Maria Clara Resort",
     label: "Guest Experience",
-    url: "https://images.unsplash.com/photo-1571896349842-33c89424de2d?auto=format&fit=crop&w=900&q=80",
+    url: '/images/bg3.jpg',
   },
   {
-    title: "Café Operations",
-    label: "Daily Service",
-    url: "https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=900&q=80",
+    title: "Café Buenaventura",
+    label: "Coffee & Snacks",
+    url: '/images/bg2.jpg',
   },
 ];
 
 const galleryImages = [
-  "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?auto=format&fit=crop&w=900&q=80",
-  "https://images.unsplash.com/photo-1520250497591-112f2f40a3f4?auto=format&fit=crop&w=900&q=80",
-  "https://images.unsplash.com/photo-1555396273-367ea4eb4db5?auto=format&fit=crop&w=900&q=80",
-  "https://images.unsplash.com/photo-1501339847302-ac426a4a7cbb?auto=format&fit=crop&w=900&q=80",
+  '/images/bg1.jpg',
+  '/images/bg2.jpg',
+  '/images/bg3.jpg',
+  '/images/bg1.jpg',
 ];
 
 const brochureItems = [
@@ -771,7 +771,7 @@ export default function LandingPage() {
       </Box>
 
       {/* GALLERY / BROCHURE VISUALS */}
-      <Box sx={{ py: { xs: 4, md: 8 }, bgcolor: "#102016", color: "#fff" }}>
+      <Box sx={{ py: { xs: 4, md: 8 }, background: "linear-gradient(135deg, #154f31 0%, #1F7A47 65%, #4caf70 100%)", color: "#fff" }}>
         <Container maxWidth="xl">
           <Stack
             direction={{ xs: "column", md: "row" }}
@@ -840,7 +840,7 @@ export default function LandingPage() {
                     fontWeight={950}
                     sx={{ position: "absolute", left: 22, bottom: 18, color: "#fff" }}
                   >
-                    {index === 0 ? "Service Spaces" : index === 1 ? "Guest Experience" : index === 2 ? "Team Culture" : "Café Life"}
+                    {index === 0 ? "Guest Experience" : index === 1 ? "Sip Coffee" : index === 2 ? "Relax & Swimming" : "Restaurant"}
                   </Typography>
                 </Paper>
               </Grid>
