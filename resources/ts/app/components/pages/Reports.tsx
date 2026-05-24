@@ -27,6 +27,12 @@ import {
   Analytics as BarChartIcon,
   Sync,
   FileDownload,
+  Assessment,
+  Dataset,
+  CalendarMonth,
+  RestartAlt,
+  Tune,
+  InsertDriveFile,
 } from '@mui/icons-material';
 import { supabase } from '../../lib/supabaseClient';
 
@@ -37,7 +43,7 @@ interface ReportData {
 interface ReportType {
   value: string;
   label: string;
-  icon: JSX.Element;
+  icon: React.ReactElement;
 }
 
 const REPORT_TYPES: ReportType[] = [
@@ -109,6 +115,74 @@ const COLUMNS: Record<string, string[]> = {
 const currencyColumns = new Set(['salary', 'grossPay', 'deductions', 'netPay']);
 const percentColumns = new Set(['finalScore', 'rawScore', 'weight', 'maxScore']);
 const statusColumns = new Set(['status', 'validationStatus', 'finalized', 'active']);
+
+
+const GREEN_UI = {
+  pageBg: 'radial-gradient(circle at top left, rgba(220, 246, 219, 0.95), rgba(248, 252, 245, 0.98) 34%, #f7fbf3 100%)',
+  cardBg: 'rgba(255, 255, 255, 0.92)',
+  cardBgSoft: 'rgba(245, 252, 241, 0.88)',
+  border: 'rgba(139, 184, 144, 0.24)',
+  borderStrong: 'rgba(73, 156, 92, 0.32)',
+  green: '#3aa865',
+  greenDark: '#1f7a46',
+  greenSoft: '#e6f8e9',
+  text: '#1e2d24',
+  muted: '#6c7d70',
+  shadow: '0 20px 55px rgba(43, 91, 55, 0.10)',
+  shadowSoft: '0 12px 28px rgba(43, 91, 55, 0.08)',
+};
+
+const softCardSx = {
+  borderRadius: '26px',
+  border: `1px solid ${GREEN_UI.border}`,
+  background: GREEN_UI.cardBg,
+  boxShadow: GREEN_UI.shadow,
+};
+
+const innerCardSx = {
+  borderRadius: '20px',
+  border: `1px solid ${GREEN_UI.border}`,
+  background: GREEN_UI.cardBgSoft,
+  boxShadow: GREEN_UI.shadowSoft,
+};
+
+const pillButtonSx = {
+  borderRadius: 999,
+  textTransform: 'none',
+  fontWeight: 700,
+  px: 2,
+};
+
+const fieldSx = {
+  '& .MuiOutlinedInput-root': {
+    borderRadius: '16px',
+    bgcolor: '#ffffff',
+    '& fieldset': { borderColor: GREEN_UI.border },
+    '&:hover fieldset': { borderColor: GREEN_UI.borderStrong },
+    '&.Mui-focused fieldset': { borderColor: GREEN_UI.green },
+  },
+  '& .MuiInputLabel-root.Mui-focused': { color: GREEN_UI.greenDark },
+};
+
+const statusChipSx = (value: any) => {
+  const tone = getStatusColor(value);
+  const palette = {
+    success: { bg: '#e5f8e9', color: '#217a43', border: '#a9dfb6' },
+    warning: { bg: '#fff7e0', color: '#9b6b00', border: '#f5d786' },
+    error: { bg: '#fdeaea', color: '#9c2f2f', border: '#efb8b8' },
+    default: { bg: '#f4f7f3', color: '#5f6e63', border: '#dce8da' },
+  } as const;
+  const selected = palette[tone] ?? palette.default;
+
+  return {
+    bgcolor: selected.bg,
+    color: selected.color,
+    borderColor: selected.border,
+    fontWeight: 800,
+    borderRadius: 999,
+    '& .MuiChip-label': { px: 1.25 },
+  };
+};
 
 const getFullName = (row: any) =>
   [row?.first_name, row?.middle_name, row?.last_name, row?.suffix]
@@ -504,32 +578,248 @@ export default function Reports() {
     win.print();
   };
 
+
+  const totalLoadedRecords = Object.values(allData).reduce<number>((sum, rows) => sum + (Array.isArray(rows) ? rows.length : 0), 0);
+  const reportStats = [
+    {
+      label: 'Current Report',
+      value: filtered.length,
+      caption: `${selected.label} records in selected date range`,
+      icon: <Assessment fontSize="small" />,
+    },
+    {
+      label: 'Loaded Records',
+      value: totalLoadedRecords,
+      caption: 'Total records loaded across all report modules',
+      icon: <Dataset fontSize="small" />,
+    },
+    {
+      label: 'Report Types',
+      value: REPORT_TYPES.length,
+      caption: 'Available HRIS report categories',
+      icon: <GridView fontSize="small" />,
+    },
+    {
+      label: 'Period Filter',
+      value: `${dateFrom.slice(5)} → ${dateTo.slice(5)}`,
+      caption: 'Active date range used for preview, print, and CSV export',
+      icon: <CalendarMonth fontSize="small" />,
+    },
+  ];
+
   return (
-    <Box>
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 2, mb: 2 }}>
-        <Box>
-          <Typography variant="h4" gutterBottom fontWeight="bold" sx={{ fontSize: { xs: '1.35rem', sm: '1.75rem', md: '2.125rem' } }}>
-            Reports
-          </Typography>
-          <Typography variant="body2" color="text.secondary">
-            Generate, print, and export HRIS reports using live Supabase records.
-          </Typography>
+    <Box
+      sx={{
+        minHeight: '100%',
+        p: { xs: 1.5, sm: 2.25, md: 3 },
+        background: GREEN_UI.pageBg,
+        color: GREEN_UI.text,
+        borderRadius: { xs: 0, md: '32px' },
+      }}
+    >
+      <Paper
+        elevation={0}
+        sx={{
+          ...softCardSx,
+          p: { xs: 2, sm: 2.75, md: 3.25 },
+          mb: 2.5,
+          position: 'relative',
+          overflow: 'hidden',
+          background:
+            'linear-gradient(135deg, rgba(255,255,255,0.98) 0%, rgba(239,250,235,0.96) 60%, rgba(225,248,224,0.94) 100%)',
+          '&:before': {
+            content: '""',
+            position: 'absolute',
+            width: 260,
+            height: 260,
+            borderRadius: '50%',
+            right: -90,
+            top: -110,
+            background: 'rgba(76, 175, 80, 0.12)',
+          },
+          '&:after': {
+            content: '""',
+            position: 'absolute',
+            width: 160,
+            height: 160,
+            borderRadius: '50%',
+            left: { xs: '70%', md: '44%' },
+            bottom: -95,
+            background: 'rgba(174, 222, 144, 0.18)',
+          },
+        }}
+      >
+        <Box
+          sx={{
+            position: 'relative',
+            zIndex: 1,
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: { xs: 'flex-start', md: 'center' },
+            flexWrap: 'wrap',
+            gap: 2,
+          }}
+        >
+          <Box sx={{ maxWidth: 720 }}>
+            <Chip
+              icon={<BarChartIcon sx={{ fontSize: 16 }} />}
+              label="Reports Workspace"
+              size="small"
+              sx={{
+                mb: 1.2,
+                bgcolor: GREEN_UI.greenSoft,
+                color: GREEN_UI.greenDark,
+                fontWeight: 900,
+                borderRadius: 999,
+                '& .MuiChip-icon': { color: GREEN_UI.greenDark },
+              }}
+            />
+            <Typography
+              variant="h4"
+              fontWeight={900}
+              sx={{
+                fontSize: { xs: '1.55rem', sm: '2rem', md: '2.35rem' },
+                color: GREEN_UI.text,
+                letterSpacing: '-0.04em',
+                lineHeight: 1.08,
+                mb: 0.75,
+              }}
+            >
+              Reports
+            </Typography>
+            <Typography variant="body2" sx={{ color: GREEN_UI.muted, maxWidth: 650, lineHeight: 1.7 }}>
+              Generate, print, and export HRIS reports using live Supabase records in a clean, organized reporting workspace.
+            </Typography>
+          </Box>
+
+          <Box sx={{ display: 'flex', gap: 1, alignItems: 'center', flexWrap: 'wrap' }}>
+            <Button
+              variant="contained"
+              startIcon={loadingAll ? <CircularProgress size={16} color="inherit" /> : <Sync />}
+              onClick={fetchAll}
+              disabled={loadingAll}
+              sx={{
+                ...pillButtonSx,
+                py: 1.1,
+                bgcolor: GREEN_UI.green,
+                boxShadow: '0 12px 24px rgba(58, 168, 101, 0.25)',
+                '&:hover': { bgcolor: GREEN_UI.greenDark, boxShadow: '0 16px 28px rgba(31, 122, 70, 0.28)' },
+              }}
+            >
+              {loadingAll ? 'Refreshing…' : 'Refresh Data'}
+            </Button>
+          </Box>
         </Box>
-        <Button startIcon={loadingAll ? <CircularProgress size={16} /> : <Sync />} onClick={fetchAll} disabled={loadingAll} variant="outlined">
-          Refresh Data
-        </Button>
-      </Box>
+      </Paper>
 
-      {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
-      {warning && <Alert severity="warning" sx={{ mb: 2 }}>{warning}</Alert>}
+      <Grid container spacing={1.5} sx={{ mb: 2.5 }}>
+        {reportStats.map(stat => (
+          <Grid key={stat.label} size={{ xs: 12, sm: 6, md: 3 }}>
+            <Paper
+              elevation={0}
+              sx={{
+                ...softCardSx,
+                p: 2,
+                minHeight: 126,
+                display: 'flex',
+                flexDirection: 'column',
+                justifyContent: 'space-between',
+                transition: 'transform 180ms ease, box-shadow 180ms ease',
+                '&:hover': { transform: 'translateY(-3px)', boxShadow: '0 22px 48px rgba(43, 91, 55, 0.13)' },
+              }}
+            >
+              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 1.5 }}>
+                <Box sx={{ minWidth: 0 }}>
+                  <Typography variant="body2" sx={{ color: GREEN_UI.muted, fontWeight: 800 }}>
+                    {stat.label}
+                  </Typography>
+                  <Typography
+                    variant="h4"
+                    fontWeight={900}
+                    sx={{ color: GREEN_UI.text, mt: 0.5, letterSpacing: '-0.04em', fontSize: { xs: '1.65rem', sm: '1.95rem' } }}
+                  >
+                    {stat.value}
+                  </Typography>
+                </Box>
+                <Box
+                  sx={{
+                    width: 42,
+                    height: 42,
+                    borderRadius: '16px',
+                    display: 'grid',
+                    placeItems: 'center',
+                    bgcolor: GREEN_UI.greenSoft,
+                    color: GREEN_UI.greenDark,
+                    flexShrink: 0,
+                  }}
+                >
+                  {stat.icon}
+                </Box>
+              </Box>
+              <Typography variant="caption" sx={{ color: GREEN_UI.muted, mt: 1.2 }}>
+                {stat.caption}
+              </Typography>
+            </Paper>
+          </Grid>
+        ))}
+      </Grid>
 
-      <Paper sx={{ p: { xs: 2, md: 3 }, mb: 3 }}>
-        <Typography variant="h6" gutterBottom>
-          Report Configuration
-        </Typography>
-        <Grid container spacing={2}>
+      {error && (
+        <Alert
+          severity="error"
+          sx={{ mb: 2, borderRadius: '18px', border: `1px solid ${GREEN_UI.border}` }}
+          action={
+            <Button size="small" onClick={fetchAll} sx={{ ...pillButtonSx }}>
+              Retry
+            </Button>
+          }
+        >
+          {error}
+        </Alert>
+      )}
+      {warning && (
+        <Alert severity="warning" sx={{ mb: 2, borderRadius: '18px', border: `1px solid ${GREEN_UI.border}` }}>
+          {warning}
+        </Alert>
+      )}
+
+      <Paper elevation={0} sx={{ ...softCardSx, p: { xs: 2, md: 2.5 }, mb: 2.5 }}>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
+          <Box
+            sx={{
+              width: 38,
+              height: 38,
+              borderRadius: '14px',
+              display: 'grid',
+              placeItems: 'center',
+              bgcolor: GREEN_UI.greenSoft,
+              color: GREEN_UI.greenDark,
+              flexShrink: 0,
+            }}
+          >
+            <Tune fontSize="small" />
+          </Box>
+          <Box>
+            <Typography variant="h6" fontWeight={900} sx={{ color: GREEN_UI.text, lineHeight: 1.1 }}>
+              Report Configuration
+            </Typography>
+            <Typography variant="caption" sx={{ color: GREEN_UI.muted }}>
+              Choose a report type and date range before printing or exporting.
+            </Typography>
+          </Box>
+        </Box>
+
+        <Grid container spacing={1.5}>
           <Grid size={{ xs: 12, md: 4 }}>
-            <TextField fullWidth select label="Report Type" value={reportType} onChange={e => setReportType(e.target.value)} InputLabelProps={{ shrink: true }}>
+            <TextField
+              fullWidth
+              select
+              label="Report Type"
+              value={reportType}
+              onChange={e => setReportType(e.target.value)}
+              InputLabelProps={{ shrink: true }}
+              sx={fieldSx}
+            >
               {REPORT_TYPES.map(rt => (
                 <MenuItem key={rt.value} value={rt.value}>
                   {rt.label}
@@ -537,104 +827,273 @@ export default function Reports() {
               ))}
             </TextField>
           </Grid>
-          <Grid size={{ xs: 12, md: 3 }}>
-            <TextField fullWidth label="Date From" type="date" value={dateFrom} onChange={e => setDateFrom(e.target.value)} InputLabelProps={{ shrink: true }} />
+          <Grid size={{ xs: 12, sm: 6, md: 3 }}>
+            <TextField
+              fullWidth
+              label="Date From"
+              type="date"
+              value={dateFrom}
+              onChange={e => setDateFrom(e.target.value)}
+              InputLabelProps={{ shrink: true }}
+              sx={fieldSx}
+            />
           </Grid>
-          <Grid size={{ xs: 12, md: 3 }}>
-            <TextField fullWidth label="Date To" type="date" value={dateTo} onChange={e => setDateTo(e.target.value)} InputLabelProps={{ shrink: true }} />
+          <Grid size={{ xs: 12, sm: 6, md: 3 }}>
+            <TextField
+              fullWidth
+              label="Date To"
+              type="date"
+              value={dateTo}
+              onChange={e => setDateTo(e.target.value)}
+              InputLabelProps={{ shrink: true }}
+              sx={fieldSx}
+            />
           </Grid>
           <Grid size={{ xs: 12, md: 2 }}>
-            <Button fullWidth variant="outlined" sx={{ height: '56px' }} onClick={() => { setDateFrom('2026-01-01'); setDateTo('2026-12-31'); }}>
+            <Button
+              fullWidth
+              variant="outlined"
+              startIcon={<RestartAlt />}
+              sx={{ ...pillButtonSx, height: '56px', borderColor: GREEN_UI.borderStrong, color: GREEN_UI.greenDark }}
+              onClick={() => {
+                setDateFrom('2026-01-01');
+                setDateTo('2026-12-31');
+              }}
+            >
               Reset
             </Button>
           </Grid>
         </Grid>
-        <Box sx={{ display: 'flex', gap: 2, mt: 3, flexWrap: 'wrap' }}>
-          <Button variant="contained" startIcon={<Print />} onClick={handlePrint} disabled={loadingAll || filtered.length === 0}>
+
+        <Divider sx={{ my: 2, borderColor: GREEN_UI.border }} />
+
+        <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
+          <Button
+            variant="contained"
+            startIcon={<Print />}
+            onClick={handlePrint}
+            disabled={loadingAll || filtered.length === 0}
+            sx={{ ...pillButtonSx, bgcolor: GREEN_UI.green, '&:hover': { bgcolor: GREEN_UI.greenDark } }}
+          >
             Print Report
           </Button>
-          <Button variant="contained" startIcon={<FileDownload />} color="success" onClick={exportCSV} disabled={loadingAll || filtered.length === 0}>
+          <Button
+            variant="outlined"
+            startIcon={<FileDownload />}
+            onClick={exportCSV}
+            disabled={loadingAll || filtered.length === 0}
+            sx={{ ...pillButtonSx, borderColor: GREEN_UI.borderStrong, color: GREEN_UI.greenDark, bgcolor: '#ffffff' }}
+          >
             Export CSV
           </Button>
         </Box>
       </Paper>
 
-      <Grid container spacing={2} sx={{ mb: 3 }}>
-        {REPORT_TYPES.map(rt => (
-          <Grid key={rt.value} size={{ xs: 12, sm: 6, md: 4, lg: 3 }}>
-            <Card
-              sx={{
-                cursor: 'pointer',
-                transition: 'all 0.2s',
-                height: '100%',
-                '&:hover': { transform: 'translateY(-2px)', boxShadow: 4 },
-                bgcolor: reportType === rt.value ? 'primary.light' : 'white',
-              }}
-              onClick={() => setReportType(rt.value)}
-            >
-              <CardContent sx={{ py: 1.5, '&:last-child': { pb: 1.5 } }}>
-                <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 1 }}>
-                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, minWidth: 0 }}>
-                    <Box sx={{ bgcolor: reportType === rt.value ? 'primary.dark' : 'primary.main', p: 0.75, borderRadius: 1, display: 'flex', color: 'white' }}>{rt.icon}</Box>
-                    <Typography variant="body2" fontWeight={600} sx={{ color: reportType === rt.value ? 'white' : 'inherit' }}>
-                      {rt.label}
-                    </Typography>
+      <Grid container spacing={1.5} sx={{ mb: 2.5 }}>
+        {REPORT_TYPES.map(rt => {
+          const active = reportType === rt.value;
+          return (
+            <Grid key={rt.value} size={{ xs: 12, sm: 6, md: 4, lg: 3 }}>
+              <Card
+                elevation={0}
+                sx={{
+                  ...innerCardSx,
+                  cursor: 'pointer',
+                  height: '100%',
+                  borderRadius: '20px',
+                  background: active
+                    ? 'linear-gradient(135deg, #3aa865 0%, #1f7a46 100%)'
+                    : GREEN_UI.cardBg,
+                  color: active ? '#ffffff' : GREEN_UI.text,
+                  transition: 'transform 180ms ease, box-shadow 180ms ease, border-color 180ms ease',
+                  '&:hover': { transform: 'translateY(-3px)', boxShadow: '0 20px 42px rgba(43, 91, 55, 0.13)' },
+                }}
+                onClick={() => setReportType(rt.value)}
+              >
+                <CardContent sx={{ p: 1.75, '&:last-child': { pb: 1.75 } }}>
+                  <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 1.25 }}>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, minWidth: 0 }}>
+                      <Box
+                        sx={{
+                          width: 38,
+                          height: 38,
+                          borderRadius: '14px',
+                          display: 'grid',
+                          placeItems: 'center',
+                          bgcolor: active ? 'rgba(255,255,255,0.18)' : GREEN_UI.greenSoft,
+                          color: active ? '#ffffff' : GREEN_UI.greenDark,
+                          flexShrink: 0,
+                        }}
+                      >
+                        {rt.icon}
+                      </Box>
+                      <Box sx={{ minWidth: 0 }}>
+                        <Typography fontWeight={900} sx={{ fontSize: '0.9rem', lineHeight: 1.2 }} noWrap>
+                          {rt.label}
+                        </Typography>
+                        <Typography variant="caption" sx={{ color: active ? 'rgba(255,255,255,0.76)' : GREEN_UI.muted }}>
+                          Report category
+                        </Typography>
+                      </Box>
+                    </Box>
+                    {loadingAll ? (
+                      <CircularProgress size={16} sx={{ color: active ? '#ffffff' : GREEN_UI.green }} />
+                    ) : (
+                      <Chip
+                        label={`${(allData[rt.value] ?? []).length}`}
+                        size="small"
+                        variant="outlined"
+                        sx={{
+                          borderRadius: 999,
+                          fontWeight: 900,
+                          bgcolor: active ? 'rgba(255,255,255,0.15)' : '#ffffff',
+                          color: active ? '#ffffff' : GREEN_UI.greenDark,
+                          borderColor: active ? 'rgba(255,255,255,0.28)' : GREEN_UI.border,
+                        }}
+                      />
+                    )}
                   </Box>
-                  {loadingAll ? (
-                    <CircularProgress size={16} />
-                  ) : (
-                    <Chip label={`${(allData[rt.value] ?? []).length}`} size="small" color={reportType === rt.value ? 'default' : 'primary'} variant="outlined" />
-                  )}
-                </Box>
-              </CardContent>
-            </Card>
-          </Grid>
-        ))}
+                </CardContent>
+              </Card>
+            </Grid>
+          );
+        })}
       </Grid>
 
-      <Paper sx={{ p: { xs: 2, md: 3 } }}>
-        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2, gap: 2, flexWrap: 'wrap' }}>
-          <Typography variant="h6" fontWeight="bold">
-            {selected.label} — Data Preview
-          </Typography>
-          <Chip label={`${filtered.length} record${filtered.length !== 1 ? 's' : ''}`} color="primary" variant="outlined" />
+      <Paper elevation={0} sx={{ ...softCardSx, overflow: 'hidden' }}>
+        <Box
+          sx={{
+            p: { xs: 2, md: 2.5 },
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: { xs: 'flex-start', sm: 'center' },
+            flexWrap: 'wrap',
+            gap: 1.5,
+            borderBottom: `1px solid ${GREEN_UI.border}`,
+            background: 'linear-gradient(90deg, #ffffff 0%, #f4fbf1 100%)',
+          }}
+        >
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.25, minWidth: 0 }}>
+            <Box
+              sx={{
+                width: 42,
+                height: 42,
+                borderRadius: '16px',
+                display: 'grid',
+                placeItems: 'center',
+                bgcolor: GREEN_UI.greenSoft,
+                color: GREEN_UI.greenDark,
+                flexShrink: 0,
+              }}
+            >
+              {selected.icon}
+            </Box>
+            <Box sx={{ minWidth: 0 }}>
+              <Typography variant="h6" fontWeight={900} sx={{ color: GREEN_UI.text, lineHeight: 1.1 }}>
+                {selected.label} — Data Preview
+              </Typography>
+              <Typography variant="caption" sx={{ color: GREEN_UI.muted }}>
+                Previewed records are the same records used for printing and CSV export.
+              </Typography>
+            </Box>
+          </Box>
+          <Chip
+            label={`${filtered.length} record${filtered.length !== 1 ? 's' : ''}`}
+            size="small"
+            variant="outlined"
+            sx={{ borderRadius: 999, fontWeight: 900, color: GREEN_UI.greenDark, borderColor: GREEN_UI.borderStrong, bgcolor: '#ffffff' }}
+          />
         </Box>
-        <Divider sx={{ mb: 2 }} />
 
         {loadingAll ? (
-          <Box sx={{ display: 'flex', justifyContent: 'center', py: 6, gap: 2 }}>
-            <CircularProgress />
-            <Typography color="text.secondary">Loading report data…</Typography>
+          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', py: 7, gap: 2 }}>
+            <CircularProgress size={28} sx={{ color: GREEN_UI.green }} />
+            <Typography sx={{ color: GREEN_UI.muted, fontWeight: 700 }}>Loading report data…</Typography>
           </Box>
         ) : filtered.length === 0 ? (
-          <Box sx={{ py: 6, textAlign: 'center', color: 'text.secondary' }}>
-            <Typography>No records found for this report type and date range.</Typography>
+          <Box sx={{ py: 7, px: 2, textAlign: 'center' }}>
+            <Box
+              sx={{
+                width: 54,
+                height: 54,
+                borderRadius: '20px',
+                display: 'grid',
+                placeItems: 'center',
+                mx: 'auto',
+                mb: 1.5,
+                bgcolor: GREEN_UI.greenSoft,
+                color: GREEN_UI.greenDark,
+              }}
+            >
+              <InsertDriveFile />
+            </Box>
+            <Typography fontWeight={900} sx={{ color: GREEN_UI.text }}>
+              No records found
+            </Typography>
+            <Typography variant="body2" sx={{ color: GREEN_UI.muted, mt: 0.5 }}>
+              Try changing the report type or date range to display matching records.
+            </Typography>
           </Box>
         ) : (
           <>
             <div ref={printRef}>
-              <TableContainer sx={{ overflowX: 'auto' }}>
-                <Table size="small">
+              <TableContainer
+                sx={{
+                  overflowX: 'auto',
+                  '&::-webkit-scrollbar': { height: 10 },
+                  '&::-webkit-scrollbar-thumb': { bgcolor: '#cfe8d1', borderRadius: 999 },
+                }}
+              >
+                <Table sx={{ minWidth: 950, '& th, & td': { borderColor: 'rgba(139, 184, 144, 0.16)' } }} size="small">
                   <TableHead>
-                    <TableRow>
+                    <TableRow
+                      sx={{
+                        background: 'linear-gradient(90deg, #eff8eb 0%, #f8fcf5 100%)',
+                        '& th': {
+                          color: GREEN_UI.greenDark,
+                          fontWeight: 900,
+                          fontSize: '0.78rem',
+                          letterSpacing: '0.02em',
+                          textTransform: 'uppercase',
+                          py: 1.7,
+                          whiteSpace: 'nowrap',
+                        },
+                      }}
+                    >
                       {cols.map(c => (
-                        <TableCell key={c} sx={{ fontWeight: 700, bgcolor: 'primary.main', color: 'white', whiteSpace: 'nowrap' }}>
-                          {labelize(c)}
-                        </TableCell>
+                        <TableCell key={c}>{labelize(c)}</TableCell>
                       ))}
                     </TableRow>
                   </TableHead>
                   <TableBody>
                     {paginated.map((row, i) => (
-                      <TableRow key={`${reportType}-${row.id ?? row.rank ?? i}`} hover>
+                      <TableRow
+                        key={`${reportType}-${row.id ?? row.rank ?? i}`}
+                        hover
+                        sx={{
+                          transition: 'background 160ms ease',
+                          '&:hover': { bgcolor: 'rgba(231, 247, 229, 0.52)' },
+                          '& td': { py: 1.55, color: GREEN_UI.text },
+                        }}
+                      >
                         {cols.map(c => (
-                          <TableCell key={c} sx={{ whiteSpace: 'nowrap', fontSize: '0.82rem', maxWidth: 280, overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                          <TableCell
+                            key={c}
+                            sx={{ whiteSpace: 'nowrap', fontSize: '0.82rem', maxWidth: 280, overflow: 'hidden', textOverflow: 'ellipsis' }}
+                          >
                             {statusColumns.has(c) ? (
-                              <Chip label={formatValue(c, row[c])} size="small" color={getStatusColor(row[c])} />
+                              <Chip label={formatValue(c, row[c])} size="small" variant="outlined" sx={statusChipSx(row[c])} />
                             ) : c === 'finalScore' || c === 'rawScore' ? (
-                              <Typography variant="body2" fontWeight="bold" color="primary.main">
+                              <Typography variant="body2" fontWeight={900} sx={{ color: GREEN_UI.greenDark }}>
                                 {formatValue(c, row[c])}
                               </Typography>
+                            ) : c === 'id' || c === 'rank' ? (
+                              <Chip
+                                label={formatValue(c, row[c])}
+                                size="small"
+                                variant="outlined"
+                                sx={{ borderRadius: 999, fontWeight: 800, bgcolor: '#f8fcf5', borderColor: GREEN_UI.border }}
+                              />
                             ) : (
                               formatValue(c, row[c])
                             )}
@@ -658,8 +1117,13 @@ export default function Reports() {
                 setPage(0);
               }}
               rowsPerPageOptions={[10, 25, 50, 100]}
+              sx={{
+                borderTop: `1px solid ${GREEN_UI.border}`,
+                color: GREEN_UI.muted,
+                '& .MuiTablePagination-selectLabel, & .MuiTablePagination-displayedRows': { fontWeight: 700 },
+                '& .MuiTablePagination-actions button': { borderRadius: '12px' },
+              }}
             />
-            
           </>
         )}
       </Paper>

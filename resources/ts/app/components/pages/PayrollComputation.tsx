@@ -143,6 +143,92 @@ const statusColor = (status: Payroll['status']) => {
   return 'default';
 };
 
+const GREEN_UI = {
+  pageBg: 'radial-gradient(circle at top left, rgba(220, 246, 219, 0.95), rgba(248, 252, 245, 0.98) 34%, #f7fbf3 100%)',
+  cardBg: 'rgba(255, 255, 255, 0.92)',
+  cardBgSoft: 'rgba(245, 252, 241, 0.88)',
+  border: 'rgba(139, 184, 144, 0.24)',
+  borderStrong: 'rgba(73, 156, 92, 0.32)',
+  green: '#3aa865',
+  greenDark: '#1f7a46',
+  greenSoft: '#e6f8e9',
+  text: '#1e2d24',
+  muted: '#6c7d70',
+  shadow: '0 20px 55px rgba(43, 91, 55, 0.10)',
+  shadowSoft: '0 12px 28px rgba(43, 91, 55, 0.08)',
+};
+
+const softCardSx = {
+  borderRadius: '26px',
+  border: `1px solid ${GREEN_UI.border}`,
+  background: GREEN_UI.cardBg,
+  boxShadow: GREEN_UI.shadow,
+};
+
+const innerCardSx = {
+  borderRadius: '20px',
+  border: `1px solid ${GREEN_UI.border}`,
+  background: GREEN_UI.cardBgSoft,
+  boxShadow: GREEN_UI.shadowSoft,
+};
+
+const pillButtonSx = {
+  borderRadius: 999,
+  textTransform: 'none',
+  fontWeight: 800,
+  px: 2,
+};
+
+const softTextFieldSx = {
+  '& .MuiOutlinedInput-root': {
+    borderRadius: '16px',
+    backgroundColor: '#fbfef9',
+    transition: 'all 180ms ease',
+    '& fieldset': { borderColor: GREEN_UI.border },
+    '&:hover fieldset': { borderColor: GREEN_UI.borderStrong },
+    '&.Mui-focused fieldset': { borderColor: GREEN_UI.green, borderWidth: 1.5 },
+    '&.Mui-disabled': { backgroundColor: '#f6fbf4' },
+  },
+  '& .MuiInputLabel-root': { color: GREEN_UI.muted },
+  '& .MuiInputBase-input.Mui-disabled': { WebkitTextFillColor: GREEN_UI.text },
+};
+
+const dialogPaperSx = {
+  borderRadius: { xs: '22px', sm: '30px' },
+  overflow: 'hidden',
+  border: `1px solid ${GREEN_UI.border}`,
+  background: '#fbfff9',
+  boxShadow: '0 28px 70px rgba(27, 73, 37, 0.18)',
+};
+
+const dialogTitleSx = {
+  px: { xs: 2, sm: 3 },
+  py: 2.25,
+  background: 'linear-gradient(135deg, #ffffff 0%, #eef9ea 100%)',
+  borderBottom: `1px solid ${GREEN_UI.border}`,
+  color: GREEN_UI.text,
+};
+
+const payrollStatusChipSx = (status: Payroll['status']) => {
+  const styles: Record<Payroll['status'], { bg: string; color: string; border: string }> = {
+    Draft: { bg: '#f4f7f3', color: '#5f6e63', border: '#dce8da' },
+    'For Review': { bg: '#fff7e0', color: '#9b6b00', border: '#f5d786' },
+    Processed: { bg: '#e9f6ff', color: '#1d6f9c', border: '#b7dff7' },
+    Released: { bg: '#e5f8e9', color: '#217a43', border: '#a9dfb6' },
+  };
+
+  const selected = styles[status] ?? styles.Draft;
+
+  return {
+    bgcolor: selected.bg,
+    color: selected.color,
+    borderColor: selected.border,
+    fontWeight: 800,
+    borderRadius: 999,
+    '& .MuiChip-label': { px: 1.25 },
+  };
+};
+
 const getMonthRange = (monthValue: string) => {
   const [year, month] = monthValue.split('-').map(Number);
   const mm = String(month).padStart(2, '0');
@@ -798,6 +884,34 @@ export default function PayrollComputation() {
     ded: acc.ded + parseAmt(p.deductions),
   }), { gross: 0, net: 0, ded: 0 });
 
+
+  const payrollStats = [
+    {
+      label: 'Payroll Records',
+      value: filtered.length,
+      caption: filterPeriod || filterStatus !== 'all' ? 'Records matching the current filter' : 'Total payroll rows currently loaded',
+      icon: <Payments fontSize="small" />,
+    },
+    {
+      label: 'Gross Pay',
+      value: `₱${Math.round(totals.gross).toLocaleString()}`,
+      caption: 'Combined gross pay from visible records',
+      icon: <Calculate fontSize="small" />,
+    },
+    {
+      label: 'Deductions',
+      value: `₱${Math.round(totals.ded).toLocaleString()}`,
+      caption: 'Total visible payroll deductions',
+      icon: <DeleteOutline fontSize="small" />,
+    },
+    {
+      label: 'Net Pay',
+      value: `₱${Math.round(totals.net).toLocaleString()}`,
+      caption: 'Estimated amount for release',
+      icon: <TaskAlt fontSize="small" />,
+    },
+  ];
+
   const handleForwardToAccounting = async () => {
     const drafts = filtered.filter(p => p.status === 'Draft');
     if (drafts.length === 0) {
@@ -910,45 +1024,262 @@ export default function PayrollComputation() {
   };
 
   return (
-    <Box>
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: { xs: 'flex-start', sm: 'center' }, flexWrap: 'wrap', gap: 2, mb: 3 }}>
-        <Box>
-          <Typography variant="h4" gutterBottom fontWeight="bold" sx={{ fontSize: { xs: '1.35rem', sm: '1.75rem', md: '2.125rem' } }}>
-            Payroll Computation
-          </Typography>
-          <Typography variant="body2" color="text.secondary">Generate and manage employee payroll — data from Supabase</Typography>
-        </Box>
-        <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
-          <Tooltip title="Refresh"><span><IconButton onClick={fetchPayroll} disabled={loading}><Sync /></IconButton></span></Tooltip>
-          {canReleasePayroll && (
-            <Button variant="contained" color="success" startIcon={<Payments />} onClick={() => handleReleaseSalary()}>
-              Release Salary
-            </Button>
-          )}
-          {canManagePayroll && (
-            <>
-              <Button variant="outlined" startIcon={<Send />} onClick={handleForwardToAccounting}>Forward to Accounting</Button>
-              <Button variant="outlined" startIcon={<AddCircleOutline />} onClick={() => setAddDialog(true)}>Manual Entry</Button>
-              <Button variant="contained" startIcon={<Calculate />} onClick={() => setGenerateDialog(true)}>Generate Payroll</Button>
-            </>
-          )}
-        </Box>
-      </Box>
+    <Box
+      sx={{
+        minHeight: '100%',
+        p: { xs: 1.5, sm: 2.25, md: 3 },
+        background: GREEN_UI.pageBg,
+        color: GREEN_UI.text,
+        borderRadius: { xs: 0, md: '32px' },
+      }}
+    >
+      <Paper
+        elevation={0}
+        sx={{
+          ...softCardSx,
+          p: { xs: 2, sm: 2.75, md: 3.25 },
+          mb: 2.5,
+          position: 'relative',
+          overflow: 'hidden',
+          background:
+            'linear-gradient(135deg, rgba(255,255,255,0.98) 0%, rgba(239,250,235,0.96) 60%, rgba(225,248,224,0.94) 100%)',
+          '&:before': {
+            content: '""',
+            position: 'absolute',
+            width: 260,
+            height: 260,
+            borderRadius: '50%',
+            right: -90,
+            top: -110,
+            background: 'rgba(76, 175, 80, 0.12)',
+          },
+          '&:after': {
+            content: '""',
+            position: 'absolute',
+            width: 160,
+            height: 160,
+            borderRadius: '50%',
+            left: { xs: '70%', md: '44%' },
+            bottom: -95,
+            background: 'rgba(174, 222, 144, 0.18)',
+          },
+        }}
+      >
+        <Box
+          sx={{
+            position: 'relative',
+            zIndex: 1,
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: { xs: 'flex-start', md: 'center' },
+            flexWrap: 'wrap',
+            gap: 2,
+          }}
+        >
+          <Box sx={{ maxWidth: 720 }}>
+            <Chip
+              icon={<Payments fontSize="small" />}
+              label="Payroll Workspace"
+              size="small"
+              sx={{
+                mb: 1.2,
+                bgcolor: GREEN_UI.greenSoft,
+                color: GREEN_UI.greenDark,
+                fontWeight: 900,
+                borderRadius: 999,
+                '& .MuiChip-icon': { color: GREEN_UI.greenDark },
+              }}
+            />
+            <Typography
+              variant="h4"
+              fontWeight={900}
+              sx={{
+                fontSize: { xs: '1.55rem', sm: '2rem', md: '2.35rem' },
+                color: GREEN_UI.text,
+                letterSpacing: '-0.04em',
+                lineHeight: 1.08,
+                mb: 0.75,
+              }}
+            >
+              Payroll Computation
+            </Typography>
+            <Typography variant="body2" sx={{ color: GREEN_UI.muted, maxWidth: 650, lineHeight: 1.7 }}>
+              Generate payroll from attendance summaries, review deductions, prepare payslips, and release employee salary records in one clean workspace.
+            </Typography>
+          </Box>
 
-      {error &&
-        <Alert severity="error" sx={{ mb: 2 }} action={<Button size="small" onClick={fetchPayroll}>Retry</Button>}>{error}</Alert>
-      }
+          <Box sx={{ display: 'flex', gap: 1, alignItems: 'center', flexWrap: 'wrap' }}>
+            <Tooltip title="Refresh payroll records">
+              <span>
+                <Button
+                  variant="outlined"
+                  startIcon={loading ? <CircularProgress size={16} color="inherit" /> : <Sync />}
+                  onClick={fetchPayroll}
+                  disabled={loading}
+                  sx={{ ...pillButtonSx, py: 1.1, borderColor: GREEN_UI.borderStrong, color: GREEN_UI.greenDark, bgcolor: '#ffffff' }}
+                >
+                  {loading ? 'Refreshing…' : 'Refresh'}
+                </Button>
+              </span>
+            </Tooltip>
 
-      {/* Filters */}
-      <Paper sx={{ p: 2, mb: 2 }}>
-        <Grid container spacing={2}>
+            {canReleasePayroll && (
+              <Button
+                variant="contained"
+                startIcon={<Payments />}
+                onClick={() => handleReleaseSalary()}
+                sx={{
+                  ...pillButtonSx,
+                  py: 1.1,
+                  bgcolor: GREEN_UI.green,
+                  boxShadow: '0 12px 24px rgba(58, 168, 101, 0.25)',
+                  '&:hover': { bgcolor: GREEN_UI.greenDark, boxShadow: '0 16px 28px rgba(31, 122, 70, 0.28)' },
+                }}
+              >
+                Release Salary
+              </Button>
+            )}
+
+            {canManagePayroll && (
+              <>
+                <Button
+                  variant="outlined"
+                  startIcon={<Send />}
+                  onClick={handleForwardToAccounting}
+                  sx={{ ...pillButtonSx, py: 1.1, borderColor: GREEN_UI.borderStrong, color: GREEN_UI.greenDark, bgcolor: '#ffffff' }}
+                >
+                  Forward to Accounting
+                </Button>
+                <Button
+                  variant="outlined"
+                  startIcon={<AddCircleOutline />}
+                  onClick={() => setAddDialog(true)}
+                  sx={{ ...pillButtonSx, py: 1.1, borderColor: GREEN_UI.borderStrong, color: GREEN_UI.greenDark, bgcolor: '#ffffff' }}
+                >
+                  Manual Entry
+                </Button>
+                <Button
+                  variant="contained"
+                  startIcon={<Calculate />}
+                  onClick={() => setGenerateDialog(true)}
+                  sx={{
+                    ...pillButtonSx,
+                    py: 1.1,
+                    bgcolor: GREEN_UI.green,
+                    boxShadow: '0 12px 24px rgba(58, 168, 101, 0.25)',
+                    '&:hover': { bgcolor: GREEN_UI.greenDark, boxShadow: '0 16px 28px rgba(31, 122, 70, 0.28)' },
+                  }}
+                >
+                  Generate Payroll
+                </Button>
+              </>
+            )}
+          </Box>
+        </Box>
+      </Paper>
+
+      <Grid container spacing={1.5} sx={{ mb: 2.5 }}>
+        {payrollStats.map(stat => (
+          <Grid key={stat.label} size={{ xs: 12, sm: 6, md: 3 }}>
+            <Paper
+              elevation={0}
+              sx={{
+                ...softCardSx,
+                p: 2,
+                minHeight: 126,
+                display: 'flex',
+                flexDirection: 'column',
+                justifyContent: 'space-between',
+                transition: 'transform 180ms ease, box-shadow 180ms ease',
+                '&:hover': { transform: 'translateY(-3px)', boxShadow: '0 22px 48px rgba(43, 91, 55, 0.13)' },
+              }}
+            >
+              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 1.5 }}>
+                <Box>
+                  <Typography variant="body2" sx={{ color: GREEN_UI.muted, fontWeight: 800 }}>
+                    {stat.label}
+                  </Typography>
+                  <Typography variant="h4" fontWeight={900} sx={{ color: GREEN_UI.text, mt: 0.5, letterSpacing: '-0.04em' }}>
+                    {stat.value}
+                  </Typography>
+                </Box>
+                <Box
+                  sx={{
+                    width: 42,
+                    height: 42,
+                    borderRadius: '16px',
+                    display: 'grid',
+                    placeItems: 'center',
+                    bgcolor: GREEN_UI.greenSoft,
+                    color: GREEN_UI.greenDark,
+                    flexShrink: 0,
+                  }}
+                >
+                  {stat.icon}
+                </Box>
+              </Box>
+              <Typography variant="caption" sx={{ color: GREEN_UI.muted, mt: 1.2 }}>
+                {stat.caption}
+              </Typography>
+            </Paper>
+          </Grid>
+        ))}
+      </Grid>
+
+      {error && (
+        <Alert
+          severity="error"
+          sx={{ mb: 2, borderRadius: '18px', border: `1px solid ${GREEN_UI.border}` }}
+          action={<Button size="small" onClick={fetchPayroll} sx={{ ...pillButtonSx }}>Retry</Button>}
+        >
+          {error}
+        </Alert>
+      )}
+
+      <Paper elevation={0} sx={{ ...softCardSx, mb: 2, p: { xs: 1.5, sm: 2 }, overflow: 'hidden' }}>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1.5 }}>
+          <Box
+            sx={{
+              width: 38,
+              height: 38,
+              borderRadius: '14px',
+              display: 'grid',
+              placeItems: 'center',
+              bgcolor: GREEN_UI.greenSoft,
+              color: GREEN_UI.greenDark,
+              flexShrink: 0,
+            }}
+          >
+            <Visibility fontSize="small" />
+          </Box>
+          <Box>
+            <Typography fontWeight={900} sx={{ color: GREEN_UI.text }}>Payroll Filters</Typography>
+            <Typography variant="caption" sx={{ color: GREEN_UI.muted }}>Narrow payroll records by period or processing status.</Typography>
+          </Box>
+        </Box>
+
+        <Grid container spacing={2} alignItems="center">
           <Grid size={{ xs: 12, md: 4 }}>
-            <TextField fullWidth label="Filter by Period" type="month" value={filterPeriod}
-              onChange={e => setFilterPeriod(e.target.value)} InputLabelProps={{ shrink: true }} />
+            <TextField
+              fullWidth
+              label="Filter by Period"
+              type="month"
+              value={filterPeriod}
+              onChange={e => setFilterPeriod(e.target.value)}
+              InputLabelProps={{ shrink: true }}
+              sx={softTextFieldSx}
+            />
           </Grid>
           <Grid size={{ xs: 12, md: 4 }}>
-            <TextField fullWidth select label="Status" value={filterStatus}
-              onChange={e => setFilterStatus(e.target.value)} InputLabelProps={{ shrink: true }}>
+            <TextField
+              fullWidth
+              select
+              label="Status"
+              value={filterStatus}
+              onChange={e => setFilterStatus(e.target.value)}
+              InputLabelProps={{ shrink: true }}
+              sx={softTextFieldSx}
+            >
               <MenuItem key="all" value="all">All Status</MenuItem>
               <MenuItem key="draft" value="draft">Draft</MenuItem>
               <MenuItem key="forreview" value="forreview">For Review</MenuItem>
@@ -957,71 +1288,190 @@ export default function PayrollComputation() {
             </TextField>
           </Grid>
           <Grid size={{ xs: 12, md: 4 }}>
-            <Button fullWidth variant="outlined" sx={{ height: '56px' }} onClick={() => { setFilterPeriod(''); setFilterStatus('all'); }}>Clear Filters</Button>
+            <Button
+              fullWidth
+              variant="outlined"
+              sx={{ ...pillButtonSx, height: '56px', borderColor: GREEN_UI.borderStrong, color: GREEN_UI.greenDark, bgcolor: '#ffffff' }}
+              onClick={() => { setFilterPeriod(''); setFilterStatus('all'); }}
+            >
+              Clear Filters
+            </Button>
           </Grid>
         </Grid>
       </Paper>
 
-      <TableContainer component={Paper} sx={{ overflowX: 'auto' }}>
+      <TableContainer
+        component={Paper}
+        elevation={0}
+        sx={{
+          ...softCardSx,
+          overflowX: 'auto',
+          '&::-webkit-scrollbar': { height: 10 },
+          '&::-webkit-scrollbar-thumb': { bgcolor: '#cfe8d1', borderRadius: 999 },
+        }}
+      >
         {loading ? (
-          <Box sx={{ display: 'flex', justifyContent: 'center', py: 6, gap: 2 }}><CircularProgress size={28} /><Typography color="text.secondary">Loading…</Typography></Box>
+          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', py: 7, gap: 2 }}>
+            <CircularProgress size={28} sx={{ color: GREEN_UI.green }} />
+            <Typography sx={{ color: GREEN_UI.muted, fontWeight: 700 }}>Loading payroll records…</Typography>
+          </Box>
         ) : (
-          <Table sx={{ minWidth: 900 }}>
+          <Table sx={{ minWidth: 980, '& th, & td': { borderColor: 'rgba(139, 184, 144, 0.16)' } }}>
             <TableHead>
-              <TableRow>
-                <TableCell>ID</TableCell><TableCell>Employee</TableCell><TableCell>Position</TableCell>
-                <TableCell>Period</TableCell><TableCell>Total Hours</TableCell><TableCell>OT (hrs)</TableCell>
-                <TableCell>Deductions</TableCell><TableCell>Gross Pay</TableCell><TableCell>Net Pay</TableCell>
-                <TableCell>Status</TableCell><TableCell>Actions</TableCell>
+              <TableRow
+                sx={{
+                  background: 'linear-gradient(90deg, #eff8eb 0%, #f8fcf5 100%)',
+                  '& th': {
+                    color: GREEN_UI.greenDark,
+                    fontWeight: 900,
+                    fontSize: '0.78rem',
+                    letterSpacing: '0.02em',
+                    textTransform: 'uppercase',
+                    py: 1.7,
+                    whiteSpace: 'nowrap',
+                  },
+                }}
+              >
+                <TableCell>ID</TableCell>
+                <TableCell>Employee</TableCell>
+                <TableCell>Position</TableCell>
+                <TableCell>Period</TableCell>
+                <TableCell>Total Hours</TableCell>
+                <TableCell>OT</TableCell>
+                <TableCell>Deductions</TableCell>
+                <TableCell>Gross Pay</TableCell>
+                <TableCell>Net Pay</TableCell>
+                <TableCell>Status</TableCell>
+                <TableCell sx={{ minWidth: 220 }}>Actions</TableCell>
               </TableRow>
             </TableHead>
             <TableBody>
               {filtered.length === 0 ? (
-                <TableRow><TableCell colSpan={11} align="center" sx={{ py: 5, color: 'text.secondary' }}>
-                  {payrolls.length === 0 ? 'No payroll records yet. Click "Generate Payroll" to create records for all active employees.' : 'No results match your filters.'}
-                </TableCell></TableRow>
-              ) : filtered.map(p => (
-                <TableRow key={p.id} hover>
-                  <TableCell><Chip label={p.displayId ?? p.id} size="small" variant="outlined" /></TableCell>
-                  <TableCell>{p.employee}</TableCell><TableCell>{p.position}</TableCell>
-                  <TableCell>{p.period}</TableCell><TableCell>{p.totalHours}</TableCell>
-                  <TableCell>{p.overtime} hrs</TableCell><TableCell sx={{ color: 'error.main' }}>{p.deductions}</TableCell>
-                  <TableCell>{p.grossPay}</TableCell>
-                  <TableCell sx={{ fontWeight: 'bold', color: 'success.main' }}>{p.netPay}</TableCell>
-                  <TableCell>
-                    <Chip label={p.status} size="small" color={statusColor(p.status) as any} />
+                <TableRow>
+                  <TableCell colSpan={11} align="center" sx={{ py: 7 }}>
+                    <Box sx={{ maxWidth: 390, mx: 'auto' }}>
+                      <Box
+                        sx={{
+                          width: 54,
+                          height: 54,
+                          borderRadius: '20px',
+                          display: 'grid',
+                          placeItems: 'center',
+                          mx: 'auto',
+                          mb: 1.5,
+                          bgcolor: GREEN_UI.greenSoft,
+                          color: GREEN_UI.greenDark,
+                        }}
+                      >
+                        <Payments />
+                      </Box>
+                      <Typography fontWeight={900} sx={{ color: GREEN_UI.text }}>
+                        {payrolls.length === 0 ? 'No payroll records yet' : 'No payroll records matched'}
+                      </Typography>
+                      <Typography variant="body2" sx={{ color: GREEN_UI.muted, mt: 0.5 }}>
+                        {payrolls.length === 0
+                          ? 'Click Generate Payroll to create records for all active employees.'
+                          : 'Adjust or clear your filters to show more records.'}
+                      </Typography>
+                    </Box>
                   </TableCell>
+                </TableRow>
+              ) : filtered.map(p => (
+                <TableRow
+                  key={p.id}
+                  hover
+                  sx={{
+                    transition: 'background 160ms ease',
+                    '&:hover': { bgcolor: 'rgba(231, 247, 229, 0.52)' },
+                    '& td': { py: 1.55, color: GREEN_UI.text },
+                  }}
+                >
                   <TableCell>
-                    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5, alignItems: 'flex-start' }}>
+                    <Chip
+                      label={p.displayId ?? p.id}
+                      size="small"
+                      variant="outlined"
+                      sx={{ borderRadius: 999, fontWeight: 800, bgcolor: '#f8fcf5', borderColor: GREEN_UI.border }}
+                    />
+                  </TableCell>
+                  <TableCell sx={{ whiteSpace: 'nowrap' }}>
+                    <Typography fontWeight={800} sx={{ color: GREEN_UI.text }}>{p.employee}</Typography>
+                    <Typography variant="caption" sx={{ color: GREEN_UI.muted }}>{p.employeeId || 'Employee record'}</Typography>
+                  </TableCell>
+                  <TableCell sx={{ whiteSpace: 'nowrap' }}>
+                    <Typography variant="body2" sx={{ color: GREEN_UI.muted, fontWeight: 700 }}>{p.position || '—'}</Typography>
+                    <Typography variant="caption" sx={{ color: GREEN_UI.muted }}>{p.outlet || 'No outlet'}</Typography>
+                  </TableCell>
+                  <TableCell sx={{ whiteSpace: 'nowrap', fontWeight: 700 }}>{p.period}</TableCell>
+                  <TableCell sx={{ whiteSpace: 'nowrap' }}>{p.totalHours}</TableCell>
+                  <TableCell sx={{ whiteSpace: 'nowrap' }}>{p.overtime} hrs</TableCell>
+                  <TableCell sx={{ whiteSpace: 'nowrap', color: '#9c2f2f !important', fontWeight: 800 }}>{p.deductions}</TableCell>
+                  <TableCell sx={{ whiteSpace: 'nowrap', fontWeight: 800 }}>{p.grossPay}</TableCell>
+                  <TableCell sx={{ whiteSpace: 'nowrap', fontWeight: 900, color: `${GREEN_UI.greenDark} !important` }}>{p.netPay}</TableCell>
+                  <TableCell>
+                    <Chip label={p.status} size="small" variant="outlined" sx={payrollStatusChipSx(p.status)} />
+                  </TableCell>
+                  <TableCell sx={{ whiteSpace: 'nowrap' }}>
+                    <Box sx={{ display: 'flex', gap: 0.75, alignItems: 'center', flexWrap: 'wrap' }}>
                       <Chip
+                        icon={<Visibility />}
                         label={isEmployee ? 'View' : 'View Payslip'}
                         size="small"
                         clickable
                         variant="outlined"
-                        color="primary"
                         onClick={() => { setSelectedPayroll(p); setViewDialog(true); }}
-                        sx={{ minWidth: 110 }}
+                        sx={{
+                          minWidth: 116,
+                          justifyContent: 'center',
+                          borderRadius: 999,
+                          fontWeight: 800,
+                          borderColor: GREEN_UI.borderStrong,
+                          color: GREEN_UI.greenDark,
+                          bgcolor: '#ffffff',
+                          '& .MuiChip-icon': { color: GREEN_UI.greenDark },
+                          '&:hover': { bgcolor: GREEN_UI.greenSoft },
+                        }}
                       />
                       {canReleasePayroll && p.status !== 'Released' && (
                         <Chip
+                          icon={<Payments />}
                           label="Release"
                           size="small"
                           clickable
                           variant="outlined"
-                          color="success"
                           onClick={() => handleReleaseSalary([p.id])}
-                          sx={{ minWidth: 110 }}
+                          sx={{
+                            minWidth: 96,
+                            justifyContent: 'center',
+                            borderRadius: 999,
+                            fontWeight: 800,
+                            borderColor: '#a9dfb6',
+                            color: GREEN_UI.greenDark,
+                            bgcolor: '#f4fbf5',
+                            '& .MuiChip-icon': { color: GREEN_UI.greenDark },
+                            '&:hover': { bgcolor: '#e5f8e9' },
+                          }}
                         />
                       )}
                       {(canManagePayroll || canReleasePayroll) && (
                         <Chip
+                          icon={<DeleteOutline />}
                           label="Delete"
                           size="small"
                           clickable
                           variant="outlined"
-                          color="error"
                           onClick={() => handleDelete(p.id)}
-                          sx={{ minWidth: 110 }}
+                          sx={{
+                            minWidth: 86,
+                            justifyContent: 'center',
+                            borderRadius: 999,
+                            fontWeight: 800,
+                            borderColor: '#efb8b8',
+                            color: '#9c2f2f',
+                            bgcolor: '#fffafa',
+                            '& .MuiChip-icon': { color: '#9c2f2f' },
+                            '&:hover': { bgcolor: '#fdeaea' },
+                          }}
                         />
                       )}
                     </Box>
@@ -1034,13 +1484,43 @@ export default function PayrollComputation() {
       </TableContainer>
 
       {!loading && filtered.length > 0 && (
-        <Paper sx={{ p: 2, mt: 2 }}>
-          <Typography variant="h6" gutterBottom>Summary {filterPeriod ? `— ${filterPeriod}` : '(All Periods)'}</Typography>
-          <Grid container spacing={2}>
-            {[['Employees', filtered.length], ['Total Gross Pay', `₱${Math.round(totals.gross).toLocaleString()}`], ['Total Deductions', `₱${Math.round(totals.ded).toLocaleString()}`], ['Total Net Pay', `₱${Math.round(totals.net).toLocaleString()}`]].map(([l, v]) => (
+        <Paper elevation={0} sx={{ ...softCardSx, p: { xs: 2, sm: 2.5 }, mt: 2 }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1.75 }}>
+            <Box
+              sx={{
+                width: 38,
+                height: 38,
+                borderRadius: '14px',
+                display: 'grid',
+                placeItems: 'center',
+                bgcolor: GREEN_UI.greenSoft,
+                color: GREEN_UI.greenDark,
+              }}
+            >
+              <TaskAlt fontSize="small" />
+            </Box>
+            <Box>
+              <Typography fontWeight={900} sx={{ color: GREEN_UI.text }}>
+                Summary {filterPeriod ? `— ${filterPeriod}` : '(All Periods)'}
+              </Typography>
+              <Typography variant="caption" sx={{ color: GREEN_UI.muted }}>
+                Computed from the payroll rows visible in the table.
+              </Typography>
+            </Box>
+          </Box>
+
+          <Grid container spacing={1.5}>
+            {[
+              ['Employees', filtered.length],
+              ['Total Gross Pay', `₱${Math.round(totals.gross).toLocaleString()}`],
+              ['Total Deductions', `₱${Math.round(totals.ded).toLocaleString()}`],
+              ['Total Net Pay', `₱${Math.round(totals.net).toLocaleString()}`],
+            ].map(([l, v]) => (
               <Grid key={String(l)} size={{ xs: 6, md: 3 }}>
-                <Typography variant="body2" color="text.secondary">{l}</Typography>
-                <Typography variant="h6" color={l === 'Total Net Pay' ? 'primary' : 'inherit'}>{v}</Typography>
+                <Paper elevation={0} sx={{ ...innerCardSx, p: 1.75, minHeight: 86 }}>
+                  <Typography variant="body2" sx={{ color: GREEN_UI.muted, fontWeight: 800 }}>{l}</Typography>
+                  <Typography variant="h6" fontWeight={900} sx={{ color: l === 'Total Net Pay' ? GREEN_UI.greenDark : GREEN_UI.text, mt: 0.5 }}>{v}</Typography>
+                </Paper>
               </Grid>
             ))}
           </Grid>
@@ -1048,9 +1528,9 @@ export default function PayrollComputation() {
       )}
 
       {/* Generate Payroll Dialog */}
-      <Dialog open={generateDialog} onClose={() => { setGenerateDialog(false); setGeneratePosition(''); }} maxWidth="sm" fullWidth>
-        <DialogTitle fontWeight={700}>Generate Payroll</DialogTitle>
-        <DialogContent sx={{ display: 'flex', flexDirection: 'column', gap: 2, pt: '12px !important' }}>
+      <Dialog open={generateDialog} onClose={() => { setGenerateDialog(false); setGeneratePosition(''); }} maxWidth="sm" fullWidth PaperProps={{ sx: dialogPaperSx }}>
+        <DialogTitle fontWeight={900} sx={dialogTitleSx}>Generate Payroll</DialogTitle>
+        <DialogContent sx={{ display: 'flex', flexDirection: 'column', gap: 2, pt: '18px !important', px: { xs: 2, sm: 3 }, bgcolor: '#fbfff9' }}>
           <Alert severity="info" sx={{ fontSize: '0.8rem' }}>
             Auto-generates payroll for <strong>Active</strong> employees. Select a position to target only that role, or leave blank for all. This generates payroll directly from Attendance Monitoring records saved in Supabase attendance_logs for the selected month.
           </Alert>
@@ -1073,7 +1553,7 @@ export default function PayrollComputation() {
             onChange={e => setGenerateBase(e.target.value)}
             helperText="Used only if the selected job posting has no Salary Range / Daily Rate saved." />
         </DialogContent>
-        <DialogActions sx={{ px: 3, pb: 2 }}>
+        <DialogActions sx={{ px: 3, py: 2, borderTop: `1px solid ${GREEN_UI.border}`, bgcolor: '#fbfff9' }}>
           <Button onClick={() => { setGenerateDialog(false); setGeneratePosition(''); }}>Cancel</Button>
           <Button variant="contained" startIcon={generating ? <CircularProgress size={16} color="inherit" /> : <Calculate />}
             onClick={handleGenerate} disabled={generating}>
@@ -1083,9 +1563,9 @@ export default function PayrollComputation() {
       </Dialog>
 
       {/* Manual Add Dialog */}
-      <Dialog open={addDialog} onClose={() => setAddDialog(false)} maxWidth="sm" fullWidth>
-        <DialogTitle fontWeight={700}>Manual Payroll Entry</DialogTitle>
-        <DialogContent sx={{ display: 'flex', flexDirection: 'column', gap: 2, pt: '12px !important' }}>
+      <Dialog open={addDialog} onClose={() => setAddDialog(false)} maxWidth="sm" fullWidth PaperProps={{ sx: dialogPaperSx }}>
+        <DialogTitle fontWeight={900} sx={dialogTitleSx}>Manual Payroll Entry</DialogTitle>
+        <DialogContent sx={{ display: 'flex', flexDirection: 'column', gap: 2, pt: '18px !important', px: { xs: 2, sm: 3 }, bgcolor: '#fbfff9' }}>
           <TextField label="Employee ID" fullWidth required value={form.employee} onChange={e => setForm({ ...form, employee: e.target.value })} />
           <TextField label="Position" fullWidth value={form.position} onChange={e => setForm({ ...form, position: e.target.value })} />
           <TextField label="Period" type="month" fullWidth value={form.period} onChange={e => setForm({ ...form, period: e.target.value })} InputLabelProps={{ shrink: true }} />
@@ -1097,7 +1577,7 @@ export default function PayrollComputation() {
             <Grid size={4}><TextField label="Net Pay" fullWidth value={form.netPay} onChange={e => setForm({ ...form, netPay: e.target.value })} placeholder="₱0" /></Grid>
           </Grid>
         </DialogContent>
-        <DialogActions sx={{ px: 3, pb: 2 }}>
+        <DialogActions sx={{ px: 3, py: 2, borderTop: `1px solid ${GREEN_UI.border}`, bgcolor: '#fbfff9' }}>
           <Button onClick={() => setAddDialog(false)}>Cancel</Button>
           <Button variant="contained" onClick={handleAdd} disabled={saving}
             startIcon={saving ? <CircularProgress size={16} color="inherit" /> : undefined}>
@@ -1107,8 +1587,8 @@ export default function PayrollComputation() {
       </Dialog>
 
       {/* Payslip Dialog */}
-      <Dialog open={viewDialog} onClose={() => { setViewDialog(false); setEditingPayslip(false); }} maxWidth="sm" fullWidth>
-        <DialogTitle sx={{ pb: 1 }}>
+      <Dialog open={viewDialog} onClose={() => { setViewDialog(false); setEditingPayslip(false); }} maxWidth="sm" fullWidth PaperProps={{ sx: dialogPaperSx }}>
+        <DialogTitle sx={{ ...dialogTitleSx, pb: 1.5 }}>
           <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             Payslip
             {selectedPayroll && <Chip label={selectedPayroll.id} size="small" variant="outlined" />}
@@ -1365,7 +1845,7 @@ export default function PayrollComputation() {
             </Box>
           )}
         </DialogContent>
-        <DialogActions>
+        <DialogActions sx={{ px: 3, py: 2, borderTop: `1px solid ${GREEN_UI.border}`, bgcolor: '#fbfff9', gap: 1, flexWrap: 'wrap' }}>
           <Button onClick={() => { setViewDialog(false); setEditingPayslip(false); }}>Close</Button>
           {!editingPayslip ? (
             selectedPayroll?.status !== 'Released' && (
@@ -1495,7 +1975,7 @@ export default function PayrollComputation() {
       </Dialog>
 
       <Snackbar open={snackbar.open} autoHideDuration={5000} onClose={() => setSnackbar(s => ({ ...s, open: false }))} anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}>
-        <Alert severity={snackbar.severity} onClose={() => setSnackbar(s => ({ ...s, open: false }))}>{snackbar.message}</Alert>
+        <Alert severity={snackbar.severity} onClose={() => setSnackbar(s => ({ ...s, open: false }))} sx={{ borderRadius: '16px' }}>{snackbar.message}</Alert>
       </Snackbar>
     </Box>
   );

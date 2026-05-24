@@ -22,11 +22,31 @@ import {
   Alert,
   Snackbar,
   Tooltip,
-  IconButton,
   Tabs,
   Tab,
 } from '@mui/material';
-import { AddCircleOutline, TaskAlt, CancelOutlined, Sync, Security } from '@mui/icons-material';
+import {
+  AddCircleOutline,
+  TaskAlt,
+  CancelOutlined,
+  Sync,
+  Security,
+  AssignmentTurnedIn,
+  PendingActions,
+  CheckCircleOutline,
+  HourglassTop,
+  Person,
+  Badge,
+  CalendarMonth,
+  AccessTime,
+  Description,
+  VisibilityOutlined,
+  DeleteOutline,
+  Close,
+  DoneAll,
+  PlaylistAddCheck,
+  InfoOutlined,
+} from '@mui/icons-material';
 import { useAuth } from '../../context/AuthContext';
 import { supabase } from "../../lib/supabaseClient";
 
@@ -128,6 +148,97 @@ const LEAVE_TYPES = [
   'Bereavement Leave',
   'Other',
 ];
+
+const GREEN_UI = {
+  pageBg: 'radial-gradient(circle at top left, rgba(220, 246, 219, 0.95), rgba(248, 252, 245, 0.98) 34%, #f7fbf3 100%)',
+  cardBg: 'rgba(255, 255, 255, 0.92)',
+  cardBgSoft: 'rgba(245, 252, 241, 0.88)',
+  border: 'rgba(139, 184, 144, 0.24)',
+  borderStrong: 'rgba(73, 156, 92, 0.32)',
+  green: '#3aa865',
+  greenDark: '#1f7a46',
+  greenSoft: '#e6f8e9',
+  text: '#1e2d24',
+  muted: '#6c7d70',
+  shadow: '0 20px 55px rgba(43, 91, 55, 0.10)',
+  shadowSoft: '0 12px 28px rgba(43, 91, 55, 0.08)',
+};
+
+const softCardSx = {
+  borderRadius: '26px',
+  border: `1px solid ${GREEN_UI.border}`,
+  background: GREEN_UI.cardBg,
+  boxShadow: GREEN_UI.shadow,
+};
+
+const innerCardSx = {
+  borderRadius: '20px',
+  border: `1px solid ${GREEN_UI.border}`,
+  background: GREEN_UI.cardBgSoft,
+  boxShadow: GREEN_UI.shadowSoft,
+};
+
+const pillButtonSx = {
+  borderRadius: 999,
+  textTransform: 'none',
+  fontWeight: 800,
+  px: 2,
+};
+
+const requestStatusChipSx = (status: RequestStatus) => {
+  const styles: Record<RequestStatus, { bg: string; color: string; border: string }> = {
+    Pending: { bg: '#fff7e0', color: '#9b6b00', border: '#f5d786' },
+    'Supervisor Approved': { bg: '#e9f6ff', color: '#1d6f9c', border: '#b7dff7' },
+    Approved: { bg: '#e5f8e9', color: '#217a43', border: '#a9dfb6' },
+    Disapproved: { bg: '#fdeaea', color: '#9c2f2f', border: '#efb8b8' },
+    Rejected: { bg: '#fdeaea', color: '#9c2f2f', border: '#efb8b8' },
+    Cancelled: { bg: '#f4f7f3', color: '#5f6e63', border: '#dce8da' },
+  };
+
+  const selected = styles[status] ?? styles.Pending;
+
+  return {
+    bgcolor: selected.bg,
+    color: selected.color,
+    borderColor: selected.border,
+    fontWeight: 800,
+    borderRadius: 999,
+    '& .MuiChip-label': { px: 1.25 },
+  };
+};
+
+const requestTypeChipSx = (type: RequestType) => {
+  const styles: Record<RequestType, { bg: string; color: string; border: string }> = {
+    Leave: { bg: '#eaf6ff', color: '#24658f', border: '#b9ddf4' },
+    Overtime: { bg: '#e5f8e9', color: '#217a43', border: '#a9dfb6' },
+    Undertime: { bg: '#fff7e0', color: '#9b6b00', border: '#f5d786' },
+  };
+
+  const selected = styles[type] ?? styles.Leave;
+
+  return {
+    bgcolor: selected.bg,
+    color: selected.color,
+    borderColor: selected.border,
+    fontWeight: 800,
+    borderRadius: 999,
+    '& .MuiChip-label': { px: 1.25 },
+  };
+};
+
+const softTextFieldSx = {
+  '& .MuiOutlinedInput-root': {
+    borderRadius: '16px',
+    backgroundColor: '#fbfef9',
+    transition: 'all 180ms ease',
+    '& fieldset': { borderColor: GREEN_UI.border },
+    '&:hover fieldset': { borderColor: GREEN_UI.borderStrong },
+    '&.Mui-focused fieldset': { borderColor: GREEN_UI.green, borderWidth: 1.5 },
+    '&.Mui-disabled': { backgroundColor: '#f6fbf4' },
+  },
+  '& .MuiInputLabel-root': { color: GREEN_UI.muted },
+  '& .MuiInputBase-input.Mui-disabled': { WebkitTextFillColor: GREEN_UI.text },
+};
 
 function normalizeRole(role?: string | null) {
   return String(role ?? '').trim().toLowerCase();
@@ -637,6 +748,33 @@ export default function RequestManagement() {
 
   const displayData = tabData[tab]?.data ?? requests;
 
+  const requestStats = [
+    {
+      label: 'Total Requests',
+      value: requests.length,
+      caption: 'All submitted leave, overtime, and undertime requests.',
+      icon: <AssignmentTurnedIn fontSize="small" />,
+    },
+    {
+      label: 'Pending',
+      value: requests.filter(r => r.status === 'Pending').length,
+      caption: 'Requests waiting for supervisor review.',
+      icon: <PendingActions fontSize="small" />,
+    },
+    {
+      label: 'For HR Validation',
+      value: requests.filter(r => r.status === 'Supervisor Approved').length,
+      caption: 'Supervisor-approved requests awaiting final HR action.',
+      icon: <HourglassTop fontSize="small" />,
+    },
+    {
+      label: 'Approved',
+      value: requests.filter(r => r.status === 'Approved').length,
+      caption: 'Requests fully approved and validated.',
+      icon: <CheckCircleOutline fontSize="small" />,
+    },
+  ];
+
   const resetNewRequestType = (type: RequestType) => {
     setNewRequest(prev => ({
       ...prev,
@@ -649,94 +787,317 @@ export default function RequestManagement() {
   };
 
   return (
-    <Box>
-      <Box
+    <Box
+      sx={{
+        minHeight: '100%',
+        p: { xs: 1.5, sm: 2.25, md: 3 },
+        background: GREEN_UI.pageBg,
+        color: GREEN_UI.text,
+        borderRadius: { xs: 0, md: '32px' },
+      }}
+    >
+      <Paper
+        elevation={0}
         sx={{
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: { xs: 'flex-start', sm: 'center' },
-          flexWrap: 'wrap',
-          gap: 2,
-          mb: 3,
+          ...softCardSx,
+          p: { xs: 2, sm: 2.75, md: 3.25 },
+          mb: 2.5,
+          position: 'relative',
+          overflow: 'hidden',
+          background:
+            'linear-gradient(135deg, rgba(255,255,255,0.98) 0%, rgba(239,250,235,0.96) 60%, rgba(225,248,224,0.94) 100%)',
+          '&:before': {
+            content: '""',
+            position: 'absolute',
+            width: 260,
+            height: 260,
+            borderRadius: '50%',
+            right: -90,
+            top: -110,
+            background: 'rgba(76, 175, 80, 0.12)',
+          },
+          '&:after': {
+            content: '""',
+            position: 'absolute',
+            width: 160,
+            height: 160,
+            borderRadius: '50%',
+            left: { xs: '70%', md: '44%' },
+            bottom: -95,
+            background: 'rgba(174, 222, 144, 0.18)',
+          },
         }}
       >
-        <Box>
-          <Typography variant="h4" gutterBottom fontWeight="bold" sx={{ fontSize: { xs: '1.35rem', sm: '1.75rem', md: '2.125rem' } }}>
-            Leave, Overtime & Undertime Requests
-          </Typography>
-          <Typography variant="body2" color="text.secondary">
-            {isSupervisor
-              ? 'Inbox: Review and approve/disapprove employee requests.'
-              : isHR
-                ? 'HR Validation: Confirm supervisor-approved requests for final approval.'
-                : 'Submit and track your requests.'}
-          </Typography>
-        </Box>
+        <Box
+          sx={{
+            position: 'relative',
+            zIndex: 1,
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: { xs: 'flex-start', md: 'center' },
+            flexWrap: 'wrap',
+            gap: 2,
+          }}
+        >
+          <Box sx={{ maxWidth: 760 }}>
+            <Chip
+              icon={<PlaylistAddCheck />}
+              label="Request Workspace"
+              size="small"
+              sx={{
+                mb: 1.2,
+                bgcolor: GREEN_UI.greenSoft,
+                color: GREEN_UI.greenDark,
+                fontWeight: 900,
+                borderRadius: 999,
+                '& .MuiChip-icon': { color: GREEN_UI.greenDark },
+              }}
+            />
+            <Typography
+              variant="h4"
+              fontWeight={900}
+              sx={{
+                fontSize: { xs: '1.55rem', sm: '2rem', md: '2.35rem' },
+                color: GREEN_UI.text,
+                letterSpacing: '-0.04em',
+                lineHeight: 1.08,
+                mb: 0.75,
+              }}
+            >
+              Leave, Overtime & Undertime Requests
+            </Typography>
+            <Typography variant="body2" sx={{ color: GREEN_UI.muted, maxWidth: 690, lineHeight: 1.7 }}>
+              {isSupervisor
+                ? 'Review employee requests, add remarks, and forward approved items to HR for final validation.'
+                : isHR
+                  ? 'Validate supervisor-approved requests and keep request decisions properly documented.'
+                  : 'Submit and track your leave, overtime, and undertime requests in one clean workspace.'}
+            </Typography>
+          </Box>
 
-        <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
-          <Tooltip title="Refresh">
-            <span>
-              <IconButton onClick={() => fetchRequests(currentEmployeeId)} disabled={loading}>
-                <Sync />
-              </IconButton>
-            </span>
-          </Tooltip>
-          {(isEmployee || Boolean(currentEmployeeId)) && (
-            <Button variant="contained" startIcon={<AddCircleOutline />} onClick={() => setOpenDialog(true)}>
-              New Request
-            </Button>
-          )}
+          <Box sx={{ display: 'flex', gap: 1, alignItems: 'center', flexWrap: 'wrap' }}>
+            <Tooltip title="Refresh requests">
+              <span>
+                <Button
+                  variant="contained"
+                  startIcon={loading ? <CircularProgress size={16} color="inherit" /> : <Sync />}
+                  onClick={() => fetchRequests(currentEmployeeId)}
+                  disabled={loading}
+                  sx={{
+                    ...pillButtonSx,
+                    py: 1.1,
+                    bgcolor: GREEN_UI.green,
+                    boxShadow: '0 12px 24px rgba(58, 168, 101, 0.25)',
+                    '&:hover': { bgcolor: GREEN_UI.greenDark, boxShadow: '0 16px 28px rgba(31, 122, 70, 0.28)' },
+                  }}
+                >
+                  {loading ? 'Refreshing…' : 'Refresh'}
+                </Button>
+              </span>
+            </Tooltip>
+            {(isEmployee || Boolean(currentEmployeeId)) && (
+              <Button
+                variant="contained"
+                startIcon={<AddCircleOutline />}
+                onClick={() => setOpenDialog(true)}
+                sx={{
+                  ...pillButtonSx,
+                  py: 1.1,
+                  bgcolor: GREEN_UI.greenDark,
+                  boxShadow: '0 12px 24px rgba(31, 122, 70, 0.24)',
+                  '&:hover': { bgcolor: '#176739', boxShadow: '0 16px 28px rgba(31, 122, 70, 0.30)' },
+                }}
+              >
+                New Request
+              </Button>
+            )}
+          </Box>
         </Box>
-      </Box>
+      </Paper>
+
+      <Grid container spacing={1.5} sx={{ mb: 2.5 }}>
+        {requestStats.map(stat => (
+          <Grid key={stat.label} size={{ xs: 12, sm: 6, md: 3 }}>
+            <Paper
+              elevation={0}
+              sx={{
+                ...softCardSx,
+                p: 2,
+                minHeight: 126,
+                display: 'flex',
+                flexDirection: 'column',
+                justifyContent: 'space-between',
+                transition: 'transform 180ms ease, box-shadow 180ms ease',
+                '&:hover': { transform: 'translateY(-3px)', boxShadow: '0 22px 48px rgba(43, 91, 55, 0.13)' },
+              }}
+            >
+              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 1.5 }}>
+                <Box>
+                  <Typography variant="body2" sx={{ color: GREEN_UI.muted, fontWeight: 800 }}>
+                    {stat.label}
+                  </Typography>
+                  <Typography variant="h4" fontWeight={900} sx={{ color: GREEN_UI.text, mt: 0.5, letterSpacing: '-0.04em' }}>
+                    {stat.value}
+                  </Typography>
+                </Box>
+                <Box
+                  sx={{
+                    width: 42,
+                    height: 42,
+                    borderRadius: '16px',
+                    display: 'grid',
+                    placeItems: 'center',
+                    bgcolor: GREEN_UI.greenSoft,
+                    color: GREEN_UI.greenDark,
+                    flexShrink: 0,
+                  }}
+                >
+                  {stat.icon}
+                </Box>
+              </Box>
+              <Typography variant="caption" sx={{ color: GREEN_UI.muted, mt: 1.2 }}>
+                {stat.caption}
+              </Typography>
+            </Paper>
+          </Grid>
+        ))}
+      </Grid>
 
       {error && (
-        <Alert severity="error" sx={{ mb: 2 }} action={<Button size="small" onClick={() => fetchRequests(currentEmployeeId)}>Retry</Button>}>
+        <Alert
+          severity="error"
+          sx={{ mb: 2, borderRadius: '18px', border: `1px solid ${GREEN_UI.border}` }}
+          action={
+            <Button size="small" onClick={() => fetchRequests(currentEmployeeId)} sx={{ ...pillButtonSx }}>
+              Retry
+            </Button>
+          }
+        >
           {error}
         </Alert>
       )}
 
       {(isSupervisor || isHR) && (
-        <Alert severity="info" sx={{ mb: 2 }}>
+        <Alert
+          icon={<InfoOutlined />}
+          severity="info"
+          sx={{
+            mb: 2,
+            borderRadius: '20px',
+            border: `1px solid ${GREEN_UI.border}`,
+            bgcolor: 'rgba(239, 250, 235, 0.86)',
+            color: GREEN_UI.text,
+            '& .MuiAlert-icon': { color: GREEN_UI.greenDark },
+          }}
+        >
           <strong>Two-Step Approval Flow:</strong> Employee submits → <strong>Supervisor</strong> reviews and approves → <strong>HR</strong> validates for final approval.
           {isSupervisor && ' You can approve or disapprove Pending requests.'}
           {isHR && ' You validate Supervisor Approved requests for final HR approval.'}
         </Alert>
       )}
 
-      <Paper sx={{ mb: 2 }}>
-        <Tabs value={tab} onChange={(_, value) => setTab(value)} variant="scrollable" scrollButtons="auto">
+      <Paper elevation={0} sx={{ ...softCardSx, mb: 2, p: { xs: 0.75, sm: 1 }, overflow: 'hidden' }}>
+        <Tabs
+          value={tab}
+          onChange={(_, value) => setTab(value)}
+          variant="scrollable"
+          scrollButtons="auto"
+          sx={{
+            minHeight: 52,
+            '& .MuiTabs-indicator': { display: 'none' },
+            '& .MuiTab-root': {
+              minHeight: 42,
+              mx: 0.35,
+              my: 0.5,
+              px: 1.6,
+              borderRadius: '999px',
+              textTransform: 'none',
+              fontWeight: 800,
+              color: GREEN_UI.muted,
+              transition: 'all 180ms ease',
+            },
+            '& .Mui-selected': {
+              bgcolor: GREEN_UI.greenSoft,
+              color: `${GREEN_UI.greenDark} !important`,
+              boxShadow: 'inset 0 0 0 1px rgba(58, 168, 101, 0.18)',
+            },
+          }}
+        >
           {tabData.map((tabItem, index) => (
             <Tab key={tabItem.label} label={`${tabItem.label} (${tabItem.data.length})`} value={index} />
           ))}
         </Tabs>
       </Paper>
 
-      <TableContainer component={Paper} sx={{ overflowX: 'auto' }}>
+      <TableContainer
+        component={Paper}
+        elevation={0}
+        sx={{
+          ...softCardSx,
+          overflowX: 'auto',
+          '&::-webkit-scrollbar': { height: 10 },
+          '&::-webkit-scrollbar-thumb': { bgcolor: '#cfe8d1', borderRadius: 999 },
+        }}
+      >
         {loading ? (
-          <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', py: 6, gap: 2 }}>
-            <CircularProgress size={28} />
-            <Typography color="text.secondary">Loading requests…</Typography>
+          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', py: 7, gap: 2 }}>
+            <CircularProgress size={28} sx={{ color: GREEN_UI.green }} />
+            <Typography sx={{ color: GREEN_UI.muted, fontWeight: 700 }}>Loading requests…</Typography>
           </Box>
         ) : (
-          <Table sx={{ minWidth: 950 }}>
+          <Table sx={{ minWidth: 980, '& th, & td': { borderColor: 'rgba(139, 184, 144, 0.16)' } }}>
             <TableHead>
-              <TableRow>
-                <TableCell>Request ID</TableCell>
-                <TableCell>Employee</TableCell>
-                <TableCell>Type</TableCell>
-                <TableCell>Date Coverage</TableCell>
-                <TableCell>Time / Total</TableCell>
-                <TableCell>Reason</TableCell>
-                <TableCell>Submitted</TableCell>
-                <TableCell>Status</TableCell>
-                <TableCell>Actions</TableCell>
+              <TableRow
+                sx={{
+                  background: 'linear-gradient(90deg, #eff8eb 0%, #f8fcf5 100%)',
+                  '& th': {
+                    color: GREEN_UI.greenDark,
+                    fontWeight: 900,
+                    fontSize: '0.78rem',
+                    letterSpacing: '0.02em',
+                    textTransform: 'uppercase',
+                    py: 1.7,
+                  },
+                }}
+              >
+                <TableCell sx={{ whiteSpace: 'nowrap' }}>Request ID</TableCell>
+                <TableCell sx={{ whiteSpace: 'nowrap' }}>Employee</TableCell>
+                <TableCell sx={{ whiteSpace: 'nowrap' }}>Type</TableCell>
+                <TableCell sx={{ whiteSpace: 'nowrap' }}>Date Coverage</TableCell>
+                <TableCell sx={{ whiteSpace: 'nowrap' }}>Time / Total</TableCell>
+                <TableCell sx={{ whiteSpace: 'nowrap' }}>Reason</TableCell>
+                <TableCell sx={{ whiteSpace: 'nowrap' }}>Submitted</TableCell>
+                <TableCell sx={{ whiteSpace: 'nowrap' }}>Status</TableCell>
+                <TableCell sx={{ whiteSpace: 'nowrap', minWidth: 260 }}>Actions</TableCell>
               </TableRow>
             </TableHead>
             <TableBody>
               {displayData.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={9} align="center" sx={{ py: 5, color: 'text.secondary' }}>
-                    No requests in this category.
+                  <TableCell colSpan={9} align="center" sx={{ py: 7 }}>
+                    <Box sx={{ maxWidth: 380, mx: 'auto' }}>
+                      <Box
+                        sx={{
+                          width: 54,
+                          height: 54,
+                          borderRadius: '20px',
+                          display: 'grid',
+                          placeItems: 'center',
+                          mx: 'auto',
+                          mb: 1.5,
+                          bgcolor: GREEN_UI.greenSoft,
+                          color: GREEN_UI.greenDark,
+                        }}
+                      >
+                        <AssignmentTurnedIn />
+                      </Box>
+                      <Typography fontWeight={900} sx={{ color: GREEN_UI.text }}>
+                        No requests in this category
+                      </Typography>
+                      <Typography variant="body2" sx={{ color: GREEN_UI.muted, mt: 0.5 }}>
+                        Once requests reach this status, they will appear here automatically.
+                      </Typography>
+                    </Box>
                   </TableCell>
                 </TableRow>
               ) : (
@@ -747,86 +1108,185 @@ export default function RequestManagement() {
                   const canCancel = isEmployee && req.status === 'Pending' && req.employeeId === currentEmployeeId;
 
                   return (
-                    <TableRow key={req.id} hover>
-                      <TableCell>
-                        <Chip label={req.requestId} size="small" variant="outlined" />
-                      </TableCell>
-                      <TableCell>{req.employee}</TableCell>
+                    <TableRow
+                      key={req.id}
+                      hover
+                      sx={{
+                        transition: 'background 160ms ease',
+                        '&:hover': { bgcolor: 'rgba(231, 247, 229, 0.52)' },
+                        '& td': { py: 1.55, color: GREEN_UI.text },
+                      }}
+                    >
                       <TableCell>
                         <Chip
-                          label={req.type}
+                          icon={<Badge />}
+                          label={req.requestId}
                           size="small"
-                          color={req.type === 'Leave' ? 'info' : req.type === 'Overtime' ? 'success' : 'warning'}
+                          variant="outlined"
+                          sx={{
+                            borderRadius: 999,
+                            fontWeight: 800,
+                            bgcolor: '#f8fcf5',
+                            borderColor: GREEN_UI.border,
+                            '& .MuiChip-icon': { color: GREEN_UI.greenDark },
+                          }}
                         />
                       </TableCell>
-                      <TableCell>
-                        {formatDate(req.startDate)} {req.endDate && req.endDate !== req.startDate ? `– ${formatDate(req.endDate)}` : ''}
+                      <TableCell sx={{ whiteSpace: 'nowrap' }}>
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                          <Box
+                            sx={{
+                              width: 34,
+                              height: 34,
+                              borderRadius: '14px',
+                              display: 'grid',
+                              placeItems: 'center',
+                              bgcolor: GREEN_UI.greenSoft,
+                              color: GREEN_UI.greenDark,
+                              flexShrink: 0,
+                            }}
+                          >
+                            <Person fontSize="small" />
+                          </Box>
+                          <Typography fontWeight={800} sx={{ color: GREEN_UI.text }}>
+                            {req.employee}
+                          </Typography>
+                        </Box>
                       </TableCell>
                       <TableCell>
-                        {req.type === 'Leave'
-                          ? `${req.totalDays ?? computeTotalDays(req.startDate, req.endDate)} day(s)`
-                          : `${formatTime(req.startTime)} – ${formatTime(req.endTime)} (${req.totalHours ?? 0} hr/s)`}
+                        <Chip label={req.type} size="small" variant="outlined" sx={requestTypeChipSx(req.type)} />
                       </TableCell>
-                      <TableCell sx={{ maxWidth: 190, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                        {req.reason}
+                      <TableCell sx={{ whiteSpace: 'nowrap' }}>
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75 }}>
+                          <CalendarMonth fontSize="small" sx={{ color: GREEN_UI.greenDark }} />
+                          <Typography variant="body2" sx={{ color: GREEN_UI.text, fontWeight: 700 }}>
+                            {formatDate(req.startDate)} {req.endDate && req.endDate !== req.startDate ? `– ${formatDate(req.endDate)}` : ''}
+                          </Typography>
+                        </Box>
                       </TableCell>
-                      <TableCell>{formatDate(req.submittedDate)}</TableCell>
+                      <TableCell sx={{ whiteSpace: 'nowrap' }}>
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75 }}>
+                          <AccessTime fontSize="small" sx={{ color: GREEN_UI.greenDark }} />
+                          <Typography variant="body2" sx={{ color: GREEN_UI.muted, fontWeight: 700 }}>
+                            {req.type === 'Leave'
+                              ? `${req.totalDays ?? computeTotalDays(req.startDate, req.endDate)} day(s)`
+                              : `${formatTime(req.startTime)} – ${formatTime(req.endTime)} (${req.totalHours ?? 0} hr/s)`}
+                          </Typography>
+                        </Box>
+                      </TableCell>
+                      <TableCell sx={{ maxWidth: 220 }}>
+                        <Tooltip title={req.reason || 'No reason provided'}>
+                          <Typography
+                            variant="body2"
+                            sx={{
+                              overflow: 'hidden',
+                              textOverflow: 'ellipsis',
+                              whiteSpace: 'nowrap',
+                              color: GREEN_UI.muted,
+                              fontWeight: 700,
+                            }}
+                          >
+                            {req.reason || '—'}
+                          </Typography>
+                        </Tooltip>
+                      </TableCell>
+                      <TableCell sx={{ whiteSpace: 'nowrap' }}>{formatDate(req.submittedDate)}</TableCell>
                       <TableCell>
-                        <Chip label={chip.label} size="small" color={chip.color} />
+                        <Chip label={chip.label} size="small" variant="outlined" sx={requestStatusChipSx(req.status)} />
                       </TableCell>
-                      <TableCell>
-                        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5, alignItems: 'flex-start' }}>
+                      <TableCell sx={{ whiteSpace: 'nowrap' }}>
+                        <Box sx={{ display: 'flex', gap: 0.75, alignItems: 'center', flexWrap: 'wrap' }}>
                           <Chip
+                            icon={<VisibilityOutlined />}
                             label="View Details"
                             size="small"
                             clickable
                             variant="outlined"
-                            color="primary"
                             onClick={() => {
                               setSelectedReq(req);
                               setNoteInput('');
                               setViewDialog(true);
                             }}
-                            sx={{ minWidth: 115 }}
+                            sx={{
+                              minWidth: 126,
+                              justifyContent: 'center',
+                              borderRadius: 999,
+                              fontWeight: 800,
+                              borderColor: GREEN_UI.borderStrong,
+                              color: GREEN_UI.greenDark,
+                              bgcolor: '#ffffff',
+                              '& .MuiChip-icon': { color: GREEN_UI.greenDark },
+                              '&:hover': { bgcolor: GREEN_UI.greenSoft },
+                            }}
                           />
 
                           {(canSupervisorReview || canHrReview) && (
                             <Chip
+                              icon={canHrReview ? <Security /> : <TaskAlt />}
                               label={canHrReview ? 'Validate' : 'Review'}
                               size="small"
                               clickable
                               variant="outlined"
-                              color="success"
                               onClick={() => {
                                 setSelectedReq(req);
                                 setNoteInput('');
                                 setViewDialog(true);
                               }}
-                              sx={{ minWidth: 115 }}
+                              sx={{
+                                minWidth: 104,
+                                justifyContent: 'center',
+                                borderRadius: 999,
+                                fontWeight: 800,
+                                borderColor: '#a9dfb6',
+                                color: GREEN_UI.greenDark,
+                                bgcolor: '#f4fbf5',
+                                '& .MuiChip-icon': { color: GREEN_UI.greenDark },
+                                '&:hover': { bgcolor: '#e5f8e9' },
+                              }}
                             />
                           )}
 
                           {canCancel && (
                             <Chip
+                              icon={<Close />}
                               label="Cancel"
                               size="small"
                               clickable
                               variant="outlined"
-                              color="warning"
                               onClick={() => cancelRequest(req.id)}
-                              sx={{ minWidth: 115 }}
+                              sx={{
+                                minWidth: 92,
+                                justifyContent: 'center',
+                                borderRadius: 999,
+                                fontWeight: 800,
+                                borderColor: '#f5d786',
+                                color: '#9b6b00',
+                                bgcolor: '#fffdf5',
+                                '& .MuiChip-icon': { color: '#9b6b00' },
+                                '&:hover': { bgcolor: '#fff7e0' },
+                              }}
                             />
                           )}
 
                           {isHR && (
                             <Chip
+                              icon={<DeleteOutline />}
                               label="Delete"
                               size="small"
                               clickable
                               variant="outlined"
-                              color="error"
                               onClick={() => handleDelete(req)}
-                              sx={{ minWidth: 115 }}
+                              sx={{
+                                minWidth: 90,
+                                justifyContent: 'center',
+                                borderRadius: 999,
+                                fontWeight: 800,
+                                borderColor: '#efb8b8',
+                                color: '#9c2f2f',
+                                bgcolor: '#fffafa',
+                                '& .MuiChip-icon': { color: '#9c2f2f' },
+                                '&:hover': { bgcolor: '#fdeaea' },
+                              }}
                             />
                           )}
                         </Box>
@@ -840,10 +1300,39 @@ export default function RequestManagement() {
         )}
       </TableContainer>
 
-      <Dialog open={openDialog} onClose={() => setOpenDialog(false)} maxWidth="sm" fullWidth>
-        <DialogTitle fontWeight={700}>Submit New Request</DialogTitle>
-        <DialogContent>
-          <Grid container spacing={2} sx={{ mt: 1 }}>
+      <Dialog
+        open={openDialog}
+        onClose={() => setOpenDialog(false)}
+        maxWidth="sm"
+        fullWidth
+        PaperProps={{
+          sx: {
+            borderRadius: { xs: '22px', sm: '30px' },
+            overflow: 'hidden',
+            border: `1px solid ${GREEN_UI.border}`,
+            background: '#fbfff9',
+            boxShadow: '0 28px 70px rgba(27, 73, 37, 0.18)',
+          },
+        }}
+      >
+        <DialogTitle
+          fontWeight={900}
+          sx={{
+            px: { xs: 2, sm: 3 },
+            py: 2.25,
+            background: 'linear-gradient(135deg, #ffffff 0%, #eef9ea 100%)',
+            borderBottom: `1px solid ${GREEN_UI.border}`,
+          }}
+        >
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+            <AddCircleOutline sx={{ color: GREEN_UI.greenDark }} />
+            <Typography fontWeight={900} sx={{ color: GREEN_UI.text }}>
+              Submit New Request
+            </Typography>
+          </Box>
+        </DialogTitle>
+        <DialogContent sx={{ p: { xs: 2, sm: 3 }, bgcolor: '#fbfff9' }}>
+          <Grid container spacing={2} sx={{ mt: 0.25 }}>
             <Grid size={12}>
               <TextField
                 fullWidth
@@ -852,6 +1341,7 @@ export default function RequestManagement() {
                 value={newRequest.type}
                 onChange={event => resetNewRequestType(event.target.value as RequestType)}
                 InputLabelProps={{ shrink: true }}
+                sx={softTextFieldSx}
               >
                 <MenuItem value="Leave">Leave</MenuItem>
                 <MenuItem value="Overtime">Overtime</MenuItem>
@@ -868,6 +1358,7 @@ export default function RequestManagement() {
                   value={newRequest.leaveType}
                   onChange={event => setNewRequest({ ...newRequest, leaveType: event.target.value })}
                   InputLabelProps={{ shrink: true }}
+                  sx={softTextFieldSx}
                 >
                   {LEAVE_TYPES.map(type => (
                     <MenuItem key={type} value={type}>{type}</MenuItem>
@@ -886,6 +1377,7 @@ export default function RequestManagement() {
                   onChange={event => setNewRequest({ ...newRequest, startDate: event.target.value, endDate: event.target.value })}
                   InputLabelProps={{ shrink: true }}
                   helperText="Undertime applies to a single specific date only."
+                  sx={softTextFieldSx}
                 />
               </Grid>
             ) : (
@@ -898,6 +1390,7 @@ export default function RequestManagement() {
                     value={newRequest.startDate}
                     onChange={event => setNewRequest({ ...newRequest, startDate: event.target.value })}
                     InputLabelProps={{ shrink: true }}
+                    sx={softTextFieldSx}
                   />
                 </Grid>
                 <Grid size={{ xs: 12, md: 6 }}>
@@ -908,6 +1401,7 @@ export default function RequestManagement() {
                     value={newRequest.endDate}
                     onChange={event => setNewRequest({ ...newRequest, endDate: event.target.value })}
                     InputLabelProps={{ shrink: true }}
+                    sx={softTextFieldSx}
                   />
                 </Grid>
               </>
@@ -923,6 +1417,7 @@ export default function RequestManagement() {
                     value={newRequest.startTime}
                     onChange={event => setNewRequest({ ...newRequest, startTime: event.target.value })}
                     InputLabelProps={{ shrink: true }}
+                    sx={softTextFieldSx}
                   />
                 </Grid>
                 <Grid size={{ xs: 12, md: 6 }}>
@@ -938,6 +1433,7 @@ export default function RequestManagement() {
                         ? `Computed total: ${computeTotalHours(newRequest.startTime, newRequest.endTime)} hour(s)`
                         : 'Required for overtime and undertime.'
                     }
+                    sx={softTextFieldSx}
                   />
                 </Grid>
               </>
@@ -951,62 +1447,119 @@ export default function RequestManagement() {
                 label="Reason / Details"
                 value={newRequest.reason}
                 onChange={event => setNewRequest({ ...newRequest, reason: event.target.value })}
+                sx={softTextFieldSx}
               />
             </Grid>
           </Grid>
         </DialogContent>
-        <DialogActions sx={{ px: 3, pb: 2 }}>
-          <Button onClick={() => setOpenDialog(false)}>Cancel</Button>
+        <DialogActions sx={{ px: 3, pb: 2.5, pt: 1, gap: 1, flexWrap: 'wrap', bgcolor: '#fbfff9' }}>
+          <Button onClick={() => setOpenDialog(false)} startIcon={<Close />} sx={{ ...pillButtonSx, color: GREEN_UI.muted }}>
+            Cancel
+          </Button>
           <Button
             variant="contained"
             onClick={handleSubmit}
             disabled={saving}
-            startIcon={saving ? <CircularProgress size={16} color="inherit" /> : undefined}
+            startIcon={saving ? <CircularProgress size={16} color="inherit" /> : <DoneAll />}
+            sx={{
+              ...pillButtonSx,
+              bgcolor: GREEN_UI.green,
+              '&:hover': { bgcolor: GREEN_UI.greenDark },
+            }}
           >
             {saving ? 'Submitting…' : 'Submit Request'}
           </Button>
         </DialogActions>
       </Dialog>
 
-      <Dialog open={viewDialog} onClose={() => setViewDialog(false)} maxWidth="sm" fullWidth>
-        <DialogTitle fontWeight={700}>Request Details — {selectedReq?.requestId}</DialogTitle>
-        <DialogContent>
+      <Dialog
+        open={viewDialog}
+        onClose={() => setViewDialog(false)}
+        maxWidth="sm"
+        fullWidth
+        PaperProps={{
+          sx: {
+            borderRadius: { xs: '22px', sm: '30px' },
+            overflow: 'hidden',
+            border: `1px solid ${GREEN_UI.border}`,
+            background: '#fbfff9',
+            boxShadow: '0 28px 70px rgba(27, 73, 37, 0.18)',
+          },
+        }}
+      >
+        <DialogTitle
+          fontWeight={900}
+          sx={{
+            px: { xs: 2, sm: 3 },
+            py: 2.25,
+            background: 'linear-gradient(135deg, #ffffff 0%, #eef9ea 100%)',
+            borderBottom: `1px solid ${GREEN_UI.border}`,
+          }}
+        >
+          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 1 }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+              <Description sx={{ color: GREEN_UI.greenDark }} />
+              <Typography fontWeight={900} sx={{ color: GREEN_UI.text }}>
+                Request Details — {selectedReq?.requestId}
+              </Typography>
+            </Box>
+            {selectedReq && (
+              <Chip
+                label={STATUS_CHIP[selectedReq.status]?.label ?? selectedReq.status}
+                size="small"
+                variant="outlined"
+                sx={requestStatusChipSx(selectedReq.status)}
+              />
+            )}
+          </Box>
+        </DialogTitle>
+        <DialogContent sx={{ p: { xs: 2, sm: 3 }, bgcolor: '#fbfff9' }}>
           {selectedReq && (
-            <Box sx={{ pt: 1 }}>
-              {[
-                ['Request ID', selectedReq.requestId],
-                ['Employee', selectedReq.employee],
-                ['Employee ID', selectedReq.employeeId],
-                ['Type', selectedReq.type],
-                ['Leave Type', selectedReq.type === 'Leave' ? selectedReq.leaveType || '—' : 'N/A'],
-                ['Date Coverage', `${formatDate(selectedReq.startDate)}${selectedReq.endDate && selectedReq.endDate !== selectedReq.startDate ? ` – ${formatDate(selectedReq.endDate)}` : ''}`],
-                ['Time Coverage', selectedReq.type === 'Leave' ? 'N/A' : `${formatTime(selectedReq.startTime)} – ${formatTime(selectedReq.endTime)}`],
-                ['Total', selectedReq.type === 'Leave' ? `${selectedReq.totalDays ?? 0} day(s)` : `${selectedReq.totalHours ?? 0} hour(s)`],
-                ['Reason', selectedReq.reason],
-                ['Submitted', formatDate(selectedReq.submittedDate)],
-              ].map(([label, value]) => (
-                <Box key={label} sx={{ display: 'flex', justifyContent: 'space-between', gap: 2, py: 0.75, borderBottom: '1px solid', borderColor: 'divider' }}>
-                  <Typography variant="body2" color="text.secondary">{label}</Typography>
-                  <Typography variant="body2" fontWeight={500} textAlign="right">{value}</Typography>
-                </Box>
-              ))}
-
-              <Box sx={{ mt: 2 }}>
-                <Chip
-                  label={STATUS_CHIP[selectedReq.status]?.label ?? selectedReq.status}
-                  color={STATUS_CHIP[selectedReq.status]?.color ?? 'default'}
-                />
-              </Box>
+            <Box sx={{ pt: 0.5 }}>
+              <Paper elevation={0} sx={{ ...innerCardSx, p: { xs: 1.5, sm: 2 }, mb: 2 }}>
+                {([
+                  ['Request ID', selectedReq.requestId],
+                  ['Employee', selectedReq.employee],
+                  ['Employee ID', selectedReq.employeeId],
+                  ['Type', selectedReq.type],
+                  ['Leave Type', selectedReq.type === 'Leave' ? selectedReq.leaveType || '—' : 'N/A'],
+                  ['Date Coverage', `${formatDate(selectedReq.startDate)}${selectedReq.endDate && selectedReq.endDate !== selectedReq.startDate ? ` – ${formatDate(selectedReq.endDate)}` : ''}`],
+                  ['Time Coverage', selectedReq.type === 'Leave' ? 'N/A' : `${formatTime(selectedReq.startTime)} – ${formatTime(selectedReq.endTime)}`],
+                  ['Total', selectedReq.type === 'Leave' ? `${selectedReq.totalDays ?? 0} day(s)` : `${selectedReq.totalHours ?? 0} hour(s)`],
+                  ['Reason', selectedReq.reason],
+                  ['Submitted', formatDate(selectedReq.submittedDate)],
+                ] as [string, any][]).map(([label, value], index, arr) => (
+                  <Box
+                    key={label}
+                    sx={{
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      gap: 2,
+                      py: 0.85,
+                      borderBottom: index === arr.length - 1 ? 'none' : `1px solid ${GREEN_UI.border}`,
+                    }}
+                  >
+                    <Typography variant="body2" sx={{ color: GREEN_UI.muted, fontWeight: 800 }}>{label}</Typography>
+                    <Typography variant="body2" fontWeight={800} textAlign="right" sx={{ color: GREEN_UI.text }}>{value}</Typography>
+                  </Box>
+                ))}
+              </Paper>
 
               {selectedReq.supervisorName && (
-                <Alert severity="info" sx={{ mt: 2 }}>
+                <Alert
+                  severity="info"
+                  sx={{ mt: 2, borderRadius: '18px', border: `1px solid ${GREEN_UI.border}` }}
+                >
                   Supervisor Review: {selectedReq.supervisorStatus || 'Reviewed'} by {selectedReq.supervisorName}
                   {selectedReq.supervisorNote ? ` — ${selectedReq.supervisorNote}` : ''}
                 </Alert>
               )}
 
               {selectedReq.hrName && (
-                <Alert severity="success" sx={{ mt: 1 }}>
+                <Alert
+                  severity="success"
+                  sx={{ mt: 1, borderRadius: '18px', border: `1px solid ${GREEN_UI.border}` }}
+                >
                   HR Review: {selectedReq.hrStatus || 'Reviewed'} by {selectedReq.hrName}
                   {selectedReq.hrNote ? ` — ${selectedReq.hrNote}` : ''}
                 </Alert>
@@ -1020,35 +1573,46 @@ export default function RequestManagement() {
                   label="Note / Remarks (optional)"
                   value={noteInput}
                   onChange={event => setNoteInput(event.target.value)}
-                  sx={{ mt: 2 }}
+                  sx={{ mt: 2, ...softTextFieldSx }}
                 />
               )}
             </Box>
           )}
         </DialogContent>
-        <DialogActions sx={{ px: 3, pb: 2, gap: 1, flexWrap: 'wrap' }}>
-          <Button onClick={() => setViewDialog(false)}>Close</Button>
+        <DialogActions sx={{ px: 3, pb: 2.5, pt: 1, gap: 1, flexWrap: 'wrap', bgcolor: '#fbfff9' }}>
+          <Button onClick={() => setViewDialog(false)} startIcon={<Close />} sx={{ ...pillButtonSx, color: GREEN_UI.muted }}>
+            Close
+          </Button>
 
           {isSupervisor && selectedReq?.status === 'Pending' && (
             <>
               <Button
                 variant="outlined"
-                color="error"
                 startIcon={<CancelOutlined />}
                 onClick={() => {
                   supervisorDisapprove(selectedReq.id);
                   setViewDialog(false);
+                }}
+                sx={{
+                  ...pillButtonSx,
+                  borderColor: '#efb8b8',
+                  color: '#9c2f2f',
+                  '&:hover': { borderColor: '#dc8f8f', bgcolor: '#fdeaea' },
                 }}
               >
                 Disapprove
               </Button>
               <Button
                 variant="contained"
-                color="success"
                 startIcon={<TaskAlt />}
                 onClick={() => {
                   supervisorApprove(selectedReq.id);
                   setViewDialog(false);
+                }}
+                sx={{
+                  ...pillButtonSx,
+                  bgcolor: GREEN_UI.green,
+                  '&:hover': { bgcolor: GREEN_UI.greenDark },
                 }}
               >
                 Approve
@@ -1060,22 +1624,31 @@ export default function RequestManagement() {
             <>
               <Button
                 variant="outlined"
-                color="error"
                 startIcon={<CancelOutlined />}
                 onClick={() => {
                   hrReject(selectedReq.id);
                   setViewDialog(false);
+                }}
+                sx={{
+                  ...pillButtonSx,
+                  borderColor: '#efb8b8',
+                  color: '#9c2f2f',
+                  '&:hover': { borderColor: '#dc8f8f', bgcolor: '#fdeaea' },
                 }}
               >
                 Reject
               </Button>
               <Button
                 variant="contained"
-                color="success"
                 startIcon={<Security />}
                 onClick={() => {
                   hrApprove(selectedReq.id);
                   setViewDialog(false);
+                }}
+                sx={{
+                  ...pillButtonSx,
+                  bgcolor: GREEN_UI.green,
+                  '&:hover': { bgcolor: GREEN_UI.greenDark },
                 }}
               >
                 Validate & Approve
@@ -1091,7 +1664,11 @@ export default function RequestManagement() {
         onClose={() => setSnackbar(previous => ({ ...previous, open: false }))}
         anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
       >
-        <Alert severity={snackbar.severity} onClose={() => setSnackbar(previous => ({ ...previous, open: false }))}>
+        <Alert
+          severity={snackbar.severity}
+          onClose={() => setSnackbar(previous => ({ ...previous, open: false }))}
+          sx={{ borderRadius: '16px', boxShadow: GREEN_UI.shadowSoft }}
+        >
           {snackbar.message}
         </Alert>
       </Snackbar>

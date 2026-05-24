@@ -4,10 +4,9 @@ import {
   Alert,
   Box,
   Button,
-  Card,
-  CardContent,
   Chip,
   CircularProgress,
+  LinearProgress,
   Divider,
   Grid,
   Paper,
@@ -131,6 +130,74 @@ const DEFAULT_STATS: DashboardStats = {
   pendingRequests: 0,
   publishedSchedules: 0,
   evaluationsSubmitted: 0,
+};
+
+const GREEN_UI = {
+  pageBg: 'radial-gradient(circle at top left, rgba(220, 246, 219, 0.95), rgba(248, 252, 245, 0.98) 34%, #f7fbf3 100%)',
+  cardBg: 'rgba(255, 255, 255, 0.92)',
+  cardBgSoft: 'rgba(245, 252, 241, 0.88)',
+  border: 'rgba(139, 184, 144, 0.24)',
+  borderStrong: 'rgba(73, 156, 92, 0.32)',
+  green: '#3aa865',
+  greenDark: '#1f7a46',
+  greenSoft: '#e6f8e9',
+  amberSoft: '#fff7e2',
+  amberDark: '#9b6b00',
+  tealSoft: '#e9f8f6',
+  tealDark: '#207c78',
+  text: '#1e2d24',
+  muted: '#6c7d70',
+  shadow: '0 20px 55px rgba(43, 91, 55, 0.10)',
+  shadowSoft: '0 12px 28px rgba(43, 91, 55, 0.08)',
+};
+
+const softCardSx = {
+  borderRadius: '26px',
+  border: `1px solid ${GREEN_UI.border}`,
+  background: GREEN_UI.cardBg,
+  boxShadow: GREEN_UI.shadow,
+};
+
+const innerCardSx = {
+  borderRadius: '20px',
+  border: `1px solid ${GREEN_UI.border}`,
+  background: GREEN_UI.cardBgSoft,
+  boxShadow: GREEN_UI.shadowSoft,
+};
+
+const pillButtonSx = {
+  borderRadius: 999,
+  textTransform: 'none',
+  fontWeight: 800,
+  px: 2,
+};
+
+const tableSx = {
+  minWidth: 940,
+  '& th, & td': { borderColor: 'rgba(139, 184, 144, 0.16)' },
+  '& tbody tr': { transition: 'background-color 160ms ease' },
+  '& tbody tr:hover': { backgroundColor: 'rgba(230, 248, 233, 0.42)' },
+};
+
+const tableHeadRowSx = {
+  background: 'linear-gradient(90deg, #eff8eb 0%, #f8fcf5 100%)',
+  '& th': {
+    color: GREEN_UI.greenDark,
+    fontWeight: 900,
+    fontSize: '0.78rem',
+    letterSpacing: '0.02em',
+    textTransform: 'uppercase',
+    py: 1.7,
+  },
+};
+
+const iconTileSx = {
+  width: 42,
+  height: 42,
+  borderRadius: '16px',
+  display: 'grid',
+  placeItems: 'center',
+  flexShrink: 0,
 };
 
 const DAY_KEYS: (keyof SchedulePreview)[] = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
@@ -468,31 +535,37 @@ export default function SupervisorDashboard() {
     () => [
       {
         title: 'Pending Requests',
+        caption: 'Requests waiting for supervisor review',
         value: loading ? '…' : String(stats.pendingRequests),
         icon: <Timelapse />,
-        color: '#D9A441',
+        bg: GREEN_UI.amberSoft,
+        color: GREEN_UI.amberDark,
       },
       {
         title: 'Published Schedules',
+        caption: 'Approved schedules visible to employees',
         value: loading ? '…' : String(stats.publishedSchedules),
         icon: <EventAvailable />,
-        color: '#1F7A47',
+        bg: GREEN_UI.greenSoft,
+        color: GREEN_UI.greenDark,
       },
       {
         title: 'Evaluations Submitted',
+        caption: 'Performance evaluations already submitted',
         value: loading ? '…' : String(stats.evaluationsSubmitted),
         icon: <QueryStats />,
-        color: '#2F8F8B',
+        bg: GREEN_UI.tealSoft,
+        color: GREEN_UI.tealDark,
       },
     ],
     [loading, stats],
   );
 
   const shortcuts = [
-    { title: 'Schedule Management', icon: <CalendarMonth />, path: '/dashboard/schedule', color: '#1F7A47' },
-    { title: 'Request Inbox', icon: <Assignment />, path: '/dashboard/requests', color: '#D9A441' },
-    { title: 'Evaluate Employees', icon: <QueryStats />, path: '/dashboard/evaluation', color: '#2F8F8B' },
-    { title: 'Employee Directory', icon: <PeopleAlt />, path: '/dashboard/employees', color: '#9C27B0' },
+    { title: 'Schedule Management', caption: 'Create, publish, and monitor employee schedules.', icon: <CalendarMonth />, path: '/dashboard/schedule', bg: GREEN_UI.greenSoft, color: GREEN_UI.greenDark },
+    { title: 'Request Inbox', caption: 'Review leave, overtime, and undertime requests.', icon: <Assignment />, path: '/dashboard/requests', bg: GREEN_UI.amberSoft, color: GREEN_UI.amberDark },
+    { title: 'Evaluate Employees', caption: 'Submit performance evaluations and check progress.', icon: <QueryStats />, path: '/dashboard/evaluation', bg: GREEN_UI.tealSoft, color: GREEN_UI.tealDark },
+    { title: 'Employee Directory', caption: 'View employee profiles assigned to your area.', icon: <PeopleAlt />, path: '/dashboard/employees', bg: '#f2e9fb', color: '#6e3f9a' },
   ];
 
   const lastUpdatedLabel = lastUpdatedAt
@@ -500,36 +573,131 @@ export default function SupervisorDashboard() {
     : 'Waiting for live data';
 
   return (
-    <Box>
-      {/* Header */}
-      <Box sx={{ mb: 3 }}>
-        <Typography
-          variant="h4"
-          fontWeight="bold"
-          sx={{ fontSize: { xs: '1.35rem', sm: '1.75rem', md: '2.125rem' } }}
+    <Box
+      sx={{
+        minHeight: '100%',
+        p: { xs: 1.5, sm: 2.25, md: 3 },
+        background: GREEN_UI.pageBg,
+        color: GREEN_UI.text,
+        borderRadius: { xs: 0, md: '32px' },
+      }}
+    >
+      <Paper
+        elevation={0}
+        sx={{
+          ...softCardSx,
+          p: { xs: 2, sm: 2.75, md: 3.25 },
+          mb: 2.5,
+          position: 'relative',
+          overflow: 'hidden',
+          background:
+            'linear-gradient(135deg, rgba(255,255,255,0.98) 0%, rgba(239,250,235,0.96) 60%, rgba(225,248,224,0.94) 100%)',
+          '&:before': {
+            content: '""',
+            position: 'absolute',
+            width: 260,
+            height: 260,
+            borderRadius: '50%',
+            right: -90,
+            top: -110,
+            background: 'rgba(76, 175, 80, 0.12)',
+          },
+          '&:after': {
+            content: '""',
+            position: 'absolute',
+            width: 160,
+            height: 160,
+            borderRadius: '50%',
+            left: { xs: '70%', md: '44%' },
+            bottom: -95,
+            background: 'rgba(174, 222, 144, 0.18)',
+          },
+        }}
+      >
+        <Box
+          sx={{
+            position: 'relative',
+            zIndex: 1,
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: { xs: 'flex-start', md: 'center' },
+            flexWrap: 'wrap',
+            gap: 2,
+          }}
         >
-          Supervisor Dashboard
-        </Typography>
-        <Typography variant="body2" color="text.secondary">
-          Welcome, {currentUserName} — Buenaventura Estate
-        </Typography>
-      </Box>
+          <Box sx={{ maxWidth: 730 }}>
+            <Chip
+              icon={<TaskAlt sx={{ fontSize: '1rem !important' }} />}
+              label="Supervisor Workspace"
+              size="small"
+              sx={{
+                mb: 1.2,
+                bgcolor: GREEN_UI.greenSoft,
+                color: GREEN_UI.greenDark,
+                fontWeight: 900,
+                borderRadius: 999,
+                '& .MuiChip-icon': { color: GREEN_UI.greenDark },
+              }}
+            />
+            <Typography
+              variant="h4"
+              fontWeight={900}
+              sx={{
+                fontSize: { xs: '1.55rem', sm: '2rem', md: '2.35rem' },
+                color: GREEN_UI.text,
+                letterSpacing: '-0.04em',
+                lineHeight: 1.08,
+                mb: 0.75,
+              }}
+            >
+              Supervisor Dashboard
+            </Typography>
+            <Typography variant="body2" sx={{ color: GREEN_UI.muted, maxWidth: 670, lineHeight: 1.7 }}>
+              Welcome, {currentUserName}. Monitor published schedules, review pending employee requests, and track submitted evaluations in one clean workspace.
+            </Typography>
+          </Box>
 
-      {(loading || refreshing || lastUpdatedAt) && (
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, my: 2 }}>
-          {(loading || refreshing) && <CircularProgress size={18} />}
-          <Typography variant="body2" color="text.secondary">
-            {loading ? 'Loading live stats…' : refreshing ? 'Refreshing live stats…' : lastUpdatedLabel}
-          </Typography>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
+            <Chip
+              icon={(loading || refreshing) ? <CircularProgress size={14} sx={{ color: `${GREEN_UI.greenDark} !important` }} /> : <TaskAlt sx={{ fontSize: '1rem !important' }} />}
+              label={loading ? 'Loading live stats…' : refreshing ? 'Refreshing live stats…' : lastUpdatedLabel}
+              size="small"
+              sx={{
+                maxWidth: { xs: '100%', sm: 260 },
+                borderRadius: 999,
+                bgcolor: '#f8fcf5',
+                color: GREEN_UI.muted,
+                fontWeight: 800,
+                border: `1px solid ${GREEN_UI.border}`,
+                '& .MuiChip-label': { overflow: 'hidden', textOverflow: 'ellipsis' },
+                '& .MuiChip-icon': { color: GREEN_UI.greenDark },
+              }}
+            />
+            <Button
+              variant="contained"
+              startIcon={(loading || refreshing) ? <CircularProgress size={16} color="inherit" /> : <Refresh />}
+              onClick={() => void loadDashboardStats(false)}
+              disabled={loading || refreshing}
+              sx={{
+                ...pillButtonSx,
+                py: 1.1,
+                bgcolor: GREEN_UI.green,
+                boxShadow: '0 12px 24px rgba(58, 168, 101, 0.25)',
+                '&:hover': { bgcolor: GREEN_UI.greenDark, boxShadow: '0 16px 28px rgba(31, 122, 70, 0.28)' },
+              }}
+            >
+              {refreshing ? 'Refreshing…' : 'Refresh'}
+            </Button>
+          </Box>
         </Box>
-      )}
+      </Paper>
 
       {errorMessage && !loading && (
         <Alert
           severity="warning"
-          sx={{ mb: 2 }}
+          sx={{ mb: 2, borderRadius: '18px', border: `1px solid ${GREEN_UI.border}` }}
           action={
-            <Button color="inherit" size="small" onClick={() => void loadDashboardStats(false)}>
+            <Button color="inherit" size="small" onClick={() => void loadDashboardStats(false)} sx={{ ...pillButtonSx }}>
               Retry
             </Button>
           }
@@ -538,247 +706,363 @@ export default function SupervisorDashboard() {
         </Alert>
       )}
 
-      {/* Stat Cards */}
-      <Grid container spacing={{ xs: 2, md: 2.5 }} sx={{ mb: 4 }}>
+      <Grid container spacing={1.5} sx={{ mb: 2.5 }}>
         {statCards.map((stat) => (
-          <Grid key={stat.title} size={{ xs: 12, sm: 6, md: 4, lg: 3 }} sx={{ display: 'flex' }}>
-            <Card
+          <Grid key={stat.title} size={{ xs: 12, sm: 6, md: 4 }}>
+            <Paper
               elevation={0}
               sx={{
-                height: 96,
-                width: '100%',
-                border: '1px solid',
-                borderColor: 'divider',
-                transition: 'box-shadow 0.2s',
-                '&:hover': { boxShadow: 4 },
+                ...softCardSx,
+                p: 2,
+                minHeight: 126,
+                display: 'flex',
+                flexDirection: 'column',
+                justifyContent: 'space-between',
+                transition: 'transform 180ms ease, box-shadow 180ms ease',
+                '&:hover': { transform: 'translateY(-3px)', boxShadow: '0 22px 48px rgba(43, 91, 55, 0.13)' },
               }}
             >
-              <CardContent sx={{ height: '100%', display: 'flex', alignItems: 'center', p: '16px !important' }}>
-                <Box sx={{ display: 'flex', alignItems: 'center', width: '100%', gap: 2 }}>
-                  <Box sx={{ bgcolor: stat.color, borderRadius: '14px', p: 1.5, display: 'flex', flexShrink: 0 }}>
-                    <Box sx={{ color: 'white', display: 'flex', fontSize: '1.35rem' }}>{stat.icon}</Box>
-                  </Box>
-                  <Box sx={{ minWidth: 0, flex: 1 }}>
-                    <Typography
-                      fontWeight="bold"
-                      sx={{
-                        fontSize: '1.25rem',
-                        lineHeight: 1.2,
-                        overflow: 'hidden',
-                        textOverflow: 'ellipsis',
-                        whiteSpace: 'nowrap',
-                      }}
-                    >
-                      {stat.value}
-                    </Typography>
-                    <Typography
-                      variant="caption"
-                      color="text.secondary"
-                      sx={{ display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
-                    >
-                      {stat.title}
-                    </Typography>
-                  </Box>
+              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 1.5 }}>
+                <Box>
+                  <Typography variant="body2" sx={{ color: GREEN_UI.muted, fontWeight: 800 }}>
+                    {stat.title}
+                  </Typography>
+                  <Typography variant="h4" fontWeight={900} sx={{ color: GREEN_UI.text, mt: 0.5, letterSpacing: '-0.04em' }}>
+                    {stat.value}
+                  </Typography>
                 </Box>
-              </CardContent>
-            </Card>
+                <Box sx={{ ...iconTileSx, bgcolor: stat.bg, color: stat.color }}>
+                  {stat.icon}
+                </Box>
+              </Box>
+              <Typography variant="caption" sx={{ color: GREEN_UI.muted, mt: 1.2 }}>
+                {stat.caption}
+              </Typography>
+            </Paper>
           </Grid>
         ))}
       </Grid>
 
-      {/* Quick Actions */}
-      <Paper elevation={0} sx={{ p: { xs: 2, sm: 3 }, border: '1px solid', borderColor: 'divider', mb: 3 }}>
-        <Box sx={{ display: 'flex', justifyContent: 'space-between', gap: 2, flexWrap: 'wrap', alignItems: 'center' }}>
-          <Typography variant="h6" gutterBottom fontWeight="bold">
-            Quick Actions
-          </Typography>
-          <Button
-            size="small"
-            startIcon={<Refresh />}
-            onClick={() => void loadDashboardStats(false)}
-            disabled={loading || refreshing}
-          >
-            Refresh
-          </Button>
+      <Paper elevation={0} sx={{ ...softCardSx, p: { xs: 2, sm: 2.4 }, mb: 2.5 }}>
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', gap: 2, flexWrap: 'wrap', alignItems: 'center', mb: 1.5 }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.25 }}>
+            <Box sx={{ ...iconTileSx, width: 40, height: 40, bgcolor: GREEN_UI.greenSoft, color: GREEN_UI.greenDark }}>
+              <Assignment />
+            </Box>
+            <Box>
+              <Typography variant="h6" fontWeight={900} sx={{ color: GREEN_UI.text, letterSpacing: '-0.02em' }}>
+                Quick Actions
+              </Typography>
+              <Typography variant="caption" sx={{ color: GREEN_UI.muted, fontWeight: 600 }}>
+                Jump directly to the supervisor tools you use most.
+              </Typography>
+            </Box>
+          </Box>
         </Box>
-        <Divider sx={{ mb: 2 }} />
-        <Grid container spacing={2}>
+        <Divider sx={{ borderColor: GREEN_UI.border, mb: 2 }} />
+        <Grid container spacing={1.5}>
           {shortcuts.map((shortcut) => (
-            <Grid key={shortcut.title} size={{ xs: 12, sm: 6, md: 4 }}>
+            <Grid key={shortcut.title} size={{ xs: 12, sm: 6, md: 3 }}>
               <Button
                 fullWidth
                 variant="outlined"
-                size="large"
-                startIcon={<Box sx={{ color: shortcut.color, display: 'flex' }}>{shortcut.icon}</Box>}
                 onClick={() => navigate(shortcut.path)}
                 sx={{
-                  py: 1.5,
+                  ...innerCardSx,
+                  minHeight: 104,
+                  p: 1.75,
                   justifyContent: 'flex-start',
-                  borderColor: 'divider',
-                  color: 'text.primary',
-                  '&:hover': { borderColor: shortcut.color, bgcolor: `${shortcut.color}11` },
+                  textAlign: 'left',
+                  color: GREEN_UI.text,
+                  textTransform: 'none',
+                  transition: 'transform 180ms ease, box-shadow 180ms ease, border-color 180ms ease',
+                  '&:hover': {
+                    transform: 'translateY(-2px)',
+                    borderColor: shortcut.color,
+                    bgcolor: '#ffffff',
+                    boxShadow: '0 18px 36px rgba(43, 91, 55, 0.12)',
+                  },
                 }}
               >
-                {shortcut.title}
+                <Box sx={{ display: 'flex', gap: 1.25, alignItems: 'flex-start', width: '100%' }}>
+                  <Box sx={{ ...iconTileSx, width: 38, height: 38, bgcolor: shortcut.bg, color: shortcut.color }}>
+                    {shortcut.icon}
+                  </Box>
+                  <Box sx={{ minWidth: 0 }}>
+                    <Typography variant="body2" fontWeight={900} sx={{ color: GREEN_UI.text, lineHeight: 1.2 }}>
+                      {shortcut.title}
+                    </Typography>
+                    <Typography variant="caption" sx={{ color: GREEN_UI.muted, display: 'block', mt: 0.5, lineHeight: 1.45 }}>
+                      {shortcut.caption}
+                    </Typography>
+                  </Box>
+                </Box>
               </Button>
             </Grid>
           ))}
         </Grid>
       </Paper>
 
-      {/* Published Schedules Panel */}
-      <Paper sx={{ p: 2.5, mb: 3 }}>
-        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2, gap: 2 }}>
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
-            <EventAvailable sx={{ color: '#1F7A47' }} />
-            <Typography variant="h6" fontWeight="bold">
-              Published Schedules
-            </Typography>
-            <Chip label={stats.publishedSchedules} size="small" color="success" variant="outlined" />
-          </Box>
-          <Button size="small" variant="outlined" onClick={() => navigate('/dashboard/schedule')}>
-            Manage Schedules
-          </Button>
-        </Box>
-        <Divider sx={{ mb: 2 }} />
-        {loading ? (
-          <Box sx={{ display: 'flex', justifyContent: 'center', py: 3, gap: 1 }}>
-            <CircularProgress size={20} />
-            <Typography color="text.secondary" variant="body2">
-              Loading schedules…
-            </Typography>
-          </Box>
-        ) : publishedSchedules.length === 0 ? (
-          <Box sx={{ textAlign: 'center', py: 3 }}>
-            <CalendarMonth sx={{ fontSize: 40, color: 'text.disabled', mb: 1 }} />
-            <Typography color="text.secondary">No published schedules yet.</Typography>
-            <Typography variant="body2" color="text.disabled" sx={{ mt: 0.5 }}>
-              Go to Schedule Management to create and publish employee schedules.
-            </Typography>
-          </Box>
-        ) : (
-          <TableContainer sx={{ overflowX: 'auto' }}>
-            <Table size="small">
-              <TableHead>
-                <TableRow>
-                  <TableCell sx={{ fontWeight: 700 }}>Employee</TableCell>
-                  <TableCell sx={{ fontWeight: 700 }}>Week / Period</TableCell>
-                  <TableCell sx={{ fontWeight: 700 }}>Outlet</TableCell>
-                  {DAY_LABELS.map((day) => (
-                    <TableCell key={day} sx={{ fontWeight: 700, textAlign: 'center', fontSize: '0.75rem' }}>
-                      {day}
-                    </TableCell>
-                  ))}
-                  <TableCell sx={{ fontWeight: 700 }}>Status</TableCell>
-                </TableRow>
-              </TableHead>
-              <TableBody>
-                {publishedSchedules.map((schedule) => (
-                  <TableRow key={schedule.id} hover>
-                    <TableCell sx={{ fontWeight: 600, whiteSpace: 'nowrap' }}>{schedule.employee}</TableCell>
-                    <TableCell sx={{ whiteSpace: 'nowrap', color: 'text.secondary', fontSize: '0.82rem' }}>
-                      {schedule.week}
-                    </TableCell>
-                    <TableCell sx={{ whiteSpace: 'nowrap', color: 'text.secondary', fontSize: '0.82rem' }}>
-                      {schedule.outlet}
-                    </TableCell>
-                    {DAY_KEYS.map((day) => {
-                      const value = schedule[day] as string | undefined;
-                      const normalizedValue = normalizeText(value);
-                      const isOff = !value || normalizedValue === 'off' || normalizedValue === 'rest';
-
-                      return (
-                        <TableCell key={String(day)} sx={{ textAlign: 'center', p: '6px 4px' }}>
-                          {isOff ? (
-                            <Typography variant="caption" color="text.disabled">
-                              —
-                            </Typography>
-                          ) : (
-                            <Chip
-                              label={value}
-                              size="small"
-                              variant="outlined"
-                              color="success"
-                              sx={{ fontSize: '0.68rem', height: 20, '& .MuiChip-label': { px: 0.75 } }}
-                            />
-                          )}
-                        </TableCell>
-                      );
-                    })}
-                    <TableCell>
-                      <Chip label="Published" size="small" color="success" sx={{ fontWeight: 600 }} />
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </TableContainer>
-        )}
-      </Paper>
-
-      {/* Pending Request Inbox */}
-      <Paper sx={{ p: 2.5 }}>
-        <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 2, gap: 2 }}>
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
-            <Typography variant="h6" fontWeight="bold">
-              Pending Requests
-            </Typography>
-            <Chip label={stats.pendingRequests} size="small" color="warning" variant="outlined" />
-          </Box>
-          <Button size="small" onClick={() => navigate('/dashboard/requests')}>
-            View All
-          </Button>
-        </Box>
-        <Divider sx={{ mb: 2 }} />
-        {loading ? (
-          <Box sx={{ display: 'flex', justifyContent: 'center', py: 3, gap: 1 }}>
-            <CircularProgress size={20} />
-            <Typography color="text.secondary" variant="body2">
-              Loading pending requests…
-            </Typography>
-          </Box>
-        ) : pendingRequests.length === 0 ? (
-          <Box sx={{ textAlign: 'center', py: 3 }}>
-            <TaskAlt color="success" sx={{ fontSize: 40, mb: 1 }} />
-            <Typography color="text.secondary">No pending requests — all clear!</Typography>
-          </Box>
-        ) : (
-          pendingRequests.map((request) => (
-            <Box
-              key={request.id}
-              sx={{
-                display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: { xs: 'flex-start', sm: 'center' },
-                gap: 2,
-                py: 1.5,
-                borderBottom: '1px solid',
-                borderColor: 'divider',
-                flexDirection: { xs: 'column', sm: 'row' },
-              }}
-            >
-              <Box sx={{ minWidth: 0 }}>
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap', mb: 0.25 }}>
-                  <Typography variant="body2" fontWeight={600} component="span">
-                    {request.employee}
-                  </Typography>
-                  <Chip label={request.type} size="small" />
-                  <Typography variant="caption" color="text.secondary">
-                    {request.requestId}
-                  </Typography>
+      <Grid container spacing={2.5} alignItems="stretch">
+        <Grid size={{ xs: 12, lg: 8 }}>
+          <Paper elevation={0} sx={{ ...softCardSx, overflow: 'hidden', height: '100%' }}>
+            <Box sx={{ p: { xs: 2, sm: 2.4 }, pb: 1.5 }}>
+              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: { xs: 'flex-start', sm: 'center' }, gap: 2, flexWrap: 'wrap' }}>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.25, minWidth: 0 }}>
+                  <Box sx={{ ...iconTileSx, bgcolor: GREEN_UI.greenSoft, color: GREEN_UI.greenDark }}>
+                    <EventAvailable />
+                  </Box>
+                  <Box sx={{ minWidth: 0 }}>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
+                      <Typography variant="h6" fontWeight={900} sx={{ color: GREEN_UI.text, letterSpacing: '-0.02em' }}>
+                        Published Schedules
+                      </Typography>
+                      <Chip
+                        label={stats.publishedSchedules}
+                        size="small"
+                        sx={{ borderRadius: 999, bgcolor: GREEN_UI.greenSoft, color: GREEN_UI.greenDark, fontWeight: 900 }}
+                      />
+                    </Box>
+                    <Typography variant="caption" sx={{ color: GREEN_UI.muted, fontWeight: 600 }}>
+                      Latest schedules currently visible to employees.
+                    </Typography>
+                  </Box>
                 </Box>
-                <Typography variant="caption" color="text.secondary">
-                  Date: {request.dateLabel} · {request.reason ? request.reason.slice(0, 80) : 'No reason provided'}
-                  {request.reason && request.reason.length > 80 ? '…' : ''}
+                <Button
+                  size="small"
+                  variant="outlined"
+                  startIcon={<CalendarMonth />}
+                  onClick={() => navigate('/dashboard/schedule')}
+                  sx={{
+                    ...pillButtonSx,
+                    borderColor: GREEN_UI.borderStrong,
+                    color: GREEN_UI.greenDark,
+                    '&:hover': { borderColor: GREEN_UI.green, bgcolor: GREEN_UI.greenSoft },
+                  }}
+                >
+                  Manage Schedules
+                </Button>
+              </Box>
+            </Box>
+            {refreshing && !loading && <LinearProgress sx={{ bgcolor: '#edf7eb', '& .MuiLinearProgress-bar': { bgcolor: GREEN_UI.green } }} />}
+            <Divider sx={{ borderColor: GREEN_UI.border }} />
+
+            {loading ? (
+              <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', py: 7, gap: 2 }}>
+                <CircularProgress size={28} sx={{ color: GREEN_UI.green }} />
+                <Typography sx={{ color: GREEN_UI.muted, fontWeight: 700 }}>Loading schedules…</Typography>
+              </Box>
+            ) : publishedSchedules.length === 0 ? (
+              <Box sx={{ textAlign: 'center', py: 7, px: 2 }}>
+                <Box sx={{ ...iconTileSx, width: 58, height: 58, bgcolor: GREEN_UI.greenSoft, color: GREEN_UI.greenDark, mx: 'auto', mb: 1.5 }}>
+                  <CalendarMonth sx={{ fontSize: 30 }} />
+                </Box>
+                <Typography fontWeight={900} sx={{ color: GREEN_UI.text }}>No published schedules yet.</Typography>
+                <Typography variant="body2" sx={{ color: GREEN_UI.muted, mt: 0.5 }}>
+                  Go to Schedule Management to create and publish employee schedules.
                 </Typography>
               </Box>
-              <Button size="small" variant="outlined" onClick={() => navigate('/dashboard/requests')}>
-                Review
+            ) : (
+              <TableContainer
+                sx={{
+                  overflowX: 'auto',
+                  '&::-webkit-scrollbar': { height: 10 },
+                  '&::-webkit-scrollbar-thumb': { bgcolor: '#cfe8d1', borderRadius: 999 },
+                }}
+              >
+                <Table sx={tableSx}>
+                  <TableHead>
+                    <TableRow sx={tableHeadRowSx}>
+                      <TableCell sx={{ whiteSpace: 'nowrap' }}>Employee</TableCell>
+                      <TableCell sx={{ whiteSpace: 'nowrap' }}>Week / Period</TableCell>
+                      <TableCell sx={{ whiteSpace: 'nowrap' }}>Outlet</TableCell>
+                      {DAY_LABELS.map((day) => (
+                        <TableCell key={day} sx={{ whiteSpace: 'nowrap', textAlign: 'center' }}>
+                          {day}
+                        </TableCell>
+                      ))}
+                      <TableCell sx={{ whiteSpace: 'nowrap' }}>Status</TableCell>
+                    </TableRow>
+                  </TableHead>
+                  <TableBody>
+                    {publishedSchedules.map((schedule) => (
+                      <TableRow key={schedule.id} hover>
+                        <TableCell sx={{ fontWeight: 900, color: GREEN_UI.text, whiteSpace: 'nowrap' }}>
+                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                            <Box sx={{ ...iconTileSx, width: 32, height: 32, borderRadius: '12px', bgcolor: GREEN_UI.greenSoft, color: GREEN_UI.greenDark }}>
+                              <PeopleAlt sx={{ fontSize: 18 }} />
+                            </Box>
+                            <Box>
+                              <Typography variant="body2" fontWeight={900} sx={{ lineHeight: 1.2 }}>
+                                {schedule.employee}
+                              </Typography>
+                              <Typography variant="caption" sx={{ color: GREEN_UI.muted }}>
+                                {schedule.employeeId || 'Employee'}
+                              </Typography>
+                            </Box>
+                          </Box>
+                        </TableCell>
+                        <TableCell sx={{ whiteSpace: 'nowrap', color: GREEN_UI.muted, fontSize: '0.82rem', fontWeight: 700 }}>
+                          {schedule.week}
+                        </TableCell>
+                        <TableCell sx={{ whiteSpace: 'nowrap', color: GREEN_UI.muted, fontSize: '0.82rem', fontWeight: 700 }}>
+                          {schedule.outlet}
+                        </TableCell>
+                        {DAY_KEYS.map((day) => {
+                          const value = schedule[day] as string | undefined;
+                          const normalizedValue = normalizeText(value);
+                          const isOff = !value || normalizedValue === 'off' || normalizedValue === 'rest';
+
+                          return (
+                            <TableCell key={String(day)} sx={{ textAlign: 'center', p: '7px 5px' }}>
+                              {isOff ? (
+                                <Typography variant="caption" sx={{ color: '#a4b2a7', fontWeight: 900 }}>
+                                  —
+                                </Typography>
+                              ) : (
+                                <Chip
+                                  label={value}
+                                  size="small"
+                                  variant="outlined"
+                                  sx={{
+                                    height: 23,
+                                    borderRadius: 999,
+                                    bgcolor: '#fbfef9',
+                                    color: GREEN_UI.greenDark,
+                                    borderColor: GREEN_UI.borderStrong,
+                                    fontSize: '0.68rem',
+                                    fontWeight: 900,
+                                    '& .MuiChip-label': { px: 0.8 },
+                                  }}
+                                />
+                              )}
+                            </TableCell>
+                          );
+                        })}
+                        <TableCell>
+                          <Chip
+                            label="Published"
+                            size="small"
+                            icon={<TaskAlt sx={{ fontSize: '1rem !important' }} />}
+                            sx={{
+                              borderRadius: 999,
+                              bgcolor: GREEN_UI.greenSoft,
+                              color: GREEN_UI.greenDark,
+                              fontWeight: 900,
+                              '& .MuiChip-icon': { color: GREEN_UI.greenDark },
+                            }}
+                          />
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </TableContainer>
+            )}
+          </Paper>
+        </Grid>
+
+        <Grid size={{ xs: 12, lg: 4 }}>
+          <Paper elevation={0} sx={{ ...softCardSx, p: { xs: 2, sm: 2.4 }, height: '100%' }}>
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: { xs: 'flex-start', sm: 'center' }, gap: 2, flexWrap: 'wrap', mb: 1.5 }}>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.25 }}>
+                <Box sx={{ ...iconTileSx, bgcolor: GREEN_UI.amberSoft, color: GREEN_UI.amberDark }}>
+                  <Timelapse />
+                </Box>
+                <Box>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
+                    <Typography variant="h6" fontWeight={900} sx={{ color: GREEN_UI.text, letterSpacing: '-0.02em' }}>
+                      Pending Requests
+                    </Typography>
+                    <Chip
+                      label={stats.pendingRequests}
+                      size="small"
+                      sx={{ borderRadius: 999, bgcolor: GREEN_UI.amberSoft, color: GREEN_UI.amberDark, fontWeight: 900 }}
+                    />
+                  </Box>
+                  <Typography variant="caption" sx={{ color: GREEN_UI.muted, fontWeight: 600 }}>
+                    Requests needing your next action.
+                  </Typography>
+                </Box>
+              </Box>
+              <Button
+                size="small"
+                onClick={() => navigate('/dashboard/requests')}
+                sx={{ ...pillButtonSx, color: GREEN_UI.greenDark, bgcolor: GREEN_UI.greenSoft, '&:hover': { bgcolor: '#d8f1dd' } }}
+              >
+                View All
               </Button>
             </Box>
-          ))
-        )}
-      </Paper>
+            <Divider sx={{ borderColor: GREEN_UI.border, mb: 1.5 }} />
+
+            {loading ? (
+              <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', py: 7, gap: 1.5 }}>
+                <CircularProgress size={24} sx={{ color: GREEN_UI.green }} />
+                <Typography sx={{ color: GREEN_UI.muted, fontWeight: 700 }}>Loading requests…</Typography>
+              </Box>
+            ) : pendingRequests.length === 0 ? (
+              <Box sx={{ textAlign: 'center', py: 7, px: 2 }}>
+                <Box sx={{ ...iconTileSx, width: 58, height: 58, bgcolor: GREEN_UI.greenSoft, color: GREEN_UI.greenDark, mx: 'auto', mb: 1.5 }}>
+                  <TaskAlt sx={{ fontSize: 30 }} />
+                </Box>
+                <Typography fontWeight={900} sx={{ color: GREEN_UI.text }}>No pending requests</Typography>
+                <Typography variant="body2" sx={{ color: GREEN_UI.muted, mt: 0.5 }}>
+                  All clear for now.
+                </Typography>
+              </Box>
+            ) : (
+              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.2 }}>
+                {pendingRequests.map((request) => (
+                  <Paper key={request.id} elevation={0} sx={{ ...innerCardSx, p: 1.6 }}>
+                    <Box sx={{ display: 'flex', justifyContent: 'space-between', gap: 1.2, alignItems: 'flex-start' }}>
+                      <Box sx={{ minWidth: 0, flex: 1 }}>
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.8, flexWrap: 'wrap', mb: 0.7 }}>
+                          <Typography variant="body2" fontWeight={900} sx={{ color: GREEN_UI.text }}>
+                            {request.employee}
+                          </Typography>
+                          <Chip
+                            label={request.type}
+                            size="small"
+                            sx={{
+                              height: 24,
+                              borderRadius: 999,
+                              bgcolor: GREEN_UI.amberSoft,
+                              color: GREEN_UI.amberDark,
+                              fontWeight: 900,
+                              '& .MuiChip-label': { px: 1 },
+                            }}
+                          />
+                        </Box>
+                        <Typography variant="caption" sx={{ color: GREEN_UI.muted, display: 'block', fontWeight: 700 }}>
+                          {request.requestId} · {request.dateLabel}
+                        </Typography>
+                        <Typography variant="body2" sx={{ color: GREEN_UI.muted, mt: 0.75, lineHeight: 1.5 }}>
+                          {request.reason ? request.reason.slice(0, 96) : 'No reason provided'}
+                          {request.reason && request.reason.length > 96 ? '…' : ''}
+                        </Typography>
+                      </Box>
+                      <Button
+                        size="small"
+                        variant="outlined"
+                        onClick={() => navigate('/dashboard/requests')}
+                        sx={{
+                          ...pillButtonSx,
+                          minWidth: 74,
+                          borderColor: GREEN_UI.borderStrong,
+                          color: GREEN_UI.greenDark,
+                          '&:hover': { borderColor: GREEN_UI.green, bgcolor: GREEN_UI.greenSoft },
+                        }}
+                      >
+                        Review
+                      </Button>
+                    </Box>
+                  </Paper>
+                ))}
+              </Box>
+            )}
+          </Paper>
+        </Grid>
+      </Grid>
     </Box>
   );
 }

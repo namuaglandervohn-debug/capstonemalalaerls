@@ -3,8 +3,6 @@ import {
   Alert,
   Box,
   Button,
-  Card,
-  CardContent,
   Chip,
   CircularProgress,
   Dialog,
@@ -43,9 +41,9 @@ import {
 } from "@mui/icons-material";
 import { supabase } from "../../lib/supabaseClient";
 import { OUTLETS, POSITIONS } from "../../lib/constants";
-
-const AVAILABLE_POSITIONS = POSITIONS.filter(position => position !== "Payroll Staff");
 import { useAuth } from "../../context/AuthContext";
+
+const AVAILABLE_POSITIONS = POSITIONS.filter((position) => position !== "Payroll Staff");
 
 /* ── Types ─────────────────────────────────────────────────────────────── */
 type EvaluationStatus = "Draft" | "Submitted" | "Reviewed" | "Approved" | "Returned" | "Cancelled";
@@ -202,6 +200,150 @@ function labelForScore(score: number) {
   if (score >= 75) return "Fair";
   return "Needs Improvement";
 }
+
+const GREEN_UI = {
+  pageBg: "radial-gradient(circle at top left, rgba(220, 246, 219, 0.95), rgba(248, 252, 245, 0.98) 34%, #f7fbf3 100%)",
+  cardBg: "rgba(255, 255, 255, 0.92)",
+  cardBgSoft: "rgba(245, 252, 241, 0.88)",
+  border: "rgba(139, 184, 144, 0.24)",
+  borderStrong: "rgba(73, 156, 92, 0.32)",
+  green: "#3aa865",
+  greenDark: "#1f7a46",
+  greenSoft: "#e6f8e9",
+  text: "#1e2d24",
+  muted: "#6c7d70",
+  warningSoft: "#fff7e0",
+  warningDark: "#9b6b00",
+  dangerSoft: "#fdeaea",
+  dangerDark: "#9c2f2f",
+  shadow: "0 20px 55px rgba(43, 91, 55, 0.10)",
+  shadowSoft: "0 12px 28px rgba(43, 91, 55, 0.08)",
+};
+
+const softCardSx = {
+  borderRadius: "26px",
+  border: `1px solid ${GREEN_UI.border}`,
+  background: GREEN_UI.cardBg,
+  boxShadow: GREEN_UI.shadow,
+};
+
+const innerCardSx = {
+  borderRadius: "20px",
+  border: `1px solid ${GREEN_UI.border}`,
+  background: GREEN_UI.cardBgSoft,
+  boxShadow: GREEN_UI.shadowSoft,
+};
+
+const pillButtonSx = {
+  borderRadius: 999,
+  textTransform: "none",
+  fontWeight: 700,
+  px: 2,
+};
+
+const softTextFieldSx = {
+  "& .MuiOutlinedInput-root": {
+    borderRadius: "16px",
+    backgroundColor: "#fbfef9",
+    transition: "all 180ms ease",
+    "& fieldset": { borderColor: GREEN_UI.border },
+    "&:hover fieldset": { borderColor: GREEN_UI.borderStrong },
+    "&.Mui-focused fieldset": { borderColor: GREEN_UI.green, borderWidth: 1.5 },
+    "&.Mui-disabled": { backgroundColor: "#f6fbf4" },
+  },
+  "& .MuiInputLabel-root": { color: GREEN_UI.muted },
+  "& .MuiInputBase-input.Mui-disabled": { WebkitTextFillColor: GREEN_UI.text },
+};
+
+const tableSx = {
+  minWidth: 980,
+  "& th, & td": { borderColor: "rgba(139, 184, 144, 0.16)" },
+  "& tbody tr": { transition: "background 160ms ease" },
+  "& tbody tr:hover": { bgcolor: "rgba(231, 247, 229, 0.52)" },
+  "& tbody td": { py: 1.55, color: GREEN_UI.text },
+};
+
+const tableHeadRowSx = {
+  background: "linear-gradient(90deg, #eff8eb 0%, #f8fcf5 100%)",
+  "& th": {
+    color: GREEN_UI.greenDark,
+    fontWeight: 900,
+    fontSize: "0.78rem",
+    letterSpacing: "0.02em",
+    textTransform: "uppercase",
+    py: 1.7,
+    whiteSpace: "nowrap",
+  },
+};
+
+const dialogPaperSx = {
+  borderRadius: { xs: "22px", sm: "30px" },
+  overflow: "hidden",
+  border: `1px solid ${GREEN_UI.border}`,
+  background: "#fbfff9",
+  boxShadow: "0 28px 70px rgba(27, 73, 37, 0.18)",
+};
+
+const dialogTitleSx = {
+  px: { xs: 2, sm: 3 },
+  py: 2.25,
+  background: "linear-gradient(135deg, #ffffff 0%, #eef9ea 100%)",
+  borderBottom: `1px solid ${GREEN_UI.border}`,
+};
+
+const statusChipSx = (status: EvaluationStatus | string) => {
+  const styles: Record<string, { bg: string; color: string; border: string }> = {
+    Draft: { bg: "#f4f7f3", color: "#5f6e63", border: "#dce8da" },
+    Submitted: { bg: "#fff7e0", color: "#9b6b00", border: "#f5d786" },
+    Reviewed: { bg: "#e9f6ff", color: "#1d6f9c", border: "#b7dff7" },
+    Approved: { bg: "#e5f8e9", color: "#217a43", border: "#a9dfb6" },
+    Returned: { bg: "#fff7e0", color: "#9b6b00", border: "#f5d786" },
+    Cancelled: { bg: "#fdeaea", color: "#9c2f2f", border: "#efb8b8" },
+    "Under Review": { bg: "#fff7e0", color: "#9b6b00", border: "#f5d786" },
+  };
+  const selected = styles[status] ?? styles.Draft;
+  return {
+    bgcolor: selected.bg,
+    color: selected.color,
+    borderColor: selected.border,
+    fontWeight: 800,
+    borderRadius: 999,
+    "& .MuiChip-label": { px: 1.25 },
+  };
+};
+
+const ratingChipSx = (score: number) => {
+  if (score >= 90) {
+    return { bgcolor: "#fff7e0", color: "#9b6b00", borderColor: "#f5d786", fontWeight: 800, borderRadius: 999 };
+  }
+  if (score >= 85) {
+    return { bgcolor: "#e5f8e9", color: "#217a43", borderColor: "#a9dfb6", fontWeight: 800, borderRadius: 999 };
+  }
+  if (score >= 75) {
+    return { bgcolor: "#eef9ea", color: GREEN_UI.greenDark, borderColor: GREEN_UI.borderStrong, fontWeight: 800, borderRadius: 999 };
+  }
+  return { bgcolor: GREEN_UI.dangerSoft, color: GREEN_UI.dangerDark, borderColor: "#efb8b8", fontWeight: 800, borderRadius: 999 };
+};
+
+const actionChipSx = (tone: "primary" | "success" | "danger" | "warning" = "primary") => {
+  const styles = {
+    primary: { bg: "#ffffff", color: GREEN_UI.greenDark, border: GREEN_UI.borderStrong, hover: GREEN_UI.greenSoft },
+    success: { bg: "#f4fbf5", color: GREEN_UI.greenDark, border: "#a9dfb6", hover: "#e5f8e9" },
+    danger: { bg: "#fffafa", color: GREEN_UI.dangerDark, border: "#efb8b8", hover: GREEN_UI.dangerSoft },
+    warning: { bg: "#fffdf5", color: GREEN_UI.warningDark, border: "#f5d786", hover: GREEN_UI.warningSoft },
+  }[tone];
+
+  return {
+    minWidth: 92,
+    justifyContent: "center",
+    borderRadius: 999,
+    fontWeight: 800,
+    borderColor: styles.border,
+    color: styles.color,
+    bgcolor: styles.bg,
+    "&:hover": { bgcolor: styles.hover },
+  };
+};
 
 export default function PerformanceEvaluation() {
   const { user } = useAuth();
@@ -773,183 +915,412 @@ export default function PerformanceEvaluation() {
     }
   };
 
+  const performanceStats = [
+    {
+      label: "Total Evaluations",
+      value: displayedEvaluations.length,
+      caption: isEmployee ? "Evaluations assigned to your employee profile." : "Visible evaluation records in this workspace.",
+      icon: <TaskAlt fontSize="small" />,
+    },
+    {
+      label: "Submitted / Pending",
+      value: evaluations.filter((r) => r.status === "Submitted" || r.status === "Reviewed").length,
+      caption: "Records waiting for review or approval.",
+      icon: <Insights fontSize="small" />,
+    },
+    {
+      label: "Latest DSS Average",
+      value: latestDss ? `${Number(latestDss.average_score || 0).toFixed(2)}%` : "—",
+      caption: latestDss ? latestDss.result_period_label || "Most recent generated ranking." : "Generate DSS to calculate average score.",
+      icon: <Grade fontSize="small" />,
+    },
+    {
+      label: "Employee of the Month",
+      value: topDssItem ? topDssItem.employee_name : "Not yet generated",
+      caption: topDssItem ? `${Number(topDssItem.final_weighted_score || 0).toFixed(2)}% final weighted score.` : "Top employee will appear after DSS ranking.",
+      icon: <EmojiEvents fontSize="small" />,
+      featured: true,
+    },
+  ];
+
   /* ═══════════════════════════════════════════════════════════════════ */
   return (
-    <Box>
-      {/* Header */}
-      <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: { xs: "flex-start", sm: "center" }, flexWrap: "wrap", gap: 2, mb: 3 }}>
-        <Box>
-          <Typography variant="h4" gutterBottom fontWeight="bold" sx={{ fontSize: { xs: "1.35rem", sm: "1.75rem", md: "2.125rem" } }}>
-            Performance Evaluation with DSS
-          </Typography>
-          <Typography variant="body2" color="text.secondary">
-            Supabase-connected evaluation criteria, scoring, ranking, and Employee of the Month decision support.
-          </Typography>
+    <Box
+      sx={{
+        minHeight: "100%",
+        p: { xs: 1.5, sm: 2.25, md: 3 },
+        background: GREEN_UI.pageBg,
+        color: GREEN_UI.text,
+        borderRadius: { xs: 0, md: "32px" },
+      }}
+    >
+      <Paper
+        elevation={0}
+        sx={{
+          ...softCardSx,
+          p: { xs: 2, sm: 2.75, md: 3.25 },
+          mb: 2.5,
+          position: "relative",
+          overflow: "hidden",
+          background: "linear-gradient(135deg, rgba(255,255,255,0.98) 0%, rgba(239,250,235,0.96) 60%, rgba(225,248,224,0.94) 100%)",
+          "&:before": {
+            content: '""',
+            position: "absolute",
+            width: 260,
+            height: 260,
+            borderRadius: "50%",
+            right: -90,
+            top: -110,
+            background: "rgba(76, 175, 80, 0.12)",
+          },
+          "&:after": {
+            content: '""',
+            position: "absolute",
+            width: 160,
+            height: 160,
+            borderRadius: "50%",
+            left: { xs: "70%", md: "44%" },
+            bottom: -95,
+            background: "rgba(174, 222, 144, 0.18)",
+          },
+        }}
+      >
+        <Box
+          sx={{
+            position: "relative",
+            zIndex: 1,
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: { xs: "flex-start", md: "center" },
+            flexWrap: "wrap",
+            gap: 2,
+          }}
+        >
+          <Box sx={{ maxWidth: 760 }}>
+            <Chip
+              icon={<EmojiEvents sx={{ fontSize: 16 }} />}
+              label="Performance Workspace"
+              size="small"
+              sx={{
+                mb: 1.2,
+                bgcolor: GREEN_UI.greenSoft,
+                color: GREEN_UI.greenDark,
+                fontWeight: 900,
+                borderRadius: 999,
+                "& .MuiChip-icon": { color: GREEN_UI.greenDark },
+              }}
+            />
+            <Typography
+              variant="h4"
+              fontWeight={900}
+              sx={{
+                fontSize: { xs: "1.55rem", sm: "2rem", md: "2.35rem" },
+                color: GREEN_UI.text,
+                letterSpacing: "-0.04em",
+                lineHeight: 1.08,
+                mb: 0.75,
+              }}
+            >
+              Performance Evaluation with DSS
+            </Typography>
+            <Typography variant="body2" sx={{ color: GREEN_UI.muted, maxWidth: 680, lineHeight: 1.7 }}>
+              Supabase-connected criteria management, employee scoring, DSS ranking, and Employee of the Month support in one clean workspace.
+            </Typography>
+          </Box>
+
+          <Box sx={{ display: "flex", gap: 1, alignItems: "center", flexWrap: "wrap" }}>
+            <Tooltip title="Refresh performance data">
+              <span>
+                <Button
+                  variant="contained"
+                  startIcon={loading ? <CircularProgress size={16} color="inherit" /> : <Sync />}
+                  onClick={refreshAll}
+                  disabled={loading}
+                  sx={{
+                    ...pillButtonSx,
+                    py: 1.1,
+                    bgcolor: GREEN_UI.green,
+                    boxShadow: "0 12px 24px rgba(58, 168, 101, 0.25)",
+                    "&:hover": { bgcolor: GREEN_UI.greenDark, boxShadow: "0 16px 28px rgba(31, 122, 70, 0.28)" },
+                  }}
+                >
+                  {loading ? "Refreshing…" : "Refresh"}
+                </Button>
+              </span>
+            </Tooltip>
+
+            {isHR && (
+              <Button
+                variant="outlined"
+                startIcon={<Edit />}
+                onClick={openCriteriaDialog}
+                sx={{
+                  ...pillButtonSx,
+                  py: 1.1,
+                  borderColor: GREEN_UI.borderStrong,
+                  color: GREEN_UI.greenDark,
+                  bgcolor: "#ffffff",
+                  "&:hover": { bgcolor: GREEN_UI.greenSoft, borderColor: GREEN_UI.green },
+                }}
+              >
+                Manage Criteria
+              </Button>
+            )}
+
+            {(isSupervisor || isHR) && (
+              <Button
+                variant="contained"
+                startIcon={<AddCircleOutline />}
+                onClick={() => openEvaluateForEmployee()}
+                sx={{
+                  ...pillButtonSx,
+                  py: 1.1,
+                  bgcolor: GREEN_UI.greenDark,
+                  boxShadow: "0 12px 24px rgba(31, 122, 70, 0.20)",
+                  "&:hover": { bgcolor: "#17633a" },
+                }}
+              >
+                New Evaluation
+              </Button>
+            )}
+
+            {(isHR || isGM) && (
+              <Button
+                variant="contained"
+                startIcon={<Insights />}
+                onClick={() => setDssDialogOpen(true)}
+                sx={{
+                  ...pillButtonSx,
+                  py: 1.1,
+                  bgcolor: "#9b6b00",
+                  boxShadow: "0 12px 24px rgba(155, 107, 0, 0.18)",
+                  "&:hover": { bgcolor: "#7b5600" },
+                }}
+              >
+                Generate DSS
+              </Button>
+            )}
+          </Box>
         </Box>
+      </Paper>
 
-        <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap" }}>
-          <Tooltip title="Refresh">
-            <span>
-              <IconButton onClick={refreshAll} disabled={loading}>
-                <Sync />
-              </IconButton>
-            </span>
-          </Tooltip>
-
-          {isHR && (
-            <Button variant="outlined" startIcon={<Edit />} onClick={openCriteriaDialog}>
-              Manage Criteria
-            </Button>
-          )}
-
-          {(isSupervisor || isHR) && (
-            <Button variant="contained" startIcon={<AddCircleOutline />} onClick={() => openEvaluateForEmployee()}>
-              New Evaluation
-            </Button>
-          )}
-
-          {(isHR || isGM) && (
-            <Button variant="contained" color="success" startIcon={<Insights />} onClick={() => setDssDialogOpen(true)}>
-              Generate DSS
-            </Button>
-          )}
-        </Box>
-      </Box>
+      <Grid container spacing={1.5} sx={{ mb: 2.5 }}>
+        {performanceStats.map((stat) => (
+          <Grid key={stat.label} size={{ xs: 12, sm: 6, md: 3 }}>
+            <Paper
+              elevation={0}
+              sx={{
+                ...softCardSx,
+                p: 2,
+                minHeight: 126,
+                display: "flex",
+                flexDirection: "column",
+                justifyContent: "space-between",
+                background: stat.featured
+                  ? "linear-gradient(135deg, #fffaf0 0%, #ffffff 58%, #f1faed 100%)"
+                  : GREEN_UI.cardBg,
+                transition: "transform 180ms ease, box-shadow 180ms ease",
+                "&:hover": { transform: "translateY(-3px)", boxShadow: "0 22px 48px rgba(43, 91, 55, 0.13)" },
+              }}
+            >
+              <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 1.5 }}>
+                <Box sx={{ minWidth: 0 }}>
+                  <Typography variant="body2" sx={{ color: GREEN_UI.muted, fontWeight: 800 }}>
+                    {stat.label}
+                  </Typography>
+                  <Typography
+                    variant={stat.featured ? "subtitle1" : "h4"}
+                    fontWeight={900}
+                    sx={{
+                      color: GREEN_UI.text,
+                      mt: 0.5,
+                      letterSpacing: "-0.04em",
+                      overflow: "hidden",
+                      textOverflow: "ellipsis",
+                      display: "-webkit-box",
+                      WebkitLineClamp: 2,
+                      WebkitBoxOrient: "vertical",
+                    }}
+                  >
+                    {stat.value}
+                  </Typography>
+                </Box>
+                <Box
+                  sx={{
+                    width: 42,
+                    height: 42,
+                    borderRadius: "16px",
+                    display: "grid",
+                    placeItems: "center",
+                    bgcolor: stat.featured ? GREEN_UI.warningSoft : GREEN_UI.greenSoft,
+                    color: stat.featured ? GREEN_UI.warningDark : GREEN_UI.greenDark,
+                    flexShrink: 0,
+                  }}
+                >
+                  {stat.icon}
+                </Box>
+              </Box>
+              <Typography variant="caption" sx={{ color: GREEN_UI.muted, mt: 1.2 }}>
+                {stat.caption}
+              </Typography>
+            </Paper>
+          </Grid>
+        ))}
+      </Grid>
 
       {error && (
-        <Alert severity="error" sx={{ mb: 2 }} action={<Button size="small" onClick={refreshAll}>Retry</Button>}>
+        <Alert
+          severity="error"
+          sx={{ mb: 2, borderRadius: "18px", border: `1px solid ${GREEN_UI.border}` }}
+          action={
+            <Button size="small" onClick={refreshAll} sx={{ ...pillButtonSx }}>
+              Retry
+            </Button>
+          }
+        >
           {error}
         </Alert>
       )}
 
       {criteriaReady && (
-        <Alert severity={criteriaReady.is_ready ? "success" : "error"} sx={{ mb: 2 }}>
+        <Alert
+          severity={criteriaReady.is_ready ? "success" : "error"}
+          icon={criteriaReady.is_ready ? <TaskAlt /> : undefined}
+          sx={{ mb: 2, borderRadius: "18px", border: `1px solid ${GREEN_UI.border}` }}
+        >
           DSS Criteria Weight Check: <strong>{money(criteriaReady.total_weight)}%</strong> — {criteriaReady.message}
         </Alert>
       )}
 
-      {/* DSS Formula Banner */}
-      <Paper variant="outlined" sx={{ p: 2, mb: 3, bgcolor: "#f0f7f0" }}>
-        <Typography variant="subtitle2" fontWeight={700} color="primary.dark" gutterBottom>
-          DSS Weighted Scoring Formula:
-        </Typography>
-        <Typography variant="caption" color="text.secondary">
-          Final Score ={" "}
-          {criteria.length > 0
-            ? criteria.map((c) => `(${c.criteria_name} × ${Number(c.weight || 0)}%)`).join(" + ")
-            : "No active criteria found."}
-        </Typography>
+      <Paper elevation={0} sx={{ ...softCardSx, p: { xs: 2, md: 2.4 }, mb: 2.5 }}>
+        <Box sx={{ display: "flex", alignItems: "flex-start", gap: 1.5 }}>
+          <Box
+            sx={{
+              width: 44,
+              height: 44,
+              borderRadius: "16px",
+              display: "grid",
+              placeItems: "center",
+              bgcolor: GREEN_UI.greenSoft,
+              color: GREEN_UI.greenDark,
+              flexShrink: 0,
+            }}
+          >
+            <Insights />
+          </Box>
+          <Box sx={{ minWidth: 0 }}>
+            <Typography fontWeight={900} sx={{ color: GREEN_UI.text, mb: 0.5 }}>
+              DSS Weighted Scoring Formula
+            </Typography>
+            <Typography variant="body2" sx={{ color: GREEN_UI.muted, lineHeight: 1.8 }}>
+              Final Score ={" "}
+              {criteria.length > 0
+                ? criteria.map((c) => `(${c.criteria_name} × ${Number(c.weight || 0)}%)`).join(" + ")
+                : "No active criteria found."}
+            </Typography>
+          </Box>
+        </Box>
       </Paper>
 
-      {/* Stat cards */}
-      <Grid container spacing={3} sx={{ mb: 3 }}>
-        <Grid size={{ xs: 12, md: 3 }}>
-          <Card elevation={2}>
-            <CardContent>
-              <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                <Box>
-                  <Typography variant="body2" color="text.secondary">Total Evaluations</Typography>
-                  <Typography variant="h5" fontWeight="bold">{displayedEvaluations.length}</Typography>
-                </Box>
-                <TaskAlt color="success" sx={{ fontSize: 36 }} />
-              </Box>
-            </CardContent>
-          </Card>
-        </Grid>
-
-        <Grid size={{ xs: 12, md: 3 }}>
-          <Card elevation={2}>
-            <CardContent>
-              <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                <Box>
-                  <Typography variant="body2" color="text.secondary">Submitted / Pending</Typography>
-                  <Typography variant="h5" fontWeight="bold">
-                    {evaluations.filter((r) => r.status === "Submitted" || r.status === "Reviewed").length}
-                  </Typography>
-                </Box>
-                <Insights color="warning" sx={{ fontSize: 36 }} />
-              </Box>
-            </CardContent>
-          </Card>
-        </Grid>
-
-        <Grid size={{ xs: 12, md: 3 }}>
-          <Card elevation={2}>
-            <CardContent>
-              <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                <Box>
-                  <Typography variant="body2" color="text.secondary">Latest DSS Average</Typography>
-                  <Typography variant="h5" fontWeight="bold">
-                    {latestDss ? `${Number(latestDss.average_score || 0).toFixed(2)}%` : "—"}
-                  </Typography>
-                </Box>
-                <Grade color="primary" sx={{ fontSize: 36 }} />
-              </Box>
-            </CardContent>
-          </Card>
-        </Grid>
-
-        <Grid size={{ xs: 12, md: 3 }}>
-          <Card elevation={2} sx={{ bgcolor: "warning.main", color: "white" }}>
-            <CardContent>
-              <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                <Box>
-                  <Typography variant="body2" sx={{ opacity: 0.9 }}>🏆 Employee of the Month</Typography>
-                  <Typography variant="subtitle1" fontWeight="bold">
-                    {topDssItem ? `${topDssItem.employee_name} — ${Number(topDssItem.final_weighted_score || 0).toFixed(2)}%` : "Not yet generated"}
-                  </Typography>
-                </Box>
-                <EmojiEvents sx={{ fontSize: 44 }} />
-              </Box>
-            </CardContent>
-          </Card>
-        </Grid>
-      </Grid>
-
-      {/* Supervisor employee list */}
       {isSupervisor && (
-        <Paper sx={{ mb: 4 }}>
-          <Box sx={{ p: 2, borderBottom: "1px solid", borderColor: "divider", display: "flex", alignItems: "center", gap: 1 }}>
-            <Groups color="primary" />
-            <Typography variant="h6" fontWeight={700}>Employee List — Select an Employee to Evaluate</Typography>
+        <Paper elevation={0} sx={{ ...softCardSx, mb: 2.5, overflow: "hidden" }}>
+          <Box
+            sx={{
+              px: { xs: 2, sm: 2.5 },
+              py: 2,
+              borderBottom: `1px solid ${GREEN_UI.border}`,
+              background: "linear-gradient(90deg, #ffffff 0%, #f1faed 100%)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+              flexWrap: "wrap",
+              gap: 1.5,
+            }}
+          >
+            <Box sx={{ display: "flex", alignItems: "center", gap: 1.2 }}>
+              <Box sx={{ width: 38, height: 38, borderRadius: "14px", display: "grid", placeItems: "center", bgcolor: GREEN_UI.greenSoft, color: GREEN_UI.greenDark }}>
+                <Groups fontSize="small" />
+              </Box>
+              <Box>
+                <Typography fontWeight={900} sx={{ color: GREEN_UI.text }}>
+                  Employee List
+                </Typography>
+                <Typography variant="caption" sx={{ color: GREEN_UI.muted }}>
+                  Select an employee to evaluate.
+                </Typography>
+              </Box>
+            </Box>
           </Box>
 
-          <TableContainer sx={{ overflowX: "auto" }}>
+          <TableContainer sx={{ overflowX: "auto", "&::-webkit-scrollbar": { height: 10 }, "&::-webkit-scrollbar-thumb": { bgcolor: "#cfe8d1", borderRadius: 999 } }}>
             {employeesLoading ? (
-              <Box sx={{ display: "flex", justifyContent: "center", py: 5, gap: 2 }}>
-                <CircularProgress size={24} />
-                <Typography color="text.secondary">Loading employees…</Typography>
+              <Box sx={{ display: "flex", alignItems: "center", justifyContent: "center", py: 7, gap: 2 }}>
+                <CircularProgress size={28} sx={{ color: GREEN_UI.green }} />
+                <Typography sx={{ color: GREEN_UI.muted, fontWeight: 700 }}>Loading employees…</Typography>
               </Box>
             ) : (
-              <Table>
+              <Table sx={{ ...tableSx, minWidth: 760 }}>
                 <TableHead>
-                  <TableRow sx={{ bgcolor: "primary.main" }}>
-                    {["Employee ID", "Name", "Position", "Outlet", "Status", "Action"].map((h) => (
-                      <TableCell key={h} sx={{ color: "white", fontWeight: 700, whiteSpace: "nowrap" }}>{h}</TableCell>
+                  <TableRow sx={tableHeadRowSx}>
+                    {[
+                      "Employee ID",
+                      "Name",
+                      "Position",
+                      "Outlet",
+                      "Status",
+                      "Action",
+                    ].map((h) => (
+                      <TableCell key={h}>{h}</TableCell>
                     ))}
                   </TableRow>
                 </TableHead>
                 <TableBody>
                   {employees.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={6} align="center" sx={{ py: 5, color: "text.secondary" }}>
-                        No employees found.
+                      <TableCell colSpan={6} align="center" sx={{ py: 7 }}>
+                        <Box sx={{ maxWidth: 360, mx: "auto" }}>
+                          <Box sx={{ width: 54, height: 54, borderRadius: "20px", display: "grid", placeItems: "center", mx: "auto", mb: 1.5, bgcolor: GREEN_UI.greenSoft, color: GREEN_UI.greenDark }}>
+                            <Groups />
+                          </Box>
+                          <Typography fontWeight={900} sx={{ color: GREEN_UI.text }}>
+                            No employees found
+                          </Typography>
+                          <Typography variant="body2" sx={{ color: GREEN_UI.muted, mt: 0.5 }}>
+                            Active employee records will appear here once loaded.
+                          </Typography>
+                        </Box>
                       </TableCell>
                     </TableRow>
                   ) : (
                     employees.map((emp) => (
                       <TableRow key={emp.employee_id} hover>
-                        <TableCell><Chip label={emp.employee_id} size="small" variant="outlined" /></TableCell>
-                        <TableCell sx={{ fontWeight: 600 }}>{emp.name}</TableCell>
-                        <TableCell>{emp.position}</TableCell>
-                        <TableCell>{emp.outlet}</TableCell>
                         <TableCell>
-                          <Chip label={emp.status} size="small" color={emp.status === "Active" ? "success" : "default"} />
+                          <Chip label={emp.employee_id} size="small" variant="outlined" sx={{ borderRadius: 999, fontWeight: 800, bgcolor: "#f8fcf5", borderColor: GREEN_UI.border }} />
+                        </TableCell>
+                        <TableCell sx={{ whiteSpace: "nowrap" }}>
+                          <Typography fontWeight={800} sx={{ color: GREEN_UI.text }}>
+                            {emp.name}
+                          </Typography>
+                        </TableCell>
+                        <TableCell sx={{ whiteSpace: "nowrap" }}>
+                          <Typography variant="body2" sx={{ color: GREEN_UI.muted, fontWeight: 700 }}>
+                            {emp.position || "—"}
+                          </Typography>
+                        </TableCell>
+                        <TableCell sx={{ whiteSpace: "nowrap" }}>{emp.outlet || "—"}</TableCell>
+                        <TableCell>
+                          <Chip label={emp.status} size="small" variant="outlined" sx={statusChipSx(emp.status)} />
                         </TableCell>
                         <TableCell>
-                          <Button size="small" variant="outlined" onClick={() => openEvaluateForEmployee(emp)}>
-                            Evaluate
-                          </Button>
+                          <Chip
+                            label="Evaluate"
+                            size="small"
+                            clickable
+                            variant="outlined"
+                            icon={<AddCircleOutline />}
+                            onClick={() => openEvaluateForEmployee(emp)}
+                            sx={actionChipSx("primary")}
+                          />
                         </TableCell>
                       </TableRow>
                     ))
@@ -961,17 +1332,26 @@ export default function PerformanceEvaluation() {
         </Paper>
       )}
 
-      {/* Evaluation Results Table */}
-      <TableContainer component={Paper} sx={{ overflowX: "auto", mb: 4 }}>
+      <TableContainer
+        component={Paper}
+        elevation={0}
+        sx={{
+          ...softCardSx,
+          overflowX: "auto",
+          mb: 2.5,
+          "&::-webkit-scrollbar": { height: 10 },
+          "&::-webkit-scrollbar-thumb": { bgcolor: "#cfe8d1", borderRadius: 999 },
+        }}
+      >
         {loading ? (
-          <Box sx={{ display: "flex", justifyContent: "center", py: 6, gap: 2 }}>
-            <CircularProgress size={28} />
-            <Typography color="text.secondary">Loading evaluations…</Typography>
+          <Box sx={{ display: "flex", alignItems: "center", justifyContent: "center", py: 7, gap: 2 }}>
+            <CircularProgress size={28} sx={{ color: GREEN_UI.green }} />
+            <Typography sx={{ color: GREEN_UI.muted, fontWeight: 700 }}>Loading evaluations…</Typography>
           </Box>
         ) : (
-          <Table sx={{ minWidth: 1200 }}>
+          <Table sx={{ ...tableSx, minWidth: 1180 }}>
             <TableHead>
-              <TableRow sx={{ bgcolor: "primary.main" }}>
+              <TableRow sx={tableHeadRowSx}>
                 {[
                   "Rank",
                   "Employee",
@@ -984,9 +1364,7 @@ export default function PerformanceEvaluation() {
                   "Status",
                   ...(isHR || isGM ? ["Actions"] : []),
                 ].map((h) => (
-                  <TableCell key={h} sx={{ color: "white", fontWeight: 700, whiteSpace: "nowrap", fontSize: "0.78rem" }}>
-                    {h}
-                  </TableCell>
+                  <TableCell key={h}>{h}</TableCell>
                 ))}
               </TableRow>
             </TableHead>
@@ -994,30 +1372,62 @@ export default function PerformanceEvaluation() {
             <TableBody>
               {displayedEvaluations.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={10 + criteria.length} align="center" sx={{ py: 5, color: "text.secondary" }}>
-                    No evaluations found.
+                  <TableCell colSpan={8 + criteria.length + (isHR || isGM ? 1 : 0)} align="center" sx={{ py: 7 }}>
+                    <Box sx={{ maxWidth: 380, mx: "auto" }}>
+                      <Box sx={{ width: 54, height: 54, borderRadius: "20px", display: "grid", placeItems: "center", mx: "auto", mb: 1.5, bgcolor: GREEN_UI.greenSoft, color: GREEN_UI.greenDark }}>
+                        <TaskAlt />
+                      </Box>
+                      <Typography fontWeight={900} sx={{ color: GREEN_UI.text }}>
+                        No evaluations found
+                      </Typography>
+                      <Typography variant="body2" sx={{ color: GREEN_UI.muted, mt: 0.5 }}>
+                        Submitted performance evaluations will automatically appear in this table.
+                      </Typography>
+                    </Box>
                   </TableCell>
                 </TableRow>
               ) : (
                 displayedEvaluations.map((r, i) => (
-                  <TableRow key={r.evaluation_id} hover sx={{ bgcolor: i === 0 ? "#f0f7f0" : "inherit" }}>
+                  <TableRow key={r.evaluation_id} hover sx={{ bgcolor: i === 0 ? "rgba(231, 247, 229, 0.36)" : "inherit" }}>
                     <TableCell>
-                      <Chip label={`#${i + 1}`} color={i === 0 ? "success" : "default"} size="small" />
+                      <Chip
+                        icon={i === 0 ? <EmojiEvents /> : undefined}
+                        label={`#${i + 1}`}
+                        size="small"
+                        variant="outlined"
+                        sx={i === 0 ? ratingChipSx(90) : { borderRadius: 999, fontWeight: 800, bgcolor: "#f8fcf5", borderColor: GREEN_UI.border }}
+                      />
                     </TableCell>
-                    <TableCell sx={{ fontWeight: 600 }}>{r.employee_name}</TableCell>
-                    <TableCell>{r.position}</TableCell>
-                    <TableCell>{r.outlet}</TableCell>
+                    <TableCell sx={{ whiteSpace: "nowrap" }}>
+                      <Typography fontWeight={800} sx={{ color: GREEN_UI.text }}>
+                        {r.employee_name}
+                      </Typography>
+                      <Typography variant="caption" sx={{ color: GREEN_UI.muted }}>
+                        {r.employee_id}
+                      </Typography>
+                    </TableCell>
+                    <TableCell sx={{ whiteSpace: "nowrap" }}>
+                      <Typography variant="body2" sx={{ color: GREEN_UI.muted, fontWeight: 700 }}>
+                        {r.position || "—"}
+                      </Typography>
+                    </TableCell>
+                    <TableCell sx={{ whiteSpace: "nowrap" }}>{r.outlet || "—"}</TableCell>
                     <TableCell sx={{ whiteSpace: "nowrap" }}>{formatPeriod(r)}</TableCell>
                     {criteria.map((c) => {
                       const s = r.scores[c.criteria_id];
                       return (
                         <TableCell key={`${r.evaluation_id}-${c.criteria_id}`} align="center" sx={{ whiteSpace: "nowrap" }}>
-                          {s ? `${Number(s.raw_score || 0).toFixed(0)}%` : "—"}
+                          <Chip
+                            label={s ? `${Number(s.raw_score || 0).toFixed(0)}%` : "—"}
+                            size="small"
+                            variant="outlined"
+                            sx={{ borderRadius: 999, fontWeight: 800, bgcolor: "#ffffff", borderColor: GREEN_UI.border }}
+                          />
                         </TableCell>
                       );
                     })}
                     <TableCell>
-                      <Typography fontWeight="bold" color="primary.main" sx={{ whiteSpace: "nowrap" }}>
+                      <Typography fontWeight={900} sx={{ whiteSpace: "nowrap", color: GREEN_UI.greenDark }}>
                         {Number(r.final_weighted_score || 0).toFixed(2)}%
                       </Typography>
                     </TableCell>
@@ -1025,37 +1435,39 @@ export default function PerformanceEvaluation() {
                       <Chip
                         label={r.rating_label || labelForScore(Number(r.final_weighted_score || 0))}
                         size="small"
-                        color={Number(r.final_weighted_score || 0) >= 85 ? "success" : Number(r.final_weighted_score || 0) >= 75 ? "warning" : "default"}
+                        variant="outlined"
+                        sx={ratingChipSx(Number(r.final_weighted_score || 0))}
                       />
                     </TableCell>
                     <TableCell>
                       <Chip
                         label={isEmployee && r.status === "Submitted" ? "Under Review" : r.status}
                         size="small"
-                        color={r.status === "Approved" ? "success" : r.status === "Submitted" || r.status === "Reviewed" ? "warning" : "default"}
+                        variant="outlined"
+                        sx={statusChipSx(isEmployee && r.status === "Submitted" ? "Under Review" : r.status)}
                       />
                     </TableCell>
                     {(isHR || isGM) && (
-                      <TableCell>
-                        <Box sx={{ display: "flex", flexDirection: "column", gap: 0.5, alignItems: "flex-start" }}>
+                      <TableCell sx={{ whiteSpace: "nowrap" }}>
+                        <Box sx={{ display: "flex", gap: 0.75, alignItems: "center", flexWrap: "wrap" }}>
                           {(r.status === "Submitted" || r.status === "Reviewed") && (
                             <Chip
+                              icon={<TaskAlt />}
                               label="Approve"
                               size="small"
                               clickable
                               variant="outlined"
-                              color="success"
-                              sx={{ minWidth: 110 }}
+                              sx={actionChipSx("success")}
                               onClick={() => handleApprove(r.evaluation_id)}
                             />
                           )}
                           <Chip
+                            icon={<DeleteOutline />}
                             label="Delete"
                             size="small"
                             clickable
                             variant="outlined"
-                            color="error"
-                            sx={{ minWidth: 110 }}
+                            sx={actionChipSx("danger")}
                             onClick={() => handleDelete(r.evaluation_id)}
                           />
                         </Box>
@@ -1069,70 +1481,122 @@ export default function PerformanceEvaluation() {
         )}
       </TableContainer>
 
-      {/* DSS Ranking */}
       {(isHR || isGM || ranking.length > 0) && (
-        <Paper sx={{ mb: 4 }}>
-          <Box sx={{ p: 2, borderBottom: "1px solid", borderColor: "divider", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 1, flexWrap: "wrap" }}>
-            <Box>
-              <Typography variant="h6" fontWeight={700}>DSS Ranking Results</Typography>
-              <Typography variant="caption" color="text.secondary">
-                {latestDss
-                  ? `${latestDss.result_period_label || "Latest DSS Result"} • ${latestDss.result_period_start} to ${latestDss.result_period_end}`
-                  : "Generate a DSS ranking to view employee recommendations."}
-              </Typography>
+        <Paper elevation={0} sx={{ ...softCardSx, mb: 2.5, overflow: "hidden" }}>
+          <Box
+            sx={{
+              px: { xs: 2, sm: 2.5 },
+              py: 2,
+              borderBottom: `1px solid ${GREEN_UI.border}`,
+              background: "linear-gradient(90deg, #ffffff 0%, #f1faed 100%)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+              flexWrap: "wrap",
+              gap: 1.5,
+            }}
+          >
+            <Box sx={{ display: "flex", alignItems: "center", gap: 1.2 }}>
+              <Box sx={{ width: 38, height: 38, borderRadius: "14px", display: "grid", placeItems: "center", bgcolor: GREEN_UI.warningSoft, color: GREEN_UI.warningDark }}>
+                <EmojiEvents fontSize="small" />
+              </Box>
+              <Box>
+                <Typography fontWeight={900} sx={{ color: GREEN_UI.text }}>
+                  DSS Ranking Results
+                </Typography>
+                <Typography variant="caption" sx={{ color: GREEN_UI.muted }}>
+                  {latestDss
+                    ? `${latestDss.result_period_label || "Latest DSS Result"} • ${latestDss.result_period_start} to ${latestDss.result_period_end}`
+                    : "Generate a DSS ranking to view employee recommendations."}
+                </Typography>
+              </Box>
             </Box>
             {(isHR || isGM) && (
-              <Button size="small" variant="outlined" startIcon={<Insights />} onClick={() => setDssDialogOpen(true)}>
+              <Button
+                size="small"
+                variant="outlined"
+                startIcon={<Insights />}
+                onClick={() => setDssDialogOpen(true)}
+                sx={{ ...pillButtonSx, borderColor: GREEN_UI.borderStrong, color: GREEN_UI.greenDark, bgcolor: "#ffffff", "&:hover": { bgcolor: GREEN_UI.greenSoft } }}
+              >
                 Generate Ranking
               </Button>
             )}
           </Box>
 
-          <TableContainer sx={{ overflowX: "auto" }}>
-            <Table sx={{ minWidth: 900 }}>
+          <TableContainer sx={{ overflowX: "auto", "&::-webkit-scrollbar": { height: 10 }, "&::-webkit-scrollbar-thumb": { bgcolor: "#cfe8d1", borderRadius: 999 } }}>
+            <Table sx={{ ...tableSx, minWidth: 900 }}>
               <TableHead>
-                <TableRow sx={{ bgcolor: "grey.100" }}>
+                <TableRow sx={tableHeadRowSx}>
                   {["Rank", "Employee", "Position", "Outlet", "Score", "Rating", "Recommendation", ...(isGM ? ["Action"] : [])].map((h) => (
-                    <TableCell key={h} sx={{ fontWeight: 700, whiteSpace: "nowrap" }}>{h}</TableCell>
+                    <TableCell key={h}>{h}</TableCell>
                   ))}
                 </TableRow>
               </TableHead>
               <TableBody>
                 {ranking.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={8} align="center" sx={{ py: 5, color: "text.secondary" }}>
-                      No DSS ranking generated yet.
+                    <TableCell colSpan={7 + (isGM ? 1 : 0)} align="center" sx={{ py: 7 }}>
+                      <Box sx={{ maxWidth: 380, mx: "auto" }}>
+                        <Box sx={{ width: 54, height: 54, borderRadius: "20px", display: "grid", placeItems: "center", mx: "auto", mb: 1.5, bgcolor: GREEN_UI.warningSoft, color: GREEN_UI.warningDark }}>
+                          <EmojiEvents />
+                        </Box>
+                        <Typography fontWeight={900} sx={{ color: GREEN_UI.text }}>
+                          No DSS ranking generated yet
+                        </Typography>
+                        <Typography variant="body2" sx={{ color: GREEN_UI.muted, mt: 0.5 }}>
+                          Ranking results will appear here after generating a DSS period.
+                        </Typography>
+                      </Box>
                     </TableCell>
                   </TableRow>
                 ) : (
                   ranking.map((item) => (
-                    <TableRow key={`${item.result_id}-${item.evaluation_id}`} hover sx={{ bgcolor: item.rank_no === 1 ? "#fff8e1" : "inherit" }}>
+                    <TableRow key={`${item.result_id}-${item.evaluation_id}`} hover sx={{ bgcolor: item.rank_no === 1 ? "rgba(255, 248, 225, 0.55)" : "inherit" }}>
                       <TableCell>
                         <Chip
-                          label={item.rank_no === 1 ? "🏆 #1" : `#${item.rank_no}`}
-                          color={item.rank_no === 1 ? "warning" : "default"}
+                          icon={item.rank_no === 1 ? <EmojiEvents /> : undefined}
+                          label={item.rank_no === 1 ? "#1" : `#${item.rank_no}`}
                           size="small"
+                          variant="outlined"
+                          sx={item.rank_no === 1 ? ratingChipSx(90) : { borderRadius: 999, fontWeight: 800, bgcolor: "#f8fcf5", borderColor: GREEN_UI.border }}
                         />
                       </TableCell>
-                      <TableCell sx={{ fontWeight: 600 }}>{item.employee_name}</TableCell>
-                      <TableCell>{item.position}</TableCell>
-                      <TableCell>{item.outlet}</TableCell>
+                      <TableCell sx={{ whiteSpace: "nowrap" }}>
+                        <Typography fontWeight={800} sx={{ color: GREEN_UI.text }}>
+                          {item.employee_name}
+                        </Typography>
+                        <Typography variant="caption" sx={{ color: GREEN_UI.muted }}>
+                          {item.employee_id}
+                        </Typography>
+                      </TableCell>
+                      <TableCell sx={{ whiteSpace: "nowrap" }}>{item.position || "—"}</TableCell>
+                      <TableCell sx={{ whiteSpace: "nowrap" }}>{item.outlet || "—"}</TableCell>
                       <TableCell>
-                        <Typography fontWeight="bold" color="primary.main">{Number(item.final_weighted_score || 0).toFixed(2)}%</Typography>
+                        <Typography fontWeight={900} sx={{ color: GREEN_UI.greenDark }}>
+                          {Number(item.final_weighted_score || 0).toFixed(2)}%
+                        </Typography>
                       </TableCell>
                       <TableCell>{item.rating_label || "—"}</TableCell>
                       <TableCell>
                         <Chip
                           label={item.recommendation || "—"}
                           size="small"
-                          color={(item.recommendation || "").includes("Employee of the Month") ? "warning" : item.rank_no === 1 ? "success" : "default"}
+                          variant="outlined"
+                          sx={(item.recommendation || "").includes("Employee of the Month") ? ratingChipSx(90) : item.rank_no === 1 ? statusChipSx("Approved") : statusChipSx("Draft")}
                         />
                       </TableCell>
                       {isGM && (
                         <TableCell>
-                          <Button size="small" variant="outlined" color="warning" onClick={() => handleMarkEOTM(item)}>
-                            Mark EOTM
-                          </Button>
+                          <Chip
+                            icon={<EmojiEvents />}
+                            label="Mark EOTM"
+                            size="small"
+                            clickable
+                            variant="outlined"
+                            sx={actionChipSx("warning")}
+                            onClick={() => handleMarkEOTM(item)}
+                          />
                         </TableCell>
                       )}
                     </TableRow>
@@ -1144,11 +1608,24 @@ export default function PerformanceEvaluation() {
         </Paper>
       )}
 
-      {/* Evaluation Dialog */}
-      <Dialog open={evalDialogOpen} onClose={() => setEvalDialogOpen(false)} maxWidth="md" fullWidth>
-        <DialogTitle fontWeight={700}>Employee Performance Evaluation</DialogTitle>
-        <DialogContent>
-          <Grid container spacing={2} sx={{ mt: 1 }}>
+      <Dialog open={evalDialogOpen} onClose={() => setEvalDialogOpen(false)} maxWidth="md" fullWidth PaperProps={{ sx: dialogPaperSx }}>
+        <DialogTitle fontWeight={900} sx={dialogTitleSx}>
+          <Box sx={{ display: "flex", alignItems: "center", gap: 1.2 }}>
+            <Box sx={{ width: 38, height: 38, borderRadius: "14px", display: "grid", placeItems: "center", bgcolor: GREEN_UI.greenSoft, color: GREEN_UI.greenDark }}>
+              <Grade fontSize="small" />
+            </Box>
+            <Box>
+              <Typography fontWeight={900} sx={{ color: GREEN_UI.text }}>
+                Employee Performance Evaluation
+              </Typography>
+              <Typography variant="caption" sx={{ color: GREEN_UI.muted }}>
+                Input criteria scores and submit the evaluation record.
+              </Typography>
+            </Box>
+          </Box>
+        </DialogTitle>
+        <DialogContent sx={{ px: { xs: 2, sm: 3 }, py: 2.5, bgcolor: "#fbfff9" }}>
+          <Grid container spacing={2} sx={{ mt: 0.5 }}>
             <Grid size={{ xs: 12, md: 6 }}>
               <TextField
                 fullWidth
@@ -1166,6 +1643,7 @@ export default function PerformanceEvaluation() {
                   });
                 }}
                 InputLabelProps={{ shrink: true }}
+                sx={softTextFieldSx}
               >
                 <MenuItem value="">Select employee…</MenuItem>
                 {employees.map((emp) => (
@@ -1177,7 +1655,7 @@ export default function PerformanceEvaluation() {
             </Grid>
 
             <Grid size={{ xs: 12, md: 6 }}>
-              <TextField fullWidth label="Employee Name" value={form.employee_name} disabled InputLabelProps={{ shrink: true }} />
+              <TextField fullWidth label="Employee Name" value={form.employee_name} disabled InputLabelProps={{ shrink: true }} sx={softTextFieldSx} />
             </Grid>
 
             <Grid size={{ xs: 12, md: 6 }}>
@@ -1188,6 +1666,7 @@ export default function PerformanceEvaluation() {
                 value={form.position}
                 onChange={(e) => setForm({ ...form, position: e.target.value })}
                 InputLabelProps={{ shrink: true }}
+                sx={softTextFieldSx}
               >
                 <MenuItem value="">Select position…</MenuItem>
                 {AVAILABLE_POSITIONS.map((p) => <MenuItem key={p} value={p}>{p}</MenuItem>)}
@@ -1202,6 +1681,7 @@ export default function PerformanceEvaluation() {
                 value={form.outlet}
                 onChange={(e) => setForm({ ...form, outlet: e.target.value })}
                 InputLabelProps={{ shrink: true }}
+                sx={softTextFieldSx}
               >
                 <MenuItem value="">Select outlet…</MenuItem>
                 {OUTLETS.map((o) => <MenuItem key={o} value={o}>{o}</MenuItem>)}
@@ -1209,56 +1689,32 @@ export default function PerformanceEvaluation() {
             </Grid>
 
             <Grid size={{ xs: 12, md: 4 }}>
-              <TextField
-                fullWidth
-                label="Period Start"
-                type="date"
-                value={form.periodStart}
-                onChange={(e) => setForm({ ...form, periodStart: e.target.value })}
-                InputLabelProps={{ shrink: true }}
-              />
+              <TextField fullWidth label="Period Start" type="date" value={form.periodStart} onChange={(e) => setForm({ ...form, periodStart: e.target.value })} InputLabelProps={{ shrink: true }} sx={softTextFieldSx} />
             </Grid>
 
             <Grid size={{ xs: 12, md: 4 }}>
-              <TextField
-                fullWidth
-                label="Period End"
-                type="date"
-                value={form.periodEnd}
-                onChange={(e) => setForm({ ...form, periodEnd: e.target.value })}
-                InputLabelProps={{ shrink: true }}
-              />
+              <TextField fullWidth label="Period End" type="date" value={form.periodEnd} onChange={(e) => setForm({ ...form, periodEnd: e.target.value })} InputLabelProps={{ shrink: true }} sx={softTextFieldSx} />
             </Grid>
 
             <Grid size={{ xs: 12, md: 4 }}>
-              <TextField
-                fullWidth
-                label="Period Label"
-                value={form.periodLabel}
-                onChange={(e) => setForm({ ...form, periodLabel: e.target.value })}
-                InputLabelProps={{ shrink: true }}
-              />
+              <TextField fullWidth label="Period Label" value={form.periodLabel} onChange={(e) => setForm({ ...form, periodLabel: e.target.value })} InputLabelProps={{ shrink: true }} sx={softTextFieldSx} />
             </Grid>
           </Grid>
 
-          <Divider sx={{ my: 3 }}>
-            <Typography variant="caption" color="text.secondary" fontWeight={700}>
-              DSS CRITERIA SCORES
-            </Typography>
+          <Divider sx={{ my: 3, borderColor: GREEN_UI.border }}>
+            <Chip label="DSS Criteria Scores" size="small" variant="outlined" sx={{ borderRadius: 999, fontWeight: 900, color: GREEN_UI.greenDark, borderColor: GREEN_UI.borderStrong, bgcolor: "#ffffff" }} />
           </Divider>
 
           <Grid container spacing={1.5}>
             {criteria.map((c) => (
               <Grid key={c.criteria_id} size={{ xs: 12, md: 6 }}>
-                <Box sx={{ p: 1.5, border: "1px solid", borderColor: "divider", borderRadius: 2 }}>
-                  <Box sx={{ display: "flex", justifyContent: "space-between", mb: 0.5 }}>
+                <Paper elevation={0} sx={{ ...innerCardSx, p: 2 }}>
+                  <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 1, mb: 1 }}>
                     <Box>
-                      <Typography variant="body2" fontWeight={600}>{c.criteria_name}</Typography>
-                      <Typography variant="caption" color="text.secondary">Weight: {Number(c.weight || 0)}%</Typography>
+                      <Typography variant="body2" fontWeight={900} sx={{ color: GREEN_UI.text }}>{c.criteria_name}</Typography>
+                      <Typography variant="caption" sx={{ color: GREEN_UI.muted }}>Weight: {Number(c.weight || 0)}%</Typography>
                     </Box>
-                    <Typography variant="h6" fontWeight="bold" color="primary">
-                      {form.scores[c.criteria_id] ?? 0}%
-                    </Typography>
+                    <Chip label={`${form.scores[c.criteria_id] ?? 0}%`} size="small" variant="outlined" sx={ratingChipSx(Number(form.scores[c.criteria_id] ?? 0))} />
                   </Box>
                   <Slider
                     value={form.scores[c.criteria_id] ?? 0}
@@ -1267,10 +1723,10 @@ export default function PerformanceEvaluation() {
                     min={0}
                     max={Number(c.max_score || 100)}
                     size="small"
-                    sx={{ color: (form.scores[c.criteria_id] ?? 0) >= 75 ? "success.main" : "primary.main" }}
+                    sx={{ color: (form.scores[c.criteria_id] ?? 0) >= 75 ? GREEN_UI.green : GREEN_UI.warningDark }}
                   />
-                  <Typography variant="caption" color="text.secondary">{c.description}</Typography>
-                </Box>
+                  <Typography variant="caption" sx={{ color: GREEN_UI.muted, lineHeight: 1.6 }}>{c.description}</Typography>
+                </Paper>
               </Grid>
             ))}
           </Grid>
@@ -1282,63 +1738,82 @@ export default function PerformanceEvaluation() {
             rows={3}
             value={form.remarks}
             onChange={(e) => setForm({ ...form, remarks: e.target.value })}
-            sx={{ mt: 3 }}
+            sx={{ ...softTextFieldSx, mt: 3 }}
           />
 
           <Paper
+            elevation={0}
             sx={{
+              ...innerCardSx,
               p: 2.5,
               mt: 3,
-              bgcolor: previewScore >= 90 ? "warning.light" : previewScore >= 75 ? "success.light" : "primary.light",
-              borderRadius: 2,
+              background: previewScore >= 90 ? "linear-gradient(135deg, #fff7e0 0%, #ffffff 100%)" : "linear-gradient(135deg, #e8f8ea 0%, #ffffff 100%)",
             }}
           >
-            <Typography variant="h5" color="white" fontWeight="bold">
-              Projected Final Score: {previewScore.toFixed(2)}% {previewScore >= 90 && "🏆"}
-            </Typography>
-            <Typography variant="body2" sx={{ color: "rgba(255,255,255,0.9)", mt: 0.5 }}>
-              {labelForScore(previewScore)}
-            </Typography>
+            <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 2, flexWrap: "wrap" }}>
+              <Box>
+                <Typography variant="body2" sx={{ color: GREEN_UI.muted, fontWeight: 800 }}>
+                  Projected Final Score
+                </Typography>
+                <Typography variant="h4" fontWeight={900} sx={{ color: previewScore >= 90 ? GREEN_UI.warningDark : GREEN_UI.greenDark, letterSpacing: "-0.04em" }}>
+                  {previewScore.toFixed(2)}%
+                </Typography>
+              </Box>
+              <Chip label={labelForScore(previewScore)} icon={previewScore >= 90 ? <EmojiEvents /> : <Grade />} variant="outlined" sx={ratingChipSx(previewScore)} />
+            </Box>
           </Paper>
         </DialogContent>
 
-        <DialogActions sx={{ px: 3, pb: 2 }}>
-          <Button onClick={() => setEvalDialogOpen(false)}>Cancel</Button>
+        <DialogActions sx={{ px: { xs: 2, sm: 3 }, py: 2, bgcolor: "#fbfff9", borderTop: `1px solid ${GREEN_UI.border}` }}>
+          <Button onClick={() => setEvalDialogOpen(false)} sx={{ ...pillButtonSx, color: GREEN_UI.muted }}>
+            Cancel
+          </Button>
           <Button
             variant="contained"
             onClick={handleSubmitEvaluation}
             disabled={saving || !form.employee_id || criteria.length === 0}
-            startIcon={saving ? <CircularProgress size={16} color="inherit" /> : undefined}
+            startIcon={saving ? <CircularProgress size={16} color="inherit" /> : <Save />}
+            sx={{ ...pillButtonSx, bgcolor: GREEN_UI.green, "&:hover": { bgcolor: GREEN_UI.greenDark } }}
           >
             {saving ? "Submitting…" : "Submit Evaluation"}
           </Button>
         </DialogActions>
       </Dialog>
 
-      {/* Criteria Dialog */}
-      <Dialog open={criteriaDialogOpen} onClose={() => setCriteriaDialogOpen(false)} maxWidth="md" fullWidth>
-        <DialogTitle fontWeight={700}>
-          <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 1 }}>
-            Manage DSS Criteria
-            <Button size="small" variant="outlined" startIcon={<Add />} onClick={addNewCriterion}>
+      <Dialog open={criteriaDialogOpen} onClose={() => setCriteriaDialogOpen(false)} maxWidth="md" fullWidth PaperProps={{ sx: dialogPaperSx }}>
+        <DialogTitle fontWeight={900} sx={dialogTitleSx}>
+          <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 1.5 }}>
+            <Box sx={{ display: "flex", alignItems: "center", gap: 1.2 }}>
+              <Box sx={{ width: 38, height: 38, borderRadius: "14px", display: "grid", placeItems: "center", bgcolor: GREEN_UI.greenSoft, color: GREEN_UI.greenDark }}>
+                <Edit fontSize="small" />
+              </Box>
+              <Box>
+                <Typography fontWeight={900} sx={{ color: GREEN_UI.text }}>
+                  Manage DSS Criteria
+                </Typography>
+                <Typography variant="caption" sx={{ color: GREEN_UI.muted }}>
+                  Update criteria weights and active scoring factors.
+                </Typography>
+              </Box>
+            </Box>
+            <Button size="small" variant="outlined" startIcon={<Add />} onClick={addNewCriterion} sx={{ ...pillButtonSx, borderColor: GREEN_UI.borderStrong, color: GREEN_UI.greenDark, bgcolor: "#ffffff", "&:hover": { bgcolor: GREEN_UI.greenSoft } }}>
               Add Criterion
             </Button>
           </Box>
         </DialogTitle>
 
-        <DialogContent>
-          <Alert severity="info" sx={{ mb: 2 }}>
-            Current draft total weight:{" "}
-            <strong>{criteriaDraft.reduce((s, c) => s + Number(c.weight || 0), 0).toFixed(2)}%</strong>. It must equal <strong>100%</strong>.
+        <DialogContent sx={{ px: { xs: 2, sm: 3 }, py: 2.5, bgcolor: "#fbfff9" }}>
+          <Alert severity="info" sx={{ mb: 2, borderRadius: "18px", border: `1px solid ${GREEN_UI.border}` }}>
+            Current draft total weight: <strong>{criteriaDraft.reduce((s, c) => s + Number(c.weight || 0), 0).toFixed(2)}%</strong>. It must equal <strong>100%</strong>.
           </Alert>
 
           {criteriaDraft.map((c, i) => (
-            <Paper key={c.criteria_id} variant="outlined" sx={{ p: 2, mb: 2 }}>
+            <Paper key={c.criteria_id} elevation={0} sx={{ ...innerCardSx, p: 2, mb: 2 }}>
               <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 1.5 }}>
-                <Chip label={`#${i + 1}`} size="small" />
-                <Typography variant="subtitle2" fontWeight={700} sx={{ flex: 1 }}>{c.criteria_name}</Typography>
+                <Chip label={`#${i + 1}`} size="small" variant="outlined" sx={{ borderRadius: 999, fontWeight: 800, bgcolor: "#ffffff", borderColor: GREEN_UI.border }} />
+                <Typography variant="subtitle2" fontWeight={900} sx={{ flex: 1, color: GREEN_UI.text }}>{c.criteria_name}</Typography>
                 <Tooltip title="Remove criterion">
-                  <IconButton size="small" color="error" onClick={() => removeCriterion(i)}>
+                  <IconButton size="small" onClick={() => removeCriterion(i)} sx={{ color: GREEN_UI.dangerDark, bgcolor: "#fffafa", "&:hover": { bgcolor: GREEN_UI.dangerSoft } }}>
                     <DeleteOutline fontSize="small" />
                   </IconButton>
                 </Tooltip>
@@ -1346,23 +1821,11 @@ export default function PerformanceEvaluation() {
 
               <Grid container spacing={2}>
                 <Grid size={{ xs: 12, md: 6 }}>
-                  <TextField
-                    fullWidth
-                    label="Criterion Name"
-                    size="small"
-                    value={c.criteria_name}
-                    onChange={(e) => setCriteriaDraft((prev) => prev.map((x, j) => (j === i ? { ...x, criteria_name: e.target.value } : x)))}
-                  />
+                  <TextField fullWidth label="Criterion Name" size="small" value={c.criteria_name} onChange={(e) => setCriteriaDraft((prev) => prev.map((x, j) => (j === i ? { ...x, criteria_name: e.target.value } : x)))} sx={softTextFieldSx} />
                 </Grid>
 
                 <Grid size={{ xs: 12, md: 3 }}>
-                  <TextField
-                    fullWidth
-                    label="Category"
-                    size="small"
-                    value={c.category}
-                    onChange={(e) => setCriteriaDraft((prev) => prev.map((x, j) => (j === i ? { ...x, category: e.target.value } : x)))}
-                  />
+                  <TextField fullWidth label="Category" size="small" value={c.category} onChange={(e) => setCriteriaDraft((prev) => prev.map((x, j) => (j === i ? { ...x, category: e.target.value } : x)))} sx={softTextFieldSx} />
                 </Grid>
 
                 <Grid size={{ xs: 12, md: 3 }}>
@@ -1377,6 +1840,7 @@ export default function PerformanceEvaluation() {
                       const v = Math.max(0, Math.min(100, Number(e.target.value) || 0));
                       setCriteriaDraft((prev) => prev.map((x, j) => (j === i ? { ...x, weight: v } : x)));
                     }}
+                    sx={softTextFieldSx}
                   />
                 </Grid>
 
@@ -1392,81 +1856,70 @@ export default function PerformanceEvaluation() {
                       const v = Math.max(1, Math.min(100, Number(e.target.value) || 100));
                       setCriteriaDraft((prev) => prev.map((x, j) => (j === i ? { ...x, max_score: v } : x)));
                     }}
+                    sx={softTextFieldSx}
                   />
                 </Grid>
 
                 <Grid size={{ xs: 12, md: 9 }}>
-                  <TextField
-                    fullWidth
-                    label="Description"
-                    size="small"
-                    multiline
-                    rows={2}
-                    value={c.description}
-                    onChange={(e) => setCriteriaDraft((prev) => prev.map((x, j) => (j === i ? { ...x, description: e.target.value } : x)))}
-                  />
+                  <TextField fullWidth label="Description" size="small" multiline rows={2} value={c.description} onChange={(e) => setCriteriaDraft((prev) => prev.map((x, j) => (j === i ? { ...x, description: e.target.value } : x)))} sx={softTextFieldSx} />
                 </Grid>
               </Grid>
             </Paper>
           ))}
         </DialogContent>
 
-        <DialogActions sx={{ px: 3, pb: 2 }}>
-          <Button onClick={() => setCriteriaDialogOpen(false)}>Cancel</Button>
-          <Button variant="contained" startIcon={<Save />} onClick={saveCriteria} disabled={saving}>
+        <DialogActions sx={{ px: { xs: 2, sm: 3 }, py: 2, bgcolor: "#fbfff9", borderTop: `1px solid ${GREEN_UI.border}` }}>
+          <Button onClick={() => setCriteriaDialogOpen(false)} sx={{ ...pillButtonSx, color: GREEN_UI.muted }}>
+            Cancel
+          </Button>
+          <Button variant="contained" startIcon={<Save />} onClick={saveCriteria} disabled={saving} sx={{ ...pillButtonSx, bgcolor: GREEN_UI.green, "&:hover": { bgcolor: GREEN_UI.greenDark } }}>
             Save Criteria
           </Button>
         </DialogActions>
       </Dialog>
 
-      {/* DSS Generate Dialog */}
-      <Dialog open={dssDialogOpen} onClose={() => setDssDialogOpen(false)} maxWidth="sm" fullWidth>
-        <DialogTitle fontWeight={700}>Generate DSS Ranking</DialogTitle>
-        <DialogContent>
-          <Alert severity="info" sx={{ mb: 2 }}>
+      <Dialog open={dssDialogOpen} onClose={() => setDssDialogOpen(false)} maxWidth="sm" fullWidth PaperProps={{ sx: dialogPaperSx }}>
+        <DialogTitle fontWeight={900} sx={dialogTitleSx}>
+          <Box sx={{ display: "flex", alignItems: "center", gap: 1.2 }}>
+            <Box sx={{ width: 38, height: 38, borderRadius: "14px", display: "grid", placeItems: "center", bgcolor: GREEN_UI.warningSoft, color: GREEN_UI.warningDark }}>
+              <Insights fontSize="small" />
+            </Box>
+            <Box>
+              <Typography fontWeight={900} sx={{ color: GREEN_UI.text }}>
+                Generate DSS Ranking
+              </Typography>
+              <Typography variant="caption" sx={{ color: GREEN_UI.muted }}>
+                Rank employees using submitted and approved evaluations.
+              </Typography>
+            </Box>
+          </Box>
+        </DialogTitle>
+        <DialogContent sx={{ px: { xs: 2, sm: 3 }, py: 2.5, bgcolor: "#fbfff9" }}>
+          <Alert severity="info" sx={{ mb: 2, borderRadius: "18px", border: `1px solid ${GREEN_UI.border}` }}>
             This will rank employees based on approved/submitted evaluations for the selected period.
           </Alert>
 
           <Grid container spacing={2}>
             <Grid size={{ xs: 12, md: 6 }}>
-              <TextField
-                fullWidth
-                label="Period Start"
-                type="date"
-                value={dssPeriodStart}
-                onChange={(e) => setDssPeriodStart(e.target.value)}
-                InputLabelProps={{ shrink: true }}
-              />
+              <TextField fullWidth label="Period Start" type="date" value={dssPeriodStart} onChange={(e) => setDssPeriodStart(e.target.value)} InputLabelProps={{ shrink: true }} sx={softTextFieldSx} />
             </Grid>
 
             <Grid size={{ xs: 12, md: 6 }}>
-              <TextField
-                fullWidth
-                label="Period End"
-                type="date"
-                value={dssPeriodEnd}
-                onChange={(e) => setDssPeriodEnd(e.target.value)}
-                InputLabelProps={{ shrink: true }}
-              />
+              <TextField fullWidth label="Period End" type="date" value={dssPeriodEnd} onChange={(e) => setDssPeriodEnd(e.target.value)} InputLabelProps={{ shrink: true }} sx={softTextFieldSx} />
             </Grid>
 
             <Grid size={12}>
-              <TextField
-                fullWidth
-                label="Period Label"
-                value={dssPeriodLabel}
-                onChange={(e) => setDssPeriodLabel(e.target.value)}
-                placeholder="Example: May 2026 DSS Ranking"
-                InputLabelProps={{ shrink: true }}
-              />
+              <TextField fullWidth label="Period Label" value={dssPeriodLabel} onChange={(e) => setDssPeriodLabel(e.target.value)} placeholder="Example: May 2026 DSS Ranking" InputLabelProps={{ shrink: true }} sx={softTextFieldSx} />
             </Grid>
           </Grid>
         </DialogContent>
 
-        <DialogActions sx={{ px: 3, pb: 2 }}>
-          <Button onClick={() => setDssDialogOpen(false)}>Cancel</Button>
-          <Button variant="contained" color="success" onClick={handleGenerateDss} disabled={saving} startIcon={saving ? <CircularProgress size={16} color="inherit" /> : undefined}>
-            Generate
+        <DialogActions sx={{ px: { xs: 2, sm: 3 }, py: 2, bgcolor: "#fbfff9", borderTop: `1px solid ${GREEN_UI.border}` }}>
+          <Button onClick={() => setDssDialogOpen(false)} sx={{ ...pillButtonSx, color: GREEN_UI.muted }}>
+            Cancel
+          </Button>
+          <Button variant="contained" onClick={handleGenerateDss} disabled={saving} startIcon={saving ? <CircularProgress size={16} color="inherit" /> : <Insights />} sx={{ ...pillButtonSx, bgcolor: GREEN_UI.green, "&:hover": { bgcolor: GREEN_UI.greenDark } }}>
+            {saving ? "Generating…" : "Generate"}
           </Button>
         </DialogActions>
       </Dialog>
@@ -1477,7 +1930,7 @@ export default function PerformanceEvaluation() {
         onClose={() => setSnackbar((s) => ({ ...s, open: false }))}
         anchorOrigin={{ vertical: "bottom", horizontal: "center" }}
       >
-        <Alert severity={snackbar.severity} onClose={() => setSnackbar((s) => ({ ...s, open: false }))}>
+        <Alert severity={snackbar.severity} onClose={() => setSnackbar((s) => ({ ...s, open: false }))} sx={{ borderRadius: "18px" }}>
           {snackbar.message}
         </Alert>
       </Snackbar>

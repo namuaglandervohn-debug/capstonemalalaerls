@@ -84,6 +84,57 @@ const DEFAULT_STATS: DashboardStats = {
   totalNetPayable: 0,
 };
 
+
+const GREEN_UI = {
+  pageBg: 'radial-gradient(circle at top left, rgba(220, 246, 219, 0.95), rgba(248, 252, 245, 0.98) 34%, #f7fbf3 100%)',
+  cardBg: 'rgba(255, 255, 255, 0.92)',
+  cardBgSoft: 'rgba(245, 252, 241, 0.88)',
+  border: 'rgba(139, 184, 144, 0.24)',
+  borderStrong: 'rgba(73, 156, 92, 0.32)',
+  green: '#3aa865',
+  greenDark: '#1f7a46',
+  greenSoft: '#e6f8e9',
+  text: '#1e2d24',
+  muted: '#6c7d70',
+  amber: '#d9a441',
+  teal: '#2f8f8b',
+  shadow: '0 20px 55px rgba(43, 91, 55, 0.10)',
+  shadowSoft: '0 12px 28px rgba(43, 91, 55, 0.08)',
+};
+
+const softCardSx = {
+  borderRadius: '26px',
+  border: `1px solid ${GREEN_UI.border}`,
+  background: GREEN_UI.cardBg,
+  boxShadow: GREEN_UI.shadow,
+};
+
+const innerCardSx = {
+  borderRadius: '20px',
+  border: `1px solid ${GREEN_UI.border}`,
+  background: GREEN_UI.cardBgSoft,
+  boxShadow: GREEN_UI.shadowSoft,
+};
+
+const pillButtonSx = {
+  borderRadius: 999,
+  textTransform: 'none',
+  fontWeight: 700,
+  px: 2,
+};
+
+const accountingStatusChipSx = (status: PayrollPreview['status']) => {
+  const isProcessed = status === 'Processed';
+
+  return {
+    bgcolor: isProcessed ? '#e5f8e9' : '#fff7e0',
+    color: isProcessed ? '#217a43' : '#9b6b00',
+    borderColor: isProcessed ? '#a9dfb6' : '#f5d786',
+    fontWeight: 800,
+    borderRadius: 999,
+  };
+};
+
 const normalizeText = (value: unknown): string =>
   String(value ?? '')
     .trim()
@@ -311,151 +362,490 @@ export default function AccountingDashboard() {
       title: 'Payroll For Review',
       value: loading ? '…' : String(stats.payrollForReview),
       icon: <Timelapse />,
-      color: '#D9A441',
+      color: GREEN_UI.amber,
+      softColor: '#fff7e0',
     },
     {
       title: 'Payroll Released',
       value: loading ? '…' : String(stats.payrollReleased),
       icon: <TaskAlt />,
-      color: '#1F7A47',
+      color: GREEN_UI.greenDark,
+      softColor: GREEN_UI.greenSoft,
     },
     {
       title: 'Total Net Payable',
       value: loading ? '…' : formatCurrency(stats.totalNetPayable),
       icon: <AccountBalanceWallet />,
-      color: '#2F8F8B',
+      color: GREEN_UI.teal,
+      softColor: '#e8f7f6',
     },
   ], [loading, stats.payrollForReview, stats.payrollReleased, stats.totalNetPayable]);
 
   const shortcuts = [
-    { title: 'Payroll Dashboard', icon: <Payments />, path: '/dashboard/payroll', color: '#1F7A47' },
-    { title: 'Reports', icon: <Analytics />, path: '/dashboard/reports', color: '#2F8F8B' },
+    { title: 'Payroll Dashboard', icon: <Payments />, path: '/dashboard/payroll', color: GREEN_UI.greenDark, description: 'Review and release forwarded payroll records' },
+    { title: 'Reports', icon: <Analytics />, path: '/dashboard/reports', color: GREEN_UI.teal, description: 'Open payroll and accounting reports' },
   ];
 
   return (
-    <Box>
-      {/* Header */}
-      <Box sx={{ mb: 3 }}>
-        <Typography variant="h4" fontWeight="bold" sx={{ fontSize: { xs: '1.35rem', sm: '1.75rem', md: '2.125rem' } }}>
-          Accounting & Finance Dashboard
-        </Typography>
-        <Typography variant="body2" color="text.secondary">
-          Welcome, {(user as any)?.name ?? (user as any)?.full_name ?? (user as any)?.email ?? 'Accounting Staff'} — Buenaventura Estate
-        </Typography>
-      </Box>
-
-      {(loading || refreshing || lastUpdated) && (
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.25, flexWrap: 'wrap', mb: 2 }}>
-          {(loading || refreshing) && <CircularProgress size={18} />}
-          <Typography variant="body2" color="text.secondary">
-            {loading ? 'Loading live Accounting & Finance indicators…' : refreshing ? 'Refreshing indicators…' : `Last updated: ${lastUpdated?.toLocaleTimeString()}`}
-          </Typography>
-          {!loading && (
-            <Button
+    <Box
+      sx={{
+        minHeight: '100%',
+        p: { xs: 2, sm: 3, md: 4 },
+        background: GREEN_UI.pageBg,
+        color: GREEN_UI.text,
+      }}
+    >
+      <Paper
+        elevation={0}
+        sx={{
+          ...softCardSx,
+          overflow: 'hidden',
+          position: 'relative',
+          mb: 3,
+          '&::before': {
+            content: '""',
+            position: 'absolute',
+            inset: 0,
+            background:
+              'linear-gradient(135deg, rgba(58, 168, 101, 0.14), rgba(255,255,255,0) 45%), radial-gradient(circle at 90% 15%, rgba(58, 168, 101, 0.18), transparent 32%)',
+            pointerEvents: 'none',
+          },
+        }}
+      >
+        <Box
+          sx={{
+            position: 'relative',
+            p: { xs: 2.25, sm: 3, md: 3.5 },
+            display: 'flex',
+            justifyContent: 'space-between',
+            gap: 2,
+            alignItems: { xs: 'flex-start', md: 'center' },
+            flexDirection: { xs: 'column', md: 'row' },
+          }}
+        >
+          <Box sx={{ minWidth: 0 }}>
+            <Chip
+              icon={<AccountBalanceWallet sx={{ fontSize: 17 }} />}
+              label="Accounting & Finance"
               size="small"
+              sx={{
+                mb: 1.5,
+                bgcolor: GREEN_UI.greenSoft,
+                color: GREEN_UI.greenDark,
+                borderRadius: 999,
+                fontWeight: 800,
+                border: `1px solid ${GREEN_UI.borderStrong}`,
+                '& .MuiChip-icon': { color: GREEN_UI.greenDark },
+              }}
+            />
+            <Typography
+              variant="h4"
+              fontWeight={900}
+              sx={{
+                color: GREEN_UI.text,
+                fontSize: { xs: '1.55rem', sm: '1.95rem', md: '2.35rem' },
+                letterSpacing: '-0.04em',
+                lineHeight: 1.05,
+              }}
+            >
+              Accounting & Finance Dashboard
+            </Typography>
+            <Typography
+              variant="body2"
+              sx={{
+                color: GREEN_UI.muted,
+                mt: 1,
+                maxWidth: 680,
+                fontSize: { xs: '0.88rem', sm: '0.95rem' },
+              }}
+            >
+              Welcome, {(user as any)?.name ?? (user as any)?.full_name ?? (user as any)?.email ?? 'Accounting Staff'} — monitor payroll reviews, releases, and payable totals for Buenaventura Estate.
+            </Typography>
+          </Box>
+
+          <Box
+            sx={{
+              display: 'flex',
+              alignItems: { xs: 'stretch', sm: 'center' },
+              gap: 1,
+              flexDirection: { xs: 'column', sm: 'row' },
+              width: { xs: '100%', md: 'auto' },
+            }}
+          >
+            {(loading || refreshing) && (
+              <Chip
+                icon={<CircularProgress size={14} color="inherit" />}
+                label={loading ? 'Loading indicators…' : 'Refreshing…'}
+                sx={{
+                  borderRadius: 999,
+                  bgcolor: 'rgba(255,255,255,0.72)',
+                  color: GREEN_UI.greenDark,
+                  border: `1px solid ${GREEN_UI.border}`,
+                  fontWeight: 800,
+                  justifyContent: 'center',
+                }}
+              />
+            )}
+            {!loading && lastUpdated && (
+              <Chip
+                icon={<TaskAlt sx={{ fontSize: 17 }} />}
+                label={`Updated ${lastUpdated.toLocaleTimeString()}`}
+                sx={{
+                  borderRadius: 999,
+                  bgcolor: 'rgba(255,255,255,0.72)',
+                  color: GREEN_UI.muted,
+                  border: `1px solid ${GREEN_UI.border}`,
+                  fontWeight: 700,
+                  justifyContent: 'center',
+                  '& .MuiChip-icon': { color: GREEN_UI.green },
+                }}
+              />
+            )}
+            <Button
+              variant="contained"
               startIcon={<Refresh />}
               onClick={() => loadDashboard(true)}
-              disabled={refreshing}
-              sx={{ ml: { xs: 0, sm: 1 } }}
+              disabled={loading || refreshing}
+              sx={{
+                ...pillButtonSx,
+                minHeight: 40,
+                bgcolor: GREEN_UI.green,
+                boxShadow: '0 12px 24px rgba(58, 168, 101, 0.24)',
+                '&:hover': { bgcolor: GREEN_UI.greenDark },
+              }}
             >
               Refresh
             </Button>
-          )}
+          </Box>
         </Box>
-      )}
+      </Paper>
 
       {error && (
-        <Alert severity="warning" sx={{ mb: 2 }}>
+        <Alert
+          severity="warning"
+          sx={{
+            mb: 3,
+            borderRadius: '18px',
+            border: `1px solid ${GREEN_UI.border}`,
+            boxShadow: GREEN_UI.shadowSoft,
+          }}
+        >
           {error}
         </Alert>
       )}
 
-      {/* Stat Cards */}
-      <Grid container spacing={{ xs: 2, md: 2.5 }} sx={{ mb: 4 }}>
+      <Grid container spacing={{ xs: 2, md: 2.5 }} sx={{ mb: 3 }}>
         {statCards.map((stat, index) => (
           <Grid key={index} size={{ xs: 12, sm: 6, md: 4 }} sx={{ display: 'flex' }}>
-            <Card elevation={0} sx={{
-              height: 96,
-              width: '100%',
-              border: '1px solid',
-              borderColor: 'divider',
-              transition: 'box-shadow 0.2s',
-              '&:hover': { boxShadow: 4 },
-            }}>
-              <CardContent sx={{ height: '100%', display: 'flex', alignItems: 'center', p: '16px !important' }}>
-                <Box sx={{ display: 'flex', alignItems: 'center', width: '100%', gap: 2 }}>
-                  <Box sx={{ bgcolor: stat.color, borderRadius: '14px', p: 1.5, display: 'flex', flexShrink: 0 }}>
-                    <Box sx={{ color: 'white', display: 'flex', fontSize: '1.35rem' }}>{stat.icon}</Box>
+            <Card
+              elevation={0}
+              sx={{
+                ...innerCardSx,
+                width: '100%',
+                minHeight: 132,
+                transition: 'transform 0.22s ease, box-shadow 0.22s ease, border-color 0.22s ease',
+                '&:hover': {
+                  transform: 'translateY(-4px)',
+                  boxShadow: GREEN_UI.shadow,
+                  borderColor: GREEN_UI.borderStrong,
+                },
+              }}
+            >
+              <CardContent sx={{ height: '100%', p: { xs: 2, sm: 2.25 }, '&:last-child': { pb: { xs: 2, sm: 2.25 } } }}>
+                <Box sx={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 2 }}>
+                  <Box
+                    sx={{
+                      width: 48,
+                      height: 48,
+                      borderRadius: '18px',
+                      display: 'grid',
+                      placeItems: 'center',
+                      bgcolor: stat.softColor,
+                      color: stat.color,
+                      border: `1px solid ${GREEN_UI.border}`,
+                      flexShrink: 0,
+                      '& svg': { fontSize: 25 },
+                    }}
+                  >
+                    {stat.icon}
                   </Box>
-                  <Box sx={{ minWidth: 0, flex: 1 }}>
-                    <Typography fontWeight="bold" sx={{ fontSize: '1.25rem', lineHeight: 1.2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                      {stat.value}
-                    </Typography>
-                    <Typography variant="caption" color="text.secondary" sx={{ display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                      {stat.title}
-                    </Typography>
-                  </Box>
+                  <Box
+                    sx={{
+                      width: 34,
+                      height: 6,
+                      borderRadius: 999,
+                      mt: 1.25,
+                      background: `linear-gradient(90deg, ${stat.color}, rgba(58, 168, 101, 0.08))`,
+                    }}
+                  />
                 </Box>
+
+                <Typography
+                  fontWeight={900}
+                  sx={{
+                    mt: 2,
+                    color: GREEN_UI.text,
+                    fontSize: { xs: '1.45rem', sm: '1.6rem' },
+                    lineHeight: 1.1,
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
+                    whiteSpace: 'nowrap',
+                  }}
+                >
+                  {stat.value}
+                </Typography>
+                <Typography
+                  variant="body2"
+                  sx={{
+                    color: GREEN_UI.muted,
+                    mt: 0.45,
+                    fontWeight: 700,
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
+                    whiteSpace: 'nowrap',
+                  }}
+                >
+                  {stat.title}
+                </Typography>
               </CardContent>
             </Card>
           </Grid>
         ))}
       </Grid>
 
-      {/* Quick Actions */}
-      <Paper elevation={0} sx={{ p: { xs: 2, sm: 3 }, border: '1px solid', borderColor: 'divider', mb: 3 }}>
-        <Typography variant="h6" gutterBottom fontWeight="bold">Quick Actions</Typography>
-        <Divider sx={{ mb: 2 }} />
+      <Paper elevation={0} sx={{ ...softCardSx, p: { xs: 2, sm: 2.5, md: 3 }, mb: 3 }}>
+        <Box
+          sx={{
+            display: 'flex',
+            alignItems: { xs: 'flex-start', sm: 'center' },
+            justifyContent: 'space-between',
+            flexDirection: { xs: 'column', sm: 'row' },
+            gap: 1.5,
+            mb: 2,
+          }}
+        >
+          <Box>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+              <Box
+                sx={{
+                  width: 38,
+                  height: 38,
+                  borderRadius: '16px',
+                  display: 'grid',
+                  placeItems: 'center',
+                  bgcolor: GREEN_UI.greenSoft,
+                  color: GREEN_UI.greenDark,
+                  border: `1px solid ${GREEN_UI.borderStrong}`,
+                }}
+              >
+                <Analytics fontSize="small" />
+              </Box>
+              <Box>
+                <Typography variant="h6" fontWeight={900} sx={{ color: GREEN_UI.text, lineHeight: 1.2 }}>
+                  Quick Actions
+                </Typography>
+                <Typography variant="body2" sx={{ color: GREEN_UI.muted }}>
+                  Open the main Accounting & Finance work areas.
+                </Typography>
+              </Box>
+            </Box>
+          </Box>
+        </Box>
+        <Divider sx={{ borderColor: GREEN_UI.border, mb: 2.25 }} />
+
         <Grid container spacing={2}>
           {shortcuts.map((shortcut, index) => (
-            <Grid key={index} size={{ xs: 12, sm: 6, md: 4 }}>
+            <Grid key={index} size={{ xs: 12, sm: 6 }}>
               <Button
                 fullWidth
                 variant="outlined"
-                size="large"
-                startIcon={<Box sx={{ color: shortcut.color, display: 'flex' }}>{shortcut.icon}</Box>}
+                startIcon={
+                  <Box
+                    sx={{
+                      width: 40,
+                      height: 40,
+                      borderRadius: '16px',
+                      display: 'grid',
+                      placeItems: 'center',
+                      bgcolor: 'rgba(58, 168, 101, 0.10)',
+                      color: shortcut.color,
+                      border: `1px solid ${GREEN_UI.border}`,
+                      '& svg': { fontSize: 22 },
+                    }}
+                  >
+                    {shortcut.icon}
+                  </Box>
+                }
                 onClick={() => navigate(shortcut.path)}
                 sx={{
-                  py: 1.5,
+                  minHeight: 86,
+                  borderRadius: '20px',
                   justifyContent: 'flex-start',
-                  borderColor: 'divider',
-                  color: 'text.primary',
-                  '&:hover': { borderColor: shortcut.color, bgcolor: `${shortcut.color}11` },
+                  alignItems: 'center',
+                  px: 1.5,
+                  py: 1.25,
+                  textTransform: 'none',
+                  color: GREEN_UI.text,
+                  borderColor: GREEN_UI.border,
+                  background: 'rgba(245, 252, 241, 0.72)',
+                  '& .MuiButton-startIcon': { mr: 1.4 },
+                  '&:hover': {
+                    borderColor: shortcut.color,
+                    bgcolor: `${shortcut.color}12`,
+                    transform: 'translateY(-2px)',
+                    boxShadow: GREEN_UI.shadowSoft,
+                  },
+                  transition: 'all 0.22s ease',
                 }}
               >
-                {shortcut.title}
+                <Box sx={{ minWidth: 0, textAlign: 'left' }}>
+                  <Typography component="span" sx={{ display: 'block', fontWeight: 900, fontSize: '0.98rem' }}>
+                    {shortcut.title}
+                  </Typography>
+                  <Typography
+                    component="span"
+                    sx={{
+                      display: 'block',
+                      color: GREEN_UI.muted,
+                      fontWeight: 600,
+                      fontSize: '0.78rem',
+                      whiteSpace: 'normal',
+                      lineHeight: 1.25,
+                    }}
+                  >
+                    {shortcut.description}
+                  </Typography>
+                </Box>
               </Button>
             </Grid>
           ))}
         </Grid>
       </Paper>
 
-      {/* Payroll Awaiting Release */}
-      <Paper elevation={0} sx={{ p: { xs: 2, sm: 2.5 }, border: '1px solid', borderColor: 'divider' }}>
-        <Box sx={{ display: 'flex', justifyContent: 'space-between', gap: 1.5, alignItems: { xs: 'stretch', sm: 'center' }, flexDirection: { xs: 'column', sm: 'row' }, mb: 2 }}>
-          <Box>
-            <Typography variant="h6" fontWeight="bold">Payroll Awaiting Release</Typography>
-            <Typography variant="body2" color="text.secondary">
+      <Paper elevation={0} sx={{ ...softCardSx, p: { xs: 2, sm: 2.5, md: 3 } }}>
+        <Box
+          sx={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            gap: 2,
+            alignItems: { xs: 'stretch', sm: 'center' },
+            flexDirection: { xs: 'column', sm: 'row' },
+            mb: 2,
+          }}
+        >
+          <Box sx={{ minWidth: 0 }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 0.75 }}>
+              <Box
+                sx={{
+                  width: 38,
+                  height: 38,
+                  borderRadius: '16px',
+                  display: 'grid',
+                  placeItems: 'center',
+                  bgcolor: '#fff7e0',
+                  color: GREEN_UI.amber,
+                  border: `1px solid ${GREEN_UI.border}`,
+                }}
+              >
+                <Timelapse fontSize="small" />
+              </Box>
+              <Typography variant="h6" fontWeight={900} sx={{ color: GREEN_UI.text, lineHeight: 1.2 }}>
+                Payroll Awaiting Release
+              </Typography>
+            </Box>
+            <Typography variant="body2" sx={{ color: GREEN_UI.muted }}>
               Shows payroll items with database status Reviewed or Approved.
             </Typography>
           </Box>
-          <Button variant="contained" size="small" onClick={() => navigate('/dashboard/payroll')}>Go to Payroll</Button>
+
+          <Button
+            variant="contained"
+            startIcon={<Payments />}
+            onClick={() => navigate('/dashboard/payroll')}
+            sx={{
+              ...pillButtonSx,
+              bgcolor: GREEN_UI.green,
+              boxShadow: '0 12px 24px rgba(58, 168, 101, 0.22)',
+              alignSelf: { xs: 'stretch', sm: 'center' },
+              '&:hover': { bgcolor: GREEN_UI.greenDark },
+            }}
+          >
+            Go to Payroll
+          </Button>
         </Box>
 
         {loading ? (
-          <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
-            <CircularProgress size={28} />
+          <Box
+            sx={{
+              ...innerCardSx,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: 1.25,
+              py: 5,
+              color: GREEN_UI.muted,
+            }}
+          >
+            <CircularProgress size={24} />
+            <Typography variant="body2" fontWeight={700}>
+              Loading payroll records…
+            </Typography>
           </Box>
         ) : forReview.length === 0 ? (
-          <Box sx={{ textAlign: 'center', py: 4 }}>
-            <TaskAlt color="success" sx={{ fontSize: 40, mb: 1 }} />
-            <Typography color="text.secondary">No payroll records awaiting release</Typography>
+          <Box
+            sx={{
+              ...innerCardSx,
+              textAlign: 'center',
+              py: 5,
+              px: 2,
+            }}
+          >
+            <Box
+              sx={{
+                width: 62,
+                height: 62,
+                borderRadius: '22px',
+                mx: 'auto',
+                mb: 1.5,
+                display: 'grid',
+                placeItems: 'center',
+                bgcolor: GREEN_UI.greenSoft,
+                color: GREEN_UI.greenDark,
+                border: `1px solid ${GREEN_UI.borderStrong}`,
+              }}
+            >
+              <TaskAlt sx={{ fontSize: 34 }} />
+            </Box>
+            <Typography fontWeight={900} sx={{ color: GREEN_UI.text }}>
+              No payroll records awaiting release
+            </Typography>
+            <Typography variant="body2" sx={{ color: GREEN_UI.muted, mt: 0.5 }}>
+              You are all caught up for now.
+            </Typography>
           </Box>
         ) : (
           <>
-            <TableContainer sx={{ overflowX: 'auto' }}>
+            <TableContainer
+              sx={{
+                borderRadius: '20px',
+                border: `1px solid ${GREEN_UI.border}`,
+                overflowX: 'auto',
+                background: 'rgba(255,255,255,0.72)',
+              }}
+            >
               <Table size="small">
-                <TableHead>
+                <TableHead
+                  sx={{
+                    '& .MuiTableCell-root': {
+                      bgcolor: 'rgba(230, 248, 233, 0.72)',
+                      color: GREEN_UI.greenDark,
+                      fontWeight: 900,
+                      fontSize: '0.78rem',
+                      borderBottom: `1px solid ${GREEN_UI.border}`,
+                      whiteSpace: 'nowrap',
+                    },
+                  }}
+                >
                   <TableRow>
                     <TableCell>Payroll ID</TableCell>
                     <TableCell>Employee</TableCell>
@@ -465,23 +855,70 @@ export default function AccountingDashboard() {
                     <TableCell>Status</TableCell>
                   </TableRow>
                 </TableHead>
-                <TableBody>
+                <TableBody
+                  sx={{
+                    '& .MuiTableRow-root': {
+                      transition: 'background 0.2s ease',
+                    },
+                    '& .MuiTableRow-root:hover': {
+                      bgcolor: 'rgba(58, 168, 101, 0.045)',
+                    },
+                    '& .MuiTableCell-root': {
+                      borderBottom: `1px solid ${GREEN_UI.border}`,
+                      color: GREEN_UI.text,
+                      fontSize: '0.87rem',
+                    },
+                    '& .MuiTableRow-root:last-child .MuiTableCell-root': {
+                      borderBottom: 0,
+                    },
+                  }}
+                >
                   {forReview.map((payroll) => (
                     <TableRow key={payroll.id} hover>
-                      <TableCell sx={{ fontWeight: 700 }}>{payroll.displayId}</TableCell>
                       <TableCell>
-                        <Typography variant="body2" fontWeight={600}>{payroll.employee}</Typography>
-                        <Typography variant="caption" color="text.secondary">{payroll.employeeId}</Typography>
+                        <Chip
+                          icon={<Payments sx={{ fontSize: 16 }} />}
+                          label={payroll.displayId}
+                          size="small"
+                          sx={{
+                            borderRadius: 999,
+                            bgcolor: GREEN_UI.greenSoft,
+                            color: GREEN_UI.greenDark,
+                            border: `1px solid ${GREEN_UI.borderStrong}`,
+                            fontWeight: 900,
+                            '& .MuiChip-icon': { color: GREEN_UI.greenDark },
+                          }}
+                        />
                       </TableCell>
-                      <TableCell>{payroll.position}</TableCell>
-                      <TableCell>{payroll.period}</TableCell>
-                      <TableCell align="right" sx={{ fontWeight: 700, color: 'success.main' }}>{formatCurrency(payroll.netPay)}</TableCell>
+                      <TableCell>
+                        <Typography variant="body2" fontWeight={900} sx={{ color: GREEN_UI.text }}>
+                          {payroll.employee}
+                        </Typography>
+                        <Typography variant="caption" sx={{ color: GREEN_UI.muted, fontWeight: 700 }}>
+                          {payroll.employeeId}
+                        </Typography>
+                      </TableCell>
+                      <TableCell>
+                        <Typography variant="body2" fontWeight={700}>
+                          {payroll.position}
+                        </Typography>
+                      </TableCell>
+                      <TableCell>
+                        <Typography variant="body2" fontWeight={700}>
+                          {payroll.period}
+                        </Typography>
+                      </TableCell>
+                      <TableCell align="right">
+                        <Typography variant="body2" fontWeight={900} sx={{ color: GREEN_UI.greenDark }}>
+                          {formatCurrency(payroll.netPay)}
+                        </Typography>
+                      </TableCell>
                       <TableCell>
                         <Chip
                           label={payroll.status}
                           size="small"
-                          color={payroll.status === 'Processed' ? 'success' : 'warning'}
                           variant="outlined"
+                          sx={accountingStatusChipSx(payroll.status)}
                         />
                       </TableCell>
                     </TableRow>
@@ -490,8 +927,18 @@ export default function AccountingDashboard() {
               </Table>
             </TableContainer>
 
-            <Box sx={{ mt: 2, display: 'flex', justifyContent: 'flex-end' }}>
-              <Button variant="contained" color="success" onClick={() => navigate('/dashboard/payroll')}>
+            <Box sx={{ mt: 2.25, display: 'flex', justifyContent: 'flex-end' }}>
+              <Button
+                variant="contained"
+                startIcon={<AccountBalanceWallet />}
+                onClick={() => navigate('/dashboard/payroll')}
+                sx={{
+                  ...pillButtonSx,
+                  bgcolor: GREEN_UI.green,
+                  boxShadow: '0 12px 24px rgba(58, 168, 101, 0.22)',
+                  '&:hover': { bgcolor: GREEN_UI.greenDark },
+                }}
+              >
                 Proceed to Salary Release
               </Button>
             </Box>
@@ -501,3 +948,4 @@ export default function AccountingDashboard() {
     </Box>
   );
 }
+

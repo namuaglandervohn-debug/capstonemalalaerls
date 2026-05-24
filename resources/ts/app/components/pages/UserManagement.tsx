@@ -46,16 +46,86 @@ const ROLES: { value: UserRole; label: string }[] = [
   { value: 'accounting', label: 'Accounting & Finance' },
 ];
 
-const ROLE_COLORS: Record<string, any> = {
-  hr: 'error', employee: 'default', supervisor: 'primary',
-  gm: 'warning', accounting: 'success',
+const GREEN_UI = {
+  pageBg: 'radial-gradient(circle at top left, rgba(220, 246, 219, 0.95), rgba(248, 252, 245, 0.98) 34%, #f7fbf3 100%)',
+  cardBg: 'rgba(255, 255, 255, 0.92)',
+  cardBgSoft: 'rgba(245, 252, 241, 0.88)',
+  border: 'rgba(139, 184, 144, 0.24)',
+  borderStrong: 'rgba(73, 156, 92, 0.32)',
+  green: '#3aa865',
+  greenDark: '#1f7a46',
+  greenSoft: '#e6f8e9',
+  text: '#1e2d24',
+  muted: '#6c7d70',
+  shadow: '0 20px 55px rgba(43, 91, 55, 0.10)',
+  shadowSoft: '0 12px 28px rgba(43, 91, 55, 0.08)',
 };
 
-const makeLoginText = (firstName?: string, lastName?: string) => {
-  return `${firstName ?? ""}${lastName ?? ""}`
-    .replace(/\s+/g, "")
-    .toLowerCase();
+const softCardSx = {
+  borderRadius: '26px',
+  border: `1px solid ${GREEN_UI.border}`,
+  background: GREEN_UI.cardBg,
+  boxShadow: GREEN_UI.shadow,
 };
+
+const innerCardSx = {
+  borderRadius: '20px',
+  border: `1px solid ${GREEN_UI.border}`,
+  background: GREEN_UI.cardBgSoft,
+  boxShadow: GREEN_UI.shadowSoft,
+};
+
+const pillButtonSx = {
+  borderRadius: 999,
+  textTransform: 'none',
+  fontWeight: 800,
+  px: 2,
+};
+
+const softTextFieldSx = {
+  '& .MuiOutlinedInput-root': {
+    borderRadius: '16px',
+    backgroundColor: '#fbfef9',
+    transition: 'all 180ms ease',
+    '& fieldset': { borderColor: GREEN_UI.border },
+    '&:hover fieldset': { borderColor: GREEN_UI.borderStrong },
+    '&.Mui-focused fieldset': { borderColor: GREEN_UI.green, borderWidth: 1.5 },
+    '&.Mui-disabled': { backgroundColor: '#f6fbf4' },
+  },
+  '& .MuiInputLabel-root': { color: GREEN_UI.muted },
+  '& .MuiInputLabel-root.Mui-focused': { color: GREEN_UI.greenDark },
+  '& .MuiInputBase-input.Mui-disabled': { WebkitTextFillColor: GREEN_UI.text },
+};
+
+const roleChipSx = (role: UserRole) => {
+  const styles: Record<UserRole, { bg: string; color: string; border: string }> = {
+    hr: { bg: '#e5f8e9', color: '#1f7a46', border: '#a9dfb6' },
+    employee: { bg: '#f4f7f3', color: '#5f6e63', border: '#dce8da' },
+    supervisor: { bg: '#eaf6ff', color: '#24658f', border: '#b9ddf4' },
+    gm: { bg: '#fff7e0', color: '#9b6b00', border: '#f5d786' },
+    accounting: { bg: '#eef6ff', color: '#345d88', border: '#c5dff5' },
+  };
+
+  const selected = styles[role] ?? styles.employee;
+
+  return {
+    bgcolor: selected.bg,
+    color: selected.color,
+    borderColor: selected.border,
+    fontWeight: 800,
+    borderRadius: 999,
+    '& .MuiChip-label': { px: 1.3 },
+  };
+};
+
+const activeChipSx = (active?: boolean) => ({
+  bgcolor: active === false ? '#f2f4f1' : '#e5f8e9',
+  color: active === false ? '#6f786f' : '#217a43',
+  borderColor: active === false ? '#dce2d9' : '#a9dfb6',
+  fontWeight: 900,
+  borderRadius: 999,
+  '& .MuiChip-label': { px: 1.35 },
+});
 
 const getNextEmployeeId = (ids: string[]) => {
   const numbers = ids
@@ -264,7 +334,7 @@ export default function UserManagement() {
       role: editForm.role,
       outlet: editForm.outlet,
       employee_id: editForm.employeeId,
-      is_active: editForm.active ?? true,
+      is_active: editForm.active ?? selectedUser.active ?? true,
     };
 
     if (newPwd.trim()) {
@@ -351,7 +421,6 @@ export default function UserManagement() {
           ? {
               ...u,
               active: newActive,
-              status: newActive ? "Active" : "Inactive",
             }
           : u
       )
@@ -362,10 +431,14 @@ export default function UserManagement() {
         ? {
             ...prev,
             active: newActive,
-            status: newActive ? "Active" : "Inactive",
           }
         : prev
     );
+
+    setEditForm(prev => ({
+      ...prev,
+      active: newActive,
+    }));
 
     setSnackbar({
       open: true,
@@ -409,186 +482,569 @@ export default function UserManagement() {
 };
 
   /* ── Render ─────────────────────────────────────────────────────────── */
-  return (
-    <Box>
-      {/* Header */}
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: { xs: 'flex-start', sm: 'center' }, flexWrap: 'wrap', gap: 2, mb: 3 }}>
-        <Box>
-          <Typography variant="h4" fontWeight="bold" sx={{ fontSize: { xs: '1.35rem', sm: '1.75rem', md: '2.125rem' } }}>
-            User Account Management
-          </Typography>
-          <Typography variant="body2" color="text.secondary">
-            Create and manage employee login accounts
-          </Typography>
-        </Box>
-        <Box sx={{ display: 'flex', gap: 1 }}>
-          <Tooltip title="Refresh">
-            <span>
-              <IconButton onClick={fetchUsers} disabled={loading}><Sync /></IconButton>
-            </span>
-          </Tooltip>
-          <Button variant="contained" startIcon={empIdLoading ? <CircularProgress size={16} color="inherit" /> : <AddCircleOutline />}
-            onClick={openCreateDialog} disabled={empIdLoading}>
-            {empIdLoading ? 'Preparing…' : 'Create Account'}
-          </Button>
-        </Box>
-      </Box>
+  const totalUsers = users.length;
+  const activeUsers = users.filter(u => u.active !== false).length;
+  const inactiveUsers = users.filter(u => u.active === false).length;
+  const employeeUsers = users.filter(u => u.role === 'employee').length;
 
-      <Alert severity="info" sx={{ mb: 2 }}>
-        <strong>System Accounts</strong> (always active, not listed here): <code>admin</code> / admin123 (HR),
-        and demo accounts (hr / employee / supervisor / gm / accounting @company.com).
-        Additional accounts created here are stored in Supabase.
+  const summaryCards = [
+    { label: 'Total Accounts', value: totalUsers, caption: 'All Supabase user records', icon: <AdminPanelSettings fontSize="small" /> },
+    { label: 'Active Accounts', value: activeUsers, caption: 'Can access the system', icon: <Visibility fontSize="small" /> },
+    { label: 'Inactive Accounts', value: inactiveUsers, caption: 'Temporarily disabled', icon: <VisibilityOff fontSize="small" /> },
+    { label: 'Employee Users', value: employeeUsers, caption: 'Employee role accounts', icon: <Badge fontSize="small" /> },
+  ];
+
+  const renderDialogSectionTitle = (title: string) => (
+    <Grid size={12}>
+      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mt: 1, mb: 0.5 }}>
+        <Box
+          sx={{
+            width: 34,
+            height: 6,
+            borderRadius: 999,
+            background: `linear-gradient(90deg, ${GREEN_UI.green}, rgba(58, 168, 101, 0.08))`,
+          }}
+        />
+        <Typography
+          variant="subtitle2"
+          fontWeight={900}
+          sx={{ color: GREEN_UI.greenDark, letterSpacing: 0.4, textTransform: 'uppercase' }}
+        >
+          {title}
+        </Typography>
+      </Box>
+      <Divider sx={{ borderColor: GREEN_UI.border, mb: 1 }} />
+    </Grid>
+  );
+
+  return (
+    <Box
+      sx={{
+        minHeight: '100%',
+        p: { xs: 1.5, sm: 2.25, md: 3 },
+        background: GREEN_UI.pageBg,
+        color: GREEN_UI.text,
+        borderRadius: { xs: 0, md: '32px' },
+      }}
+    >
+      <Paper
+        elevation={0}
+        sx={{
+          ...softCardSx,
+          p: { xs: 2, sm: 2.75, md: 3.25 },
+          mb: 2.5,
+          position: 'relative',
+          overflow: 'hidden',
+          background:
+            'linear-gradient(135deg, rgba(255,255,255,0.98) 0%, rgba(239,250,235,0.96) 60%, rgba(225,248,224,0.94) 100%)',
+          '&:before': {
+            content: '""',
+            position: 'absolute',
+            width: 260,
+            height: 260,
+            borderRadius: '50%',
+            right: -90,
+            top: -110,
+            background: 'rgba(76, 175, 80, 0.12)',
+          },
+          '&:after': {
+            content: '""',
+            position: 'absolute',
+            width: 160,
+            height: 160,
+            borderRadius: '50%',
+            left: { xs: '70%', md: '44%' },
+            bottom: -95,
+            background: 'rgba(174, 222, 144, 0.18)',
+          },
+        }}
+      >
+        <Box
+          sx={{
+            position: 'relative',
+            zIndex: 1,
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: { xs: 'flex-start', md: 'center' },
+            flexWrap: 'wrap',
+            gap: 2,
+          }}
+        >
+          <Box sx={{ maxWidth: 720 }}>
+            <Chip
+              icon={<AdminPanelSettings sx={{ fontSize: 15 }} />}
+              label="Access Control"
+              size="small"
+              sx={{
+                mb: 1.2,
+                bgcolor: GREEN_UI.greenSoft,
+                color: GREEN_UI.greenDark,
+                fontWeight: 900,
+                borderRadius: 999,
+              }}
+            />
+            <Typography
+              variant="h4"
+              fontWeight={900}
+              sx={{
+                fontSize: { xs: '1.55rem', sm: '2rem', md: '2.35rem' },
+                color: GREEN_UI.text,
+                letterSpacing: '-0.04em',
+                lineHeight: 1.08,
+                mb: 0.75,
+              }}
+            >
+              User Account Management
+            </Typography>
+            <Typography variant="body2" sx={{ color: GREEN_UI.muted, maxWidth: 650, lineHeight: 1.7 }}>
+              Create login accounts, assign role access, connect employee IDs, and manage active or inactive system users in one clean workspace.
+            </Typography>
+          </Box>
+
+          <Box sx={{ display: 'flex', gap: 1, alignItems: 'center', flexWrap: 'wrap', width: { xs: '100%', sm: 'auto' } }}>
+            <Tooltip title="Refresh accounts">
+              <span style={{ width: 'inherit' }}>
+                <Button
+                  variant="contained"
+                  startIcon={loading ? <CircularProgress size={16} color="inherit" /> : <Sync />}
+                  onClick={fetchUsers}
+                  disabled={loading}
+                  sx={{
+                    ...pillButtonSx,
+                    py: 1.1,
+                    width: { xs: '100%', sm: 'auto' },
+                    borderColor: GREEN_UI.borderStrong,
+                    bgcolor: GREEN_UI.green,
+                    '&:hover': { borderColor: GREEN_UI.green, bgcolor: GREEN_UI.greenSoft },
+                  }}
+                >
+                  {loading ? 'Refreshing…' : 'Refresh'}
+                </Button>
+              </span>
+            </Tooltip>
+
+            <Button
+              variant="contained"
+              startIcon={empIdLoading ? <CircularProgress size={16} color="inherit" /> : <AddCircleOutline />}
+              onClick={openCreateDialog}
+              disabled={empIdLoading}
+              sx={{
+                ...pillButtonSx,
+                py: 1.1,
+                width: { xs: '100%', sm: 'auto' },
+                bgcolor: GREEN_UI.green,
+                boxShadow: '0 12px 24px rgba(58, 168, 101, 0.25)',
+                '&:hover': { bgcolor: GREEN_UI.greenDark, boxShadow: '0 16px 28px rgba(31, 122, 70, 0.28)' },
+              }}
+            >
+              {empIdLoading ? 'Preparing…' : 'Create Account'}
+            </Button>
+          </Box>
+        </Box>
+      </Paper>
+
+      <Grid container spacing={1.5} sx={{ mb: 2.5 }}>
+        {summaryCards.map(stat => (
+          <Grid key={stat.label} size={{ xs: 12, sm: 6, md: 3 }}>
+            <Paper
+              elevation={0}
+              sx={{
+                ...softCardSx,
+                p: 2,
+                minHeight: 126,
+                display: 'flex',
+                flexDirection: 'column',
+                justifyContent: 'space-between',
+                transition: 'transform 180ms ease, box-shadow 180ms ease',
+                '&:hover': { transform: 'translateY(-3px)', boxShadow: '0 22px 48px rgba(43, 91, 55, 0.13)' },
+              }}
+            >
+              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 1.5 }}>
+                <Box>
+                  <Typography variant="body2" sx={{ color: GREEN_UI.muted, fontWeight: 800 }}>
+                    {stat.label}
+                  </Typography>
+                  <Typography variant="h4" fontWeight={900} sx={{ color: GREEN_UI.text, mt: 0.5, letterSpacing: '-0.04em' }}>
+                    {stat.value}
+                  </Typography>
+                </Box>
+                <Box
+                  sx={{
+                    width: 42,
+                    height: 42,
+                    borderRadius: '16px',
+                    display: 'grid',
+                    placeItems: 'center',
+                    bgcolor: GREEN_UI.greenSoft,
+                    color: GREEN_UI.greenDark,
+                    flexShrink: 0,
+                  }}
+                >
+                  {stat.icon}
+                </Box>
+              </Box>
+              <Typography variant="caption" sx={{ color: GREEN_UI.muted, mt: 1.2 }}>
+                {stat.caption}
+              </Typography>
+            </Paper>
+          </Grid>
+        ))}
+      </Grid>
+
+      <Alert
+        severity="info"
+        sx={{
+          mb: 2,
+          borderRadius: '18px',
+          border: `1px solid ${GREEN_UI.border}`,
+          bgcolor: 'rgba(240, 249, 241, 0.92)',
+          color: '#365a3b',
+          '& .MuiAlert-icon': { color: GREEN_UI.green },
+          '& code': {
+            px: 0.7,
+            py: 0.18,
+            mx: 0.25,
+            borderRadius: 1.2,
+            bgcolor: 'rgba(58, 168, 101, 0.10)',
+            color: GREEN_UI.greenDark,
+            fontWeight: 800,
+          },
+        }}
+      >
+        <strong>System Accounts</strong> are always active and not listed here: <code>admin</code> / admin123 (HR),
+        and demo accounts (hr / employee / supervisor / gm / accounting @company.com). Additional accounts created here are stored in Supabase.
       </Alert>
 
       {error && (
-        <Alert severity="error" sx={{ mb: 2 }} action={<Button size="small" onClick={fetchUsers}>Retry</Button>}>
+        <Alert
+          severity="error"
+          sx={{ mb: 2, borderRadius: '18px', border: `1px solid ${GREEN_UI.border}` }}
+          action={
+            <Button size="small" onClick={fetchUsers} sx={{ ...pillButtonSx }}>
+              Retry
+            </Button>
+          }
+        >
           {error}
         </Alert>
       )}
 
-      {/* Users Table */}
-      <TableContainer component={Paper} sx={{ overflowX: 'auto' }}>
+      <TableContainer
+        component={Paper}
+        elevation={0}
+        sx={{
+          ...softCardSx,
+          overflowX: 'auto',
+          '&::-webkit-scrollbar': { height: 10 },
+          '&::-webkit-scrollbar-thumb': { bgcolor: '#cfe8d1', borderRadius: 999 },
+        }}
+      >
         {loading ? (
-          <Box sx={{ display: 'flex', justifyContent: 'center', py: 6, gap: 2 }}>
-            <CircularProgress size={28} />
-            <Typography color="text.secondary">Loading…</Typography>
+          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', py: 7, gap: 2 }}>
+            <CircularProgress size={28} sx={{ color: GREEN_UI.green }} />
+            <Typography sx={{ color: GREEN_UI.muted, fontWeight: 700 }}>Loading accounts…</Typography>
           </Box>
         ) : (
-          <Table sx={{ minWidth: 900 }}>
+          <Table sx={{ minWidth: 900, '& th, & td': { borderColor: 'rgba(139, 184, 144, 0.16)' } }}>
             <TableHead>
-              <TableRow>
-                <TableCell>USER ID</TableCell>
-                <TableCell>Full Name</TableCell>
-                <TableCell>Email / Username</TableCell>
-                <TableCell>Role</TableCell>
-                <TableCell>Status</TableCell>
-                <TableCell>Actions</TableCell>
+              <TableRow
+                sx={{
+                  background: 'linear-gradient(90deg, #eff8eb 0%, #f8fcf5 100%)',
+                  '& th': {
+                    color: GREEN_UI.greenDark,
+                    fontWeight: 900,
+                    fontSize: '0.78rem',
+                    letterSpacing: '0.02em',
+                    textTransform: 'uppercase',
+                    py: 1.7,
+                  },
+                }}
+              >
+                <TableCell sx={{ whiteSpace: 'nowrap' }}>User ID</TableCell>
+                <TableCell sx={{ whiteSpace: 'nowrap' }}>Account Name</TableCell>
+                <TableCell sx={{ whiteSpace: 'nowrap' }}>Email / Username</TableCell>
+                <TableCell sx={{ whiteSpace: 'nowrap' }}>Role</TableCell>
+                <TableCell sx={{ whiteSpace: 'nowrap' }}>Status</TableCell>
+                <TableCell sx={{ whiteSpace: 'nowrap', minWidth: 180 }}>Actions</TableCell>
               </TableRow>
             </TableHead>
             <TableBody>
               {users.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={8} align="center" sx={{ py: 5, color: 'text.secondary' }}>
-                    No user accounts yet. Click "Create Account" to add one.
+                  <TableCell colSpan={6} align="center" sx={{ py: 7 }}>
+                    <Box sx={{ maxWidth: 360, mx: 'auto' }}>
+                      <Box
+                        sx={{
+                          width: 54,
+                          height: 54,
+                          borderRadius: '20px',
+                          display: 'grid',
+                          placeItems: 'center',
+                          mx: 'auto',
+                          mb: 1.5,
+                          bgcolor: GREEN_UI.greenSoft,
+                          color: GREEN_UI.greenDark,
+                        }}
+                      >
+                        <AdminPanelSettings />
+                      </Box>
+                      <Typography fontWeight={900} sx={{ color: GREEN_UI.text }}>
+                        No user accounts yet
+                      </Typography>
+                      <Typography variant="body2" sx={{ color: GREEN_UI.muted, mt: 0.5 }}>
+                        Create the first account to start assigning role-based system access.
+                      </Typography>
+                    </Box>
                   </TableCell>
                 </TableRow>
-              ) : users.map(u => (
-                <TableRow key={u.id} hover>
+              ) : (
+                users.map(u => (
+                  <TableRow
+                    key={u.id}
+                    hover
+                    sx={{
+                      opacity: u.active === false ? 0.64 : 1,
+                      transition: 'background 160ms ease',
+                      '&:hover': { bgcolor: 'rgba(231, 247, 229, 0.52)' },
+                      '& td': { py: 1.55, color: GREEN_UI.text },
+                    }}
+                  >
+                    <TableCell>
+                      <Chip
+                        label={u.id || '—'}
+                        size="small"
+                        variant="outlined"
+                        sx={{ borderRadius: 999, fontWeight: 800, bgcolor: '#f8fcf5', borderColor: GREEN_UI.border, fontFamily: 'monospace' }}
+                      />
+                    </TableCell>
 
-  {/* USER ID */}
-  <TableCell sx={{ opacity: u.active === false ? 0.45 : 1, fontWeight: 500 }}>
-    <Chip
-      label={u.id || '—'}
-      size="small"
-      variant="outlined"
-    />
-  </TableCell>
+                    <TableCell sx={{ minWidth: 230 }}>
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.2 }}>
+                        <Box
+                          sx={{
+                            width: 38,
+                            height: 38,
+                            borderRadius: '16px',
+                            display: 'grid',
+                            placeItems: 'center',
+                            bgcolor: GREEN_UI.greenSoft,
+                            color: GREEN_UI.greenDark,
+                            fontWeight: 900,
+                            flexShrink: 0,
+                          }}
+                        >
+                          {(u.name || '?').trim().charAt(0).toUpperCase()}
+                        </Box>
+                        <Box sx={{ minWidth: 0 }}>
+                          <Typography fontWeight={800} sx={{ color: GREEN_UI.text, lineHeight: 1.2 }} noWrap>
+                            {u.name || 'Unnamed Account'}
+                          </Typography>
+                          <Typography variant="caption" sx={{ color: GREEN_UI.muted }} noWrap>
+                            {u.employeeId || 'No employee ID linked'}{u.outlet ? ` • ${u.outlet}` : ''}
+                          </Typography>
+                        </Box>
+                      </Box>
+                    </TableCell>
 
- {/* FULL NAME */}
-  <TableCell sx={{ opacity: u.active === false ? 0.45 : 1}}>
-    {u.name}
-  </TableCell>
+                    <TableCell sx={{ whiteSpace: 'nowrap' }}>
+                      <Typography variant="body2" sx={{ color: GREEN_UI.muted, fontWeight: 700 }}>
+                        {u.email || '—'}
+                      </Typography>
+                    </TableCell>
 
-  {/* EMAIL */}
-  <TableCell sx={{ opacity: u.active === false ? 0.45 : 1 }}>
-    {u.email}
-  </TableCell>
+                    <TableCell sx={{ whiteSpace: 'nowrap' }}>
+                      <Chip
+                        label={ROLES.find(r => r.value === u.role)?.label ?? u.role}
+                        size="small"
+                        variant="outlined"
+                        sx={roleChipSx(u.role)}
+                      />
+                    </TableCell>
 
-  {/* ROLE */}
-  <TableCell sx={{ opacity: u.active === false ? 0.45 : 1 }}>
-    <Chip
-      label={ROLES.find(r => r.value === u.role)?.label ?? u.role}
-      size="small"
-      color={ROLE_COLORS[u.role] ?? 'default'}
-    />
-  </TableCell>
+                    <TableCell sx={{ whiteSpace: 'nowrap' }}>
+                      <Chip
+                        label={u.active === false ? 'Inactive' : 'Active'}
+                        size="small"
+                        variant="outlined"
+                        sx={activeChipSx(u.active)}
+                      />
+                    </TableCell>
 
-  {/* STATUS */}
-  <TableCell sx={{ opacity: u.active === false ? 0.45 : 1 }}>
-    <Chip
-      label={u.active === false ? 'Inactive' : 'Active'}
-      size="small"
-      color={u.active === false ? 'default' : 'success'}
-    />
-  </TableCell>
+                    <TableCell sx={{ whiteSpace: 'nowrap' }}>
+                      <Box sx={{ display: 'flex', gap: 0.75, alignItems: 'center', flexWrap: 'wrap' }}>
+                        <Chip
+                          label={u.active === false ? 'Activate' : 'Deactivate'}
+                          size="small"
+                          clickable
+                          variant="outlined"
+                          icon={u.active === false ? <Visibility /> : <VisibilityOff />}
+                          onClick={() => handleToggleActive(u)}
+                          sx={{
+                            minWidth: 118,
+                            justifyContent: 'center',
+                            borderRadius: 999,
+                            fontWeight: 800,
+                            borderColor: u.active === false ? '#a9dfb6' : '#efd69a',
+                            color: u.active === false ? '#1f7a46' : '#8a6400',
+                            bgcolor: u.active === false ? '#f1fbf2' : '#fffaf0',
+                            '&:hover': { bgcolor: u.active === false ? GREEN_UI.greenSoft : '#fff2d2' },
+                            '& .MuiChip-icon': { color: u.active === false ? '#1f7a46' : '#8a6400' },
+                          }}
+                        />
 
-  {/* ACTIONS */}
-  <TableCell>
-    <Box
-      sx={{
-        display: 'flex',
-        flexDirection: 'column',
-        gap: 0.5,
-        alignItems: 'flex-start'
-      }}
-    >
-      <Chip
-        label="Edit Account"
-        size="small"
-        clickable
-        variant="outlined"
-        color="primary"
-        onClick={() => {
-          setSelectedUser(u);
+                        <Chip
+                          label="Edit"
+                          size="small"
+                          clickable
+                          variant="outlined"
+                          icon={<EditNote />}
+                          onClick={() => {
+                            setSelectedUser(u);
 
-          setEditForm({
-            name: u.name,
-            email: u.email,
-            role: u.role,
-            outlet: u.outlet,
-            employeeId: u.employeeId,
-            applicantId: u.applicantId,
-          });
+                            setEditForm({
+                              name: u.name,
+                              email: u.email,
+                              role: u.role,
+                              outlet: u.outlet,
+                              employeeId: u.employeeId,
+                              applicantId: u.applicantId,
+                              active: u.active,
+                            });
 
-          setNewPwd('');
-          setShowEditPwd(false);
-          setOpenEdit(true);
-        }}
-        sx={{ minWidth: 110 }}
-      />
+                            setNewPwd('');
+                            setShowEditPwd(false);
+                            setOpenEdit(true);
+                          }}
+                          sx={{
+                            minWidth: 76,
+                            justifyContent: 'center',
+                            borderRadius: 999,
+                            fontWeight: 800,
+                            borderColor: GREEN_UI.borderStrong,
+                            color: GREEN_UI.greenDark,
+                            bgcolor: '#ffffff',
+                            '&:hover': { bgcolor: GREEN_UI.greenSoft },
+                            '& .MuiChip-icon': { color: GREEN_UI.greenDark },
+                          }}
+                        />
 
-      <Chip
-        label="Delete Account"
-        size="small"
-        clickable
-        variant="outlined"
-        color="error"
-        onClick={() => handleDelete(u)}
-        sx={{ minWidth: 110 }}
-      />
-    </Box>
-  </TableCell>
-</TableRow>
-              ))}
+                        <Chip
+                          label="Delete"
+                          size="small"
+                          clickable
+                          variant="outlined"
+                          icon={<DeleteOutline />}
+                          onClick={() => handleDelete(u)}
+                          sx={{
+                            minWidth: 86,
+                            justifyContent: 'center',
+                            borderRadius: 999,
+                            fontWeight: 800,
+                            borderColor: '#efb8b8',
+                            color: '#9c2f2f',
+                            bgcolor: '#fffafa',
+                            '&:hover': { bgcolor: '#fdeaea' },
+                            '& .MuiChip-icon': { color: '#9c2f2f' },
+                          }}
+                        />
+                      </Box>
+                    </TableCell>
+                  </TableRow>
+                ))
+              )}
             </TableBody>
           </Table>
         )}
       </TableContainer>
 
       {/* ── Create Account Dialog ─────────────────────────────────────── */}
-      <Dialog open={openAdd} onClose={() => setOpenAdd(false)} maxWidth="sm" fullWidth>
-        <DialogTitle fontWeight={700}>Create New User Account</DialogTitle>
-        <DialogContent sx={{ pt: '12px !important' }}>
-          <Grid container spacing={2} sx={{ mt: 0 }}>
+      <Dialog
+        open={openAdd}
+        onClose={() => setOpenAdd(false)}
+        maxWidth="sm"
+        fullWidth
+        PaperProps={{
+          sx: {
+            borderRadius: { xs: '22px', sm: '30px' },
+            overflow: 'hidden',
+            border: `1px solid ${GREEN_UI.border}`,
+            background: '#fbfff9',
+            boxShadow: '0 28px 70px rgba(27, 73, 37, 0.18)',
+          },
+        }}
+      >
+        <DialogTitle
+          fontWeight={900}
+          sx={{
+            px: { xs: 2, sm: 3 },
+            py: 2.25,
+            background: 'linear-gradient(135deg, #ffffff 0%, #eef9ea 100%)',
+            borderBottom: `1px solid ${GREEN_UI.border}`,
+          }}
+        >
+          <Typography fontWeight={900} sx={{ color: GREEN_UI.text }}>
+            Create New User Account
+          </Typography>
+          <Typography variant="body2" sx={{ color: GREEN_UI.muted, mt: 0.5, fontWeight: 500 }}>
+            Set the user’s login details, role access, and linked employee information.
+          </Typography>
+        </DialogTitle>
+
+        <DialogContent sx={{ px: { xs: 2, sm: 3 }, py: 2.5, bgcolor: '#fbfff9' }}>
+          <Grid container spacing={2} sx={{ pt: 1 }}>
+            {renderDialogSectionTitle('I. ACCOUNT DETAILS')}
             <Grid size={12}>
-              <TextField fullWidth required label="Full Name" value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} />
+              <TextField
+                fullWidth
+                required
+                label="Full Name"
+                value={form.name}
+                onChange={e => setForm({ ...form, name: e.target.value })}
+                sx={softTextFieldSx}
+              />
             </Grid>
             <Grid size={12}>
-              <TextField fullWidth required label="Email / Username" value={form.email} onChange={e => setForm({ ...form, email: e.target.value })} helperText="Used to log in to the system" />
+              <TextField
+                fullWidth
+                required
+                label="Email / Username"
+                value={form.email}
+                onChange={e => setForm({ ...form, email: e.target.value })}
+                helperText="Used to log in to the system"
+                sx={softTextFieldSx}
+              />
             </Grid>
+
+            {renderDialogSectionTitle('II. ROLE ACCESS')}
             <Grid size={{ xs: 12, md: 6 }}>
-              <TextField fullWidth select label="Role" value={form.role} onChange={e => setForm({ ...form, role: e.target.value as UserRole })} InputLabelProps={{ shrink: true }}>
+              <TextField
+                fullWidth
+                select
+                label="Role"
+                value={form.role}
+                onChange={e => setForm({ ...form, role: e.target.value as UserRole })}
+                InputLabelProps={{ shrink: true }}
+                sx={softTextFieldSx}
+              >
                 {ROLES.map(r => <MenuItem key={r.value} value={r.value}>{r.label}</MenuItem>)}
               </TextField>
             </Grid>
             <Grid size={{ xs: 12, md: 6 }}>
-              <TextField fullWidth select label="Outlet / Branch" value={form.outlet} onChange={e => setForm({ ...form, outlet: e.target.value })} InputLabelProps={{ shrink: true }}>
+              <TextField
+                fullWidth
+                select
+                label="Outlet / Branch"
+                value={form.outlet}
+                onChange={e => setForm({ ...form, outlet: e.target.value })}
+                InputLabelProps={{ shrink: true }}
+                sx={softTextFieldSx}
+              >
                 <MenuItem key="outlet-empty" value="">Select Outlet…</MenuItem>
                 {OUTLETS.map(o => <MenuItem key={o} value={o}>{o}</MenuItem>)}
               </TextField>
             </Grid>
 
-            {/* ── Linked Employee ID — auto-generated, read-only ── */}
+            {renderDialogSectionTitle('III. LOGIN CREDENTIALS')}
             <Grid size={{ xs: 12, md: 6 }}>
               <TextField
                 fullWidth
@@ -599,17 +1055,16 @@ export default function UserManagement() {
                   readOnly: true,
                   startAdornment: (
                     <InputAdornment position="start">
-                      <Badge fontSize="small" color="primary" />
+                      <Badge fontSize="small" sx={{ color: GREEN_UI.greenDark }} />
                     </InputAdornment>
                   ),
                 }}
                 helperText="Auto-generated — assigned sequentially"
                 sx={{
+                  ...softTextFieldSx,
                   '& .MuiInputBase-input.Mui-disabled': {
-                    WebkitTextFillColor: 'inherit',
-                    color: 'text.primary',
-                    fontWeight: 700,
-                    fontSize: '1rem',
+                    WebkitTextFillColor: GREEN_UI.text,
+                    fontWeight: 800,
                   },
                 }}
               />
@@ -617,10 +1072,13 @@ export default function UserManagement() {
 
             <Grid size={{ xs: 12, md: 6 }}>
               <TextField
-                fullWidth required label="Initial Password"
+                fullWidth
+                required
+                label="Initial Password"
                 type={showPwd ? 'text' : 'password'}
                 value={form.password}
                 onChange={e => setForm({ ...form, password: e.target.value })}
+                sx={softTextFieldSx}
                 InputProps={{
                   endAdornment: (
                     <InputAdornment position="end">
@@ -634,40 +1092,146 @@ export default function UserManagement() {
             </Grid>
           </Grid>
         </DialogContent>
-        <DialogActions sx={{ px: 3, pb: 2 }}>
-          <Button onClick={() => setOpenAdd(false)}>Cancel</Button>
-          <Button variant="contained" onClick={handleCreate} disabled={saving} startIcon={saving ? <CircularProgress size={16} color="inherit" /> : undefined}>
+
+        <DialogActions
+          sx={{
+            px: { xs: 2, sm: 3 },
+            py: 2,
+            gap: 1,
+            flexWrap: 'wrap',
+            bgcolor: '#ffffff',
+            borderTop: `1px solid ${GREEN_UI.border}`,
+          }}
+        >
+          <Button
+            onClick={() => setOpenAdd(false)}
+            sx={{ ...pillButtonSx, color: GREEN_UI.muted }}
+          >
+            Cancel
+          </Button>
+          <Button
+            variant="contained"
+            onClick={handleCreate}
+            disabled={saving}
+            startIcon={saving ? <CircularProgress size={16} color="inherit" /> : <AddCircleOutline />}
+            sx={{
+              ...pillButtonSx,
+              bgcolor: GREEN_UI.green,
+              boxShadow: '0 12px 24px rgba(58, 168, 101, 0.25)',
+              '&:hover': { bgcolor: GREEN_UI.greenDark },
+            }}
+          >
             {saving ? 'Creating…' : 'Create Account'}
           </Button>
         </DialogActions>
       </Dialog>
 
       {/* ── Edit Account Dialog (includes Reset Password) ─────────────── */}
-      <Dialog open={openEdit} onClose={() => { setOpenEdit(false); setNewPwd(''); setShowEditPwd(false); }} maxWidth="sm" fullWidth>
-        <DialogTitle fontWeight={700}>Edit Account — {selectedUser?.name}</DialogTitle>
-        <DialogContent sx={{ pt: '12px !important' }}>
-          <Grid container spacing={2} sx={{ mt: 0 }}>
+      <Dialog
+        open={openEdit}
+        onClose={() => { setOpenEdit(false); setNewPwd(''); setShowEditPwd(false); }}
+        maxWidth="sm"
+        fullWidth
+        PaperProps={{
+          sx: {
+            borderRadius: { xs: '22px', sm: '30px' },
+            overflow: 'hidden',
+            border: `1px solid ${GREEN_UI.border}`,
+            background: '#fbfff9',
+            boxShadow: '0 28px 70px rgba(27, 73, 37, 0.18)',
+          },
+        }}
+      >
+        <DialogTitle
+          fontWeight={900}
+          sx={{
+            px: { xs: 2, sm: 3 },
+            py: 2.25,
+            background: 'linear-gradient(135deg, #ffffff 0%, #eef9ea 100%)',
+            borderBottom: `1px solid ${GREEN_UI.border}`,
+          }}
+        >
+          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 1 }}>
+            <Box>
+              <Typography fontWeight={900} sx={{ color: GREEN_UI.text }}>
+                Edit Account
+              </Typography>
+              <Typography variant="body2" sx={{ color: GREEN_UI.muted, mt: 0.5, fontWeight: 500 }}>
+                {selectedUser?.name || 'Selected user'}
+              </Typography>
+            </Box>
+            {selectedUser && (
+              <Chip
+                label={selectedUser.active === false ? 'Inactive' : 'Active'}
+                size="small"
+                variant="outlined"
+                sx={activeChipSx(selectedUser.active)}
+              />
+            )}
+          </Box>
+        </DialogTitle>
+
+        <DialogContent sx={{ px: { xs: 2, sm: 3 }, py: 2.5, bgcolor: '#fbfff9' }}>
+          <Grid container spacing={2} sx={{ pt: 1 }}>
+            {renderDialogSectionTitle('I. ACCOUNT DETAILS')}
             <Grid size={12}>
-              <TextField fullWidth label="Full Name" value={editForm.name ?? ''} onChange={e => setEditForm({ ...editForm, name: e.target.value })} />
+              <TextField
+                fullWidth
+                label="Full Name"
+                value={editForm.name ?? ''}
+                onChange={e => setEditForm({ ...editForm, name: e.target.value })}
+                sx={softTextFieldSx}
+              />
             </Grid>
             <Grid size={12}>
-              <TextField fullWidth label="Email / Username" value={editForm.email ?? ''} onChange={e => setEditForm({ ...editForm, email: e.target.value })} />
+              <TextField
+                fullWidth
+                label="Email / Username"
+                value={editForm.email ?? ''}
+                onChange={e => setEditForm({ ...editForm, email: e.target.value })}
+                sx={softTextFieldSx}
+              />
             </Grid>
+
+            {renderDialogSectionTitle('II. ROLE ACCESS')}
             <Grid size={{ xs: 12, md: 6 }}>
-              <TextField fullWidth select label="Role" value={editForm.role ?? 'employee'} onChange={e => setEditForm({ ...editForm, role: e.target.value as UserRole })} InputLabelProps={{ shrink: true }}>
+              <TextField
+                fullWidth
+                select
+                label="Role"
+                value={editForm.role ?? 'employee'}
+                onChange={e => setEditForm({ ...editForm, role: e.target.value as UserRole })}
+                InputLabelProps={{ shrink: true }}
+                sx={softTextFieldSx}
+              >
                 {ROLES.map(r => <MenuItem key={r.value} value={r.value}>{r.label}</MenuItem>)}
               </TextField>
             </Grid>
             <Grid size={{ xs: 12, md: 6 }}>
-              <TextField fullWidth label="Linked Employee ID" value={editForm.employeeId ?? ''} onChange={e => setEditForm({ ...editForm, employeeId: e.target.value })} />
+              <TextField
+                fullWidth
+                select
+                label="Outlet / Branch"
+                value={editForm.outlet ?? ''}
+                onChange={e => setEditForm({ ...editForm, outlet: e.target.value })}
+                InputLabelProps={{ shrink: true }}
+                sx={softTextFieldSx}
+              >
+                <MenuItem key="edit-outlet-empty" value="">Select Outlet…</MenuItem>
+                {OUTLETS.map(o => <MenuItem key={o} value={o}>{o}</MenuItem>)}
+              </TextField>
+            </Grid>
+            <Grid size={12}>
+              <TextField
+                fullWidth
+                label="Linked Employee ID"
+                value={editForm.employeeId ?? ''}
+                onChange={e => setEditForm({ ...editForm, employeeId: e.target.value })}
+                sx={softTextFieldSx}
+              />
             </Grid>
 
-            {/* ── Reset Password (optional) ─────────────────────────── */}
-            <Grid size={12}>
-              <Divider sx={{ mt: 1 }}>
-                <Typography variant="caption" color="text.secondary">Reset Password (Optional)</Typography>
-              </Divider>
-            </Grid>
+            {renderDialogSectionTitle('III. RESET PASSWORD')}
             <Grid size={12}>
               <TextField
                 fullWidth
@@ -677,6 +1241,7 @@ export default function UserManagement() {
                 value={newPwd}
                 onChange={e => setNewPwd(e.target.value)}
                 InputLabelProps={{ shrink: true }}
+                sx={softTextFieldSx}
                 InputProps={{
                   endAdornment: (
                     <InputAdornment position="end">
@@ -689,88 +1254,94 @@ export default function UserManagement() {
               />
             </Grid>
 
-            {/* ── Account Status ────────────────────────────────────── */}
+            {renderDialogSectionTitle('IV. ACCOUNT STATUS')}
             <Grid size={12}>
-              <Divider sx={{ mt: 1 }}>
-                <Typography variant="caption" color="text.secondary">Account Status</Typography>
-              </Divider>
-            </Grid>
-            <Grid size={12}>
-              <Box sx={{
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-                px: 2,
-                py: 1.25,
-                borderRadius: 2,
-                bgcolor: selectedUser?.active === false
-                  ? 'rgba(183,62,45,0.06)'
-                  : 'rgba(46,139,87,0.06)',
-                border: '1px solid',
-                borderColor: selectedUser?.active === false ? 'error.light' : 'success.light',
-              }}>
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                  <Chip
-                    label={selectedUser?.active === false ? 'Inactive' : 'Active'}
-                    size="small"
-                    color={selectedUser?.active === false ? 'default' : 'success'}
-                  />
-                  <Typography variant="body2" color="text.secondary">
-                    {selectedUser?.active === false
-                      ? 'This account is currently disabled.'
-                      : 'This account is currently enabled.'}
-                  </Typography>
-                </Box>
-                <Button
-                  size="small"
-                  variant="outlined"
-                  color={selectedUser?.active === false ? 'success' : 'warning'}
-                  onClick={() => selectedUser && handleToggleActive(selectedUser)}
-                  disabled={saving}
+              <Paper elevation={0} sx={{ p: 2, ...innerCardSx }}>
+                <Box
+                  sx={{
+                    display: 'flex',
+                    alignItems: { xs: 'flex-start', sm: 'center' },
+                    justifyContent: 'space-between',
+                    gap: 2,
+                    flexDirection: { xs: 'column', sm: 'row' },
+                  }}
                 >
-                  {selectedUser?.active === false ? 'Activate Account' : 'Deactivate Account'}
-                </Button>
-              </Box>
+                  <Box>
+                    <Chip
+                      label={selectedUser?.active === false ? 'Inactive' : 'Active'}
+                      size="small"
+                      variant="outlined"
+                      sx={activeChipSx(selectedUser?.active)}
+                    />
+                    <Typography variant="body2" sx={{ color: GREEN_UI.muted, mt: 1 }}>
+                      {selectedUser?.active === false
+                        ? 'This account is currently disabled.'
+                        : 'This account is currently enabled.'}
+                    </Typography>
+                  </Box>
+                  <Button
+                    size="small"
+                    variant="outlined"
+                    color={selectedUser?.active === false ? 'success' : 'warning'}
+                    onClick={() => selectedUser && handleToggleActive(selectedUser)}
+                    disabled={saving}
+                    sx={{ ...pillButtonSx, borderColor: GREEN_UI.borderStrong }}
+                  >
+                    {selectedUser?.active === false ? 'Activate Account' : 'Deactivate Account'}
+                  </Button>
+                </Box>
+              </Paper>
             </Grid>
-
           </Grid>
         </DialogContent>
-        <DialogActions sx={{ px: 3, pb: 2 }}>
-          <Button onClick={() => { setOpenEdit(false); setNewPwd(''); setShowEditPwd(false); }}>Cancel</Button>
+
+        <DialogActions
+          sx={{
+            px: { xs: 2, sm: 3 },
+            py: 2,
+            gap: 1,
+            flexWrap: 'wrap',
+            bgcolor: '#ffffff',
+            borderTop: `1px solid ${GREEN_UI.border}`,
+          }}
+        >
+          <Button
+            onClick={() => { setOpenEdit(false); setNewPwd(''); setShowEditPwd(false); }}
+            sx={{ ...pillButtonSx, color: GREEN_UI.muted }}
+          >
+            Cancel
+          </Button>
           <Button
             variant="contained"
             onClick={handleEdit}
             disabled={saving}
             startIcon={saving ? <CircularProgress size={16} color="inherit" /> : <Password />}
+            sx={{
+              ...pillButtonSx,
+              bgcolor: GREEN_UI.green,
+              boxShadow: '0 12px 24px rgba(58, 168, 101, 0.25)',
+              '&:hover': { bgcolor: GREEN_UI.greenDark },
+            }}
           >
             {saving ? 'Saving…' : 'Save Changes'}
           </Button>
         </DialogActions>
       </Dialog>
 
-      {/* Snackbar */}
       <Snackbar
         open={snackbar.open}
         autoHideDuration={5000}
         onClose={() => setSnackbar(s => ({ ...s, open: false }))}
         anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
       >
-        <Alert severity={snackbar.severity} onClose={() => setSnackbar(s => ({ ...s, open: false }))}>
+        <Alert
+          severity={snackbar.severity}
+          onClose={() => setSnackbar(s => ({ ...s, open: false }))}
+          sx={{ borderRadius: '18px', boxShadow: GREEN_UI.shadowSoft }}
+        >
           {snackbar.message}
         </Alert>
       </Snackbar>
     </Box>
   );
-}
-
-/** Derive the next sequential EMP ID from a list of existing IDs.
- *  Scans for any string matching /^EMP(\d+)$/i, finds the max number,
- *  and returns the next one zero-padded to 3 digits (e.g. EMP001 → EMP002).
- *  Falls back to EMP001 when no existing IDs are found. */
-function computeNextEmpId(existingIds: string[]): string {
-  const nums = existingIds
-    .map(id => { const m = (id ?? '').match(/^EMP(\d+)$/i); return m ? parseInt(m[1], 10) : 0; })
-    .filter(n => n > 0);
-  const next = nums.length > 0 ? Math.max(...nums) + 1 : 1;
-  return `EMP${String(next).padStart(3, '0')}`;
 }

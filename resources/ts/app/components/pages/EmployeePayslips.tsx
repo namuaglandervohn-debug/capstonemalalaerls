@@ -3,9 +3,22 @@ import {
   Box, Typography, Paper, Button, Table, TableBody, TableCell,
   TableContainer, TableHead, TableRow, Chip, CircularProgress,
   Alert, Dialog, DialogTitle, DialogContent, DialogActions,
-  Snackbar,
+  Snackbar, Divider, Tooltip,
 } from '@mui/material';
-import { Print, Sync } from '@mui/icons-material';
+import {
+  AccountBalanceWallet,
+  BadgeOutlined,
+  CalendarMonth,
+  CheckCircle,
+  EventNote,
+  Paid,
+  Payments,
+  Print,
+  ReceiptLong,
+  Sync,
+  Visibility,
+  WorkOutline,
+} from '@mui/icons-material';
 import { useAuth } from '../../context/AuthContext';
 import { supabase } from '../../lib/supabaseClient';
 
@@ -169,6 +182,52 @@ const fullNameFromParts = (record: any) =>
     .filter(Boolean)
     .join(' ')
     .trim();
+
+
+const GREEN_UI = {
+  pageBg: 'radial-gradient(circle at top left, rgba(220, 246, 219, 0.95), rgba(248, 252, 245, 0.98) 34%, #f7fbf3 100%)',
+  cardBg: 'rgba(255, 255, 255, 0.92)',
+  cardBgSoft: 'rgba(245, 252, 241, 0.88)',
+  border: 'rgba(139, 184, 144, 0.24)',
+  borderStrong: 'rgba(73, 156, 92, 0.32)',
+  green: '#3aa865',
+  greenDark: '#1f7a46',
+  greenSoft: '#e6f8e9',
+  text: '#1e2d24',
+  muted: '#6c7d70',
+  shadow: '0 20px 55px rgba(43, 91, 55, 0.10)',
+  shadowSoft: '0 12px 28px rgba(43, 91, 55, 0.08)',
+};
+
+const softCardSx = {
+  borderRadius: '26px',
+  border: `1px solid ${GREEN_UI.border}`,
+  background: GREEN_UI.cardBg,
+  boxShadow: GREEN_UI.shadow,
+};
+
+const innerCardSx = {
+  borderRadius: '20px',
+  border: `1px solid ${GREEN_UI.border}`,
+  background: GREEN_UI.cardBgSoft,
+  boxShadow: GREEN_UI.shadowSoft,
+};
+
+const pillButtonSx = {
+  borderRadius: 999,
+  textTransform: 'none',
+  fontWeight: 700,
+  px: 2,
+};
+
+const releasedChipSx = {
+  bgcolor: '#e5f8e9',
+  color: '#217a43',
+  borderColor: '#a9dfb6',
+  fontWeight: 800,
+  borderRadius: 999,
+  '& .MuiChip-label': { px: 1.25 },
+};
 
 export default function EmployeePayslips() {
   const { user } = useAuth();
@@ -464,93 +523,455 @@ export default function EmployeePayslips() {
     ? `₱${v.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
     : '—';
 
+  const latestPayslip = payslips[0];
+  const totalNetPay = payslips.reduce((sum, slip) => sum + parseAmt(slip.netPay), 0);
+
+  const payslipStats = [
+    {
+      label: 'Released Payslips',
+      value: payslips.length,
+      caption: 'Payroll records available for viewing and printing.',
+      icon: <ReceiptLong fontSize="small" />,
+    },
+    {
+      label: 'Latest Period',
+      value: latestPayslip?.period ?? '—',
+      caption: latestPayslip?.cutoffLabel || 'Most recent released payroll period.',
+      icon: <CalendarMonth fontSize="small" />,
+    },
+    {
+      label: 'Latest Net Pay',
+      value: latestPayslip?.netPay ?? '₱0.00',
+      caption: 'Latest released amount after deductions.',
+      icon: <Payments fontSize="small" />,
+    },
+    {
+      label: 'Total Net Released',
+      value: money(totalNetPay),
+      caption: employeeContext?.employeeId ? `Employee ID: ${employeeContext.employeeId}` : 'Linked employee account summary.',
+      icon: <AccountBalanceWallet fontSize="small" />,
+    },
+  ];
+
   return (
-    <Box>
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: { xs: 'flex-start', sm: 'center' }, flexWrap: 'wrap', gap: 2, mb: 3 }}>
-        <Box>
-          <Typography variant="h4" fontWeight="bold" sx={{ fontSize: { xs: '1.35rem', sm: '1.75rem', md: '2.125rem' } }}>
-            My Payslips
-          </Typography>
-          <Typography variant="body2" color="text.secondary">
-            View and print your released electronic payslips
-            {employeeContext?.employeeId ? ` — ${employeeContext.employeeId}` : ''}
-          </Typography>
+    <Box
+      sx={{
+        minHeight: '100%',
+        p: { xs: 1.5, sm: 2.25, md: 3 },
+        background: GREEN_UI.pageBg,
+        color: GREEN_UI.text,
+        borderRadius: { xs: 0, md: '32px' },
+      }}
+    >
+      <Paper
+        elevation={0}
+        sx={{
+          ...softCardSx,
+          p: { xs: 2, sm: 2.75, md: 3.25 },
+          mb: 2.5,
+          position: 'relative',
+          overflow: 'hidden',
+          background:
+            'linear-gradient(135deg, rgba(255,255,255,0.98) 0%, rgba(239,250,235,0.96) 60%, rgba(225,248,224,0.94) 100%)',
+          '&:before': {
+            content: '""',
+            position: 'absolute',
+            width: 260,
+            height: 260,
+            borderRadius: '50%',
+            right: -90,
+            top: -110,
+            background: 'rgba(76, 175, 80, 0.12)',
+          },
+          '&:after': {
+            content: '""',
+            position: 'absolute',
+            width: 160,
+            height: 160,
+            borderRadius: '50%',
+            left: { xs: '70%', md: '44%' },
+            bottom: -95,
+            background: 'rgba(174, 222, 144, 0.18)',
+          },
+        }}
+      >
+        <Box
+          sx={{
+            position: 'relative',
+            zIndex: 1,
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: { xs: 'flex-start', md: 'center' },
+            flexWrap: 'wrap',
+            gap: 2,
+          }}
+        >
+          <Box sx={{ maxWidth: 720 }}>
+            <Chip
+              icon={<ReceiptLong sx={{ fontSize: '1rem !important' }} />}
+              label="Employee Payroll Workspace"
+              size="small"
+              sx={{
+                mb: 1.2,
+                bgcolor: GREEN_UI.greenSoft,
+                color: GREEN_UI.greenDark,
+                fontWeight: 900,
+                borderRadius: 999,
+                '& .MuiChip-icon': { color: GREEN_UI.greenDark },
+              }}
+            />
+            <Typography
+              variant="h4"
+              fontWeight={900}
+              sx={{
+                fontSize: { xs: '1.55rem', sm: '2rem', md: '2.35rem' },
+                color: GREEN_UI.text,
+                letterSpacing: '-0.04em',
+                lineHeight: 1.08,
+                mb: 0.75,
+              }}
+            >
+              My Payslips
+            </Typography>
+            <Typography variant="body2" sx={{ color: GREEN_UI.muted, maxWidth: 650, lineHeight: 1.7 }}>
+              View and print your released electronic payslips in a clean employee payroll record.
+              {employeeContext?.employeeId ? ` Linked employee ID: ${employeeContext.employeeId}.` : ''}
+            </Typography>
+          </Box>
+
+          <Tooltip title="Refresh payslips">
+            <span>
+              <Button
+                variant="contained"
+                startIcon={loading ? <CircularProgress size={16} color="inherit" /> : <Sync />}
+                onClick={fetchPayslips}
+                disabled={loading}
+                sx={{
+                  ...pillButtonSx,
+                  py: 1.1,
+                  bgcolor: GREEN_UI.green,
+                  boxShadow: '0 12px 24px rgba(58, 168, 101, 0.25)',
+                  '&:hover': { bgcolor: GREEN_UI.greenDark, boxShadow: '0 16px 28px rgba(31, 122, 70, 0.28)' },
+                }}
+              >
+                {loading ? 'Refreshing…' : 'Refresh'}
+              </Button>
+            </span>
+          </Tooltip>
         </Box>
-        <Button startIcon={loading ? <CircularProgress size={16} /> : <Sync />} onClick={fetchPayslips} disabled={loading} variant="outlined">Refresh</Button>
+      </Paper>
+
+      <Box
+        sx={{
+          display: 'grid',
+          gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, minmax(0, 1fr))', md: 'repeat(4, minmax(0, 1fr))' },
+          gap: 1.5,
+          mb: 2.5,
+        }}
+      >
+        {payslipStats.map(stat => (
+          <Paper
+            key={stat.label}
+            elevation={0}
+            sx={{
+              ...softCardSx,
+              p: 2,
+              minHeight: 126,
+              display: 'flex',
+              flexDirection: 'column',
+              justifyContent: 'space-between',
+              transition: 'transform 180ms ease, box-shadow 180ms ease',
+              '&:hover': { transform: 'translateY(-3px)', boxShadow: '0 22px 48px rgba(43, 91, 55, 0.13)' },
+            }}
+          >
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 1.5 }}>
+              <Box>
+                <Typography variant="body2" sx={{ color: GREEN_UI.muted, fontWeight: 800 }}>
+                  {stat.label}
+                </Typography>
+                <Typography
+                  variant="h4"
+                  fontWeight={900}
+                  sx={{ color: GREEN_UI.text, mt: 0.5, letterSpacing: '-0.04em', fontSize: { xs: '1.65rem', md: '1.95rem' } }}
+                >
+                  {stat.value}
+                </Typography>
+              </Box>
+              <Box
+                sx={{
+                  width: 42,
+                  height: 42,
+                  borderRadius: '16px',
+                  display: 'grid',
+                  placeItems: 'center',
+                  bgcolor: GREEN_UI.greenSoft,
+                  color: GREEN_UI.greenDark,
+                  flexShrink: 0,
+                }}
+              >
+                {stat.icon}
+              </Box>
+            </Box>
+            <Typography variant="caption" sx={{ color: GREEN_UI.muted, mt: 1.2 }}>
+              {stat.caption}
+            </Typography>
+          </Paper>
+        ))}
       </Box>
 
       {!loading && payslips.length === 0 && (
-        <Alert severity="info">No released payslips found for this employee account yet. Payslips will appear here after Accounting/Finance releases the payroll.</Alert>
+        <Alert
+          severity="info"
+          icon={<ReceiptLong />}
+          sx={{ mb: 2, borderRadius: '18px', border: `1px solid ${GREEN_UI.border}` }}
+        >
+          No released payslips found for this employee account yet. Payslips will appear here after Accounting/Finance releases the payroll.
+        </Alert>
       )}
 
-      <TableContainer component={Paper} sx={{ overflowX: 'auto' }}>
-        {loading ? (
-          <Box sx={{ display: 'flex', justifyContent: 'center', py: 6, gap: 2 }}><CircularProgress size={28} /><Typography color="text.secondary">Loading payslips…</Typography></Box>
-        ) : (
-          <Table>
-            <TableHead>
-              <TableRow>
-                <TableCell>Payroll ID</TableCell><TableCell>Period</TableCell><TableCell>Employee ID</TableCell><TableCell>Position</TableCell>
-                <TableCell>Gross Pay</TableCell><TableCell>Deductions</TableCell><TableCell>Net Pay</TableCell>
-                <TableCell>Status</TableCell><TableCell>Actions</TableCell>
-              </TableRow>
-            </TableHead>
-            <TableBody>
-              {payslips.length === 0 ? (
-                <TableRow><TableCell colSpan={9} align="center" sx={{ py: 4, color: 'text.secondary' }}>No released payslips found.</TableCell></TableRow>
-              ) : payslips.map(p => (
-                <TableRow key={p.id} hover>
-                  <TableCell><Chip label={p.displayId ?? p.id} size="small" variant="outlined" /></TableCell>
-                  <TableCell sx={{ fontWeight: 600 }}>{p.period}</TableCell>
-                  <TableCell>{p.employeeId || '—'}</TableCell>
-                  <TableCell>{p.position}</TableCell>
-                  <TableCell>{p.grossPay}</TableCell>
-                  <TableCell sx={{ color: 'error.main' }}>{p.deductions}</TableCell>
-                  <TableCell sx={{ fontWeight: 'bold', color: 'success.main' }}>{p.netPay}</TableCell>
-                  <TableCell>
-                    <Chip label={p.status} size="small"
-                      color={p.status === 'Released' ? 'success' : p.status === 'For Review' ? 'warning' : 'default'}
-                      variant={p.status === 'Released' ? 'filled' : 'outlined'} />
-                  </TableCell>
-                  <TableCell>
-                    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5, alignItems: 'flex-start' }}>
-                      <Chip
-                        label="View Payslip"
-                        size="small"
-                        clickable
-                        variant="outlined"
-                        color="primary"
-                        onClick={() => { setSelected(p); setViewDialog(true); }}
-                        sx={{ minWidth: 110 }}
-                      />
-                      <Chip
-                        label="Print"
-                        size="small"
-                        clickable
-                        variant="outlined"
-                        color="default"
-                        icon={<Print style={{ fontSize: '0.9rem' }} />}
-                        onClick={() => handlePrint(p)}
-                        sx={{ minWidth: 110 }}
-                      />
-                    </Box>
-                  </TableCell>
+      <Paper elevation={0} sx={{ ...softCardSx, overflow: 'hidden' }}>
+        <Box
+          sx={{
+            p: { xs: 2, sm: 2.25 },
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: { xs: 'flex-start', sm: 'center' },
+            flexWrap: 'wrap',
+            gap: 1.5,
+            borderBottom: `1px solid ${GREEN_UI.border}`,
+          }}
+        >
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.25 }}>
+            <Box
+              sx={{
+                width: 42,
+                height: 42,
+                borderRadius: '16px',
+                display: 'grid',
+                placeItems: 'center',
+                bgcolor: GREEN_UI.greenSoft,
+                color: GREEN_UI.greenDark,
+                flexShrink: 0,
+              }}
+            >
+              <Paid />
+            </Box>
+            <Box>
+              <Typography variant="h6" fontWeight={900} sx={{ color: GREEN_UI.text, letterSpacing: '-0.02em' }}>
+                Released Payslip Records
+              </Typography>
+              <Typography variant="caption" sx={{ color: GREEN_UI.muted }}>
+                Open a payslip preview or print a released payroll receipt.
+              </Typography>
+            </Box>
+          </Box>
+          <Chip
+            icon={<CheckCircle sx={{ fontSize: '1rem !important' }} />}
+            label={`${payslips.length} Released`}
+            variant="outlined"
+            sx={{ ...releasedChipSx, '& .MuiChip-icon': { color: '#217a43' } }}
+          />
+        </Box>
+
+        <TableContainer sx={{ overflowX: 'auto' }}>
+          {loading ? (
+            <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', py: 7, gap: 2 }}>
+              <CircularProgress size={28} sx={{ color: GREEN_UI.green }} />
+              <Typography sx={{ color: GREEN_UI.muted, fontWeight: 700 }}>Loading payslips…</Typography>
+            </Box>
+          ) : (
+            <Table sx={{ minWidth: 980 }}>
+              <TableHead>
+                <TableRow
+                  sx={{
+                    '& th': {
+                      borderBottom: `1px solid ${GREEN_UI.border}`,
+                      color: GREEN_UI.muted,
+                      fontWeight: 900,
+                      fontSize: '0.76rem',
+                      letterSpacing: '0.04em',
+                      textTransform: 'uppercase',
+                      bgcolor: 'rgba(245, 252, 241, 0.72)',
+                    },
+                  }}
+                >
+                  <TableCell>Payroll ID</TableCell>
+                  <TableCell>Period</TableCell>
+                  <TableCell>Employee ID</TableCell>
+                  <TableCell>Position</TableCell>
+                  <TableCell>Gross Pay</TableCell>
+                  <TableCell>Deductions</TableCell>
+                  <TableCell>Net Pay</TableCell>
+                  <TableCell>Status</TableCell>
+                  <TableCell align="right">Actions</TableCell>
                 </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        )}
-      </TableContainer>
+              </TableHead>
+              <TableBody>
+                {payslips.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={9} align="center" sx={{ py: 7, color: GREEN_UI.muted }}>
+                      <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 1 }}>
+                        <ReceiptLong sx={{ fontSize: 42, color: GREEN_UI.greenDark, opacity: 0.7 }} />
+                        <Typography fontWeight={900} sx={{ color: GREEN_UI.text }}>No released payslips found.</Typography>
+                        <Typography variant="body2" sx={{ color: GREEN_UI.muted }}>
+                          Released payroll records will show here once available.
+                        </Typography>
+                      </Box>
+                    </TableCell>
+                  </TableRow>
+                ) : payslips.map(p => (
+                  <TableRow
+                    key={p.id}
+                    hover
+                    sx={{
+                      '& td': { borderBottom: `1px solid ${GREEN_UI.border}`, py: 1.55 },
+                      '&:hover': { bgcolor: 'rgba(230, 248, 233, 0.35)' },
+                    }}
+                  >
+                    <TableCell>
+                      <Chip
+                        icon={<ReceiptLong sx={{ fontSize: '0.95rem !important' }} />}
+                        label={p.displayId ?? p.id}
+                        size="small"
+                        variant="outlined"
+                        sx={{
+                          borderRadius: 999,
+                          fontWeight: 800,
+                          bgcolor: '#f8fcf5',
+                          borderColor: GREEN_UI.border,
+                          color: GREEN_UI.greenDark,
+                          '& .MuiChip-icon': { color: GREEN_UI.greenDark },
+                        }}
+                      />
+                    </TableCell>
+                    <TableCell>
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75 }}>
+                        <EventNote sx={{ fontSize: 18, color: GREEN_UI.greenDark }} />
+                        <Typography fontWeight={800} sx={{ color: GREEN_UI.text }}>{p.period}</Typography>
+                      </Box>
+                    </TableCell>
+                    <TableCell>
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75 }}>
+                        <BadgeOutlined sx={{ fontSize: 18, color: GREEN_UI.muted }} />
+                        <Typography variant="body2" fontWeight={700} sx={{ color: GREEN_UI.text }}>{p.employeeId || '—'}</Typography>
+                      </Box>
+                    </TableCell>
+                    <TableCell>
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75 }}>
+                        <WorkOutline sx={{ fontSize: 18, color: GREEN_UI.muted }} />
+                        <Typography variant="body2" sx={{ color: GREEN_UI.text }}>{p.position || '—'}</Typography>
+                      </Box>
+                    </TableCell>
+                    <TableCell sx={{ fontWeight: 800, color: GREEN_UI.text }}>{p.grossPay}</TableCell>
+                    <TableCell sx={{ fontWeight: 800, color: '#9c2f2f' }}>{p.deductions}</TableCell>
+                    <TableCell sx={{ fontWeight: 900, color: GREEN_UI.greenDark }}>{p.netPay}</TableCell>
+                    <TableCell>
+                      <Chip
+                        icon={<CheckCircle sx={{ fontSize: '0.95rem !important' }} />}
+                        label={p.status}
+                        size="small"
+                        variant="outlined"
+                        sx={{ ...releasedChipSx, '& .MuiChip-icon': { color: '#217a43' } }}
+                      />
+                    </TableCell>
+                    <TableCell align="right">
+                      <Box sx={{ display: 'flex', gap: 0.75, justifyContent: 'flex-end', flexWrap: 'wrap' }}>
+                        <Button
+                          size="small"
+                          variant="outlined"
+                          startIcon={<Visibility />}
+                          onClick={() => { setSelected(p); setViewDialog(true); }}
+                          sx={{
+                            ...pillButtonSx,
+                            borderColor: GREEN_UI.borderStrong,
+                            color: GREEN_UI.greenDark,
+                            bgcolor: '#fbfef9',
+                            '&:hover': { borderColor: GREEN_UI.green, bgcolor: GREEN_UI.greenSoft },
+                          }}
+                        >
+                          View
+                        </Button>
+                        <Button
+                          size="small"
+                          variant="contained"
+                          startIcon={<Print />}
+                          onClick={() => handlePrint(p)}
+                          sx={{
+                            ...pillButtonSx,
+                            bgcolor: GREEN_UI.green,
+                            boxShadow: 'none',
+                            '&:hover': { bgcolor: GREEN_UI.greenDark, boxShadow: 'none' },
+                          }}
+                        >
+                          Print
+                        </Button>
+                      </Box>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          )}
+        </TableContainer>
+      </Paper>
 
       {/* Payslip Detail Dialog — receipt format */}
-      <Dialog open={viewDialog} onClose={() => setViewDialog(false)} maxWidth="sm" fullWidth>
-        <DialogTitle sx={{ pb: 1 }}>
-          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            Payslip
-            {selected && <Chip label={selected.displayId ?? selected.id} size="small" variant="outlined" />}
+      <Dialog
+        open={viewDialog}
+        onClose={() => setViewDialog(false)}
+        maxWidth="sm"
+        fullWidth
+        PaperProps={{
+          sx: {
+            borderRadius: '26px',
+            border: `1px solid ${GREEN_UI.border}`,
+            boxShadow: '0 30px 80px rgba(43, 91, 55, 0.18)',
+            overflow: 'hidden',
+          },
+        }}
+      >
+        <DialogTitle
+          sx={{
+            p: 2.25,
+            background: 'linear-gradient(135deg, rgba(255,255,255,0.98), rgba(239,250,235,0.96))',
+            borderBottom: `1px solid ${GREEN_UI.border}`,
+          }}
+        >
+          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 1.5 }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.25 }}>
+              <Box
+                sx={{
+                  width: 42,
+                  height: 42,
+                  borderRadius: '16px',
+                  display: 'grid',
+                  placeItems: 'center',
+                  bgcolor: GREEN_UI.greenSoft,
+                  color: GREEN_UI.greenDark,
+                }}
+              >
+                <ReceiptLong />
+              </Box>
+              <Box>
+                <Typography variant="h6" fontWeight={900} sx={{ color: GREEN_UI.text, letterSpacing: '-0.02em' }}>
+                  Payslip Preview
+                </Typography>
+                <Typography variant="caption" sx={{ color: GREEN_UI.muted }}>
+                  Receipt-format employee payroll record
+                </Typography>
+              </Box>
+            </Box>
+            {selected && (
+              <Chip
+                label={selected.displayId ?? selected.id}
+                size="small"
+                variant="outlined"
+                sx={{ borderRadius: 999, fontWeight: 800, borderColor: GREEN_UI.border, color: GREEN_UI.greenDark }}
+              />
+            )}
           </Box>
         </DialogTitle>
-        <DialogContent sx={{ p: 2 }}>
+        <DialogContent sx={{ p: { xs: 1.5, sm: 2.25 }, bgcolor: '#fbfef9' }}>
           {selected && (() => {
             const grossAmt = parseAmt(selected.grossPay);
             const dedAmt   = parseAmt(selected.deductions);
@@ -560,9 +981,8 @@ export default function EmployeePayslips() {
             const hdmf     = 100;
             const totalDed = dedAmt > 0 ? dedAmt : sss + phic + hdmf;
 
-            const rowSx   = { display: 'flex', borderBottom: '1px solid #ccc' };
-            const labelSx = { width: '40%', fontWeight: 600, p: '4px 8px', borderRight: '1px solid #ccc', fontSize: '0.78rem' };
-            const valSx   = { flex: 1, p: '4px 8px', fontSize: '0.78rem' };
+            const labelSx = { fontWeight: 800, color: GREEN_UI.muted, fontSize: '0.76rem' };
+            const valueSx = { fontWeight: 800, color: GREEN_UI.text, fontSize: '0.78rem' };
 
             const earningsRows: [string, string, string][] = [
               ['Basic Pay',          selected.totalHours || '—',                                           selected.basicPayAmt || fmt(grossAmt)],
@@ -590,117 +1010,130 @@ export default function EmployeePayslips() {
             ];
 
             return (
-              <Box sx={{ border: '1px solid #999', fontSize: '0.78rem', lineHeight: 1.5 }}>
-                {/* Company Header */}
-                <Box sx={{ textAlign: 'center', fontWeight: 'bold', py: 1, px: 2, borderBottom: '1px solid #999', fontSize: '0.88rem', letterSpacing: 0.5 }}>
-                  BUENAVENTURA ESTATE
+              <Paper elevation={0} sx={{ ...innerCardSx, overflow: 'hidden', bgcolor: '#ffffff' }}>
+                <Box sx={{ textAlign: 'center', py: 1.5, px: 2, borderBottom: `1px solid ${GREEN_UI.border}` }}>
+                  <Typography fontWeight={900} sx={{ color: GREEN_UI.greenDark, letterSpacing: '0.08em', fontSize: '0.9rem' }}>
+                    BUENAVENTURA ESTATE
+                  </Typography>
+                  <Typography variant="caption" sx={{ color: GREEN_UI.muted, fontWeight: 700 }}>
+                    ELECTRONIC PAYSLIP
+                  </Typography>
                 </Box>
 
-                {/* Department */}
-                <Box sx={rowSx}>
-                  <Box sx={labelSx}>Department:</Box>
-                  <Box sx={valSx}>{selected.position || '—'}</Box>
-                </Box>
-                {/* Pay Period */}
-                <Box sx={rowSx}>
-                  <Box sx={labelSx}>Pay period:</Box>
-                  <Box sx={valSx}>{selected.period}</Box>
-                </Box>
-                {/* Employee ID */}
-                <Box sx={{ ...rowSx, bgcolor: '#e8f5e9' }}>
-                  <Box sx={{ ...labelSx, fontWeight: 700 }}>Employee ID:</Box>
-                  <Box sx={{ ...valSx, fontWeight: 700 }}>{selected.employeeId || '—'}</Box>
-                </Box>
-                {/* Employee Name */}
-                <Box sx={{ ...rowSx, bgcolor: '#e8f5e9' }}>
-                  <Box sx={{ ...labelSx, fontWeight: 700 }}>Employee Name:</Box>
-                  <Box sx={{ ...valSx, fontWeight: 700 }}>{selected.employee.toUpperCase()}</Box>
-                </Box>
-                {/* Position */}
-                <Box sx={rowSx}>
-                  <Box sx={labelSx}>Position:</Box>
-                  <Box sx={valSx}>{selected.position || '—'}</Box>
-                </Box>
-
-                {/* Earnings header */}
-                <Box sx={{ display: 'flex', borderBottom: '1px solid #ccc', bgcolor: '#f5f5f5' }}>
-                  <Box sx={{ flex: 1, fontWeight: 700, p: '4px 8px', borderRight: '1px solid #ccc', fontSize: '0.78rem' }}>Earnings:</Box>
-                  <Box sx={{ width: '24%', fontWeight: 700, p: '4px 6px', borderRight: '1px solid #ccc', textAlign: 'center', fontSize: '0.7rem' }}>Days/Hours/Mins.</Box>
-                  <Box sx={{ width: '22%', fontWeight: 700, p: '4px 6px', textAlign: 'right', fontSize: '0.78rem' }}>Amount</Box>
-                </Box>
-
-                {/* Earnings rows */}
-                {earningsRows.map(([label, days, amount]) => (
-                  <Box key={label} sx={{ display: 'flex', borderBottom: '1px solid #eee' }}>
-                    <Box sx={{ flex: 1, p: '3px 8px', borderRight: '1px solid #ccc', fontSize: '0.77rem' }}>{label}</Box>
-                    <Box sx={{ width: '24%', p: '3px 6px', borderRight: '1px solid #ccc', textAlign: 'right', fontSize: '0.77rem' }}>{days}</Box>
-                    <Box sx={{ width: '22%', p: '3px 6px', textAlign: 'right', fontSize: '0.77rem' }}>{amount}</Box>
+                <Box sx={{ p: 1.5, display: 'grid', gap: 1 }}>
+                  <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' }, gap: 1 }}>
+                    <Paper elevation={0} sx={{ p: 1.25, borderRadius: '16px', border: `1px solid ${GREEN_UI.border}`, bgcolor: GREEN_UI.cardBgSoft }}>
+                      <Typography sx={labelSx}>Department</Typography>
+                      <Typography sx={valueSx}>{selected.position || '—'}</Typography>
+                    </Paper>
+                    <Paper elevation={0} sx={{ p: 1.25, borderRadius: '16px', border: `1px solid ${GREEN_UI.border}`, bgcolor: GREEN_UI.cardBgSoft }}>
+                      <Typography sx={labelSx}>Pay Period</Typography>
+                      <Typography sx={valueSx}>{selected.period}</Typography>
+                    </Paper>
+                    <Paper elevation={0} sx={{ p: 1.25, borderRadius: '16px', border: `1px solid ${GREEN_UI.borderStrong}`, bgcolor: GREEN_UI.greenSoft }}>
+                      <Typography sx={labelSx}>Employee ID</Typography>
+                      <Typography sx={valueSx}>{selected.employeeId || '—'}</Typography>
+                    </Paper>
+                    <Paper elevation={0} sx={{ p: 1.25, borderRadius: '16px', border: `1px solid ${GREEN_UI.borderStrong}`, bgcolor: GREEN_UI.greenSoft }}>
+                      <Typography sx={labelSx}>Employee Name</Typography>
+                      <Typography sx={valueSx}>{selected.employee.toUpperCase()}</Typography>
+                    </Paper>
+                    <Paper elevation={0} sx={{ p: 1.25, borderRadius: '16px', border: `1px solid ${GREEN_UI.border}`, bgcolor: '#fbfef9', gridColumn: { xs: 'auto', sm: '1 / -1' } }}>
+                      <Typography sx={labelSx}>Position</Typography>
+                      <Typography sx={valueSx}>{selected.position || '—'}</Typography>
+                    </Paper>
                   </Box>
-                ))}
-
-                {/* GROSS PAY */}
-                <Box sx={{ display: 'flex', borderTop: '1px solid #999', borderBottom: '1px solid #999', bgcolor: '#fff9c4', fontWeight: 700 }}>
-                  <Box sx={{ flex: 1, p: '5px 8px', borderRight: '1px solid #ccc', textAlign: 'center', fontSize: '0.78rem' }}>GROSS PAY</Box>
-                  <Box sx={{ width: '24%', p: '5px 6px', borderRight: '1px solid #ccc' }} />
-                  <Box sx={{ width: '22%', p: '5px 6px', textAlign: 'right', fontSize: '0.78rem' }}>{fmt(grossAmt)}</Box>
                 </Box>
 
-                {/* DEDUCTIONS label */}
-                <Box sx={{ p: '5px 8px', borderBottom: '1px solid #ccc', fontWeight: 700, fontSize: '0.78rem' }}>DEDUCTIONS:</Box>
+                <Divider sx={{ borderColor: GREEN_UI.border }} />
 
-                {/* Deduction rows */}
-                {deductionRows.map(([label, amount]) => (
-                  <Box key={label} sx={{ display: 'flex', borderBottom: '1px solid #eee' }}>
-                    <Box sx={{ flex: 1, p: '3px 8px', borderRight: '1px solid #ccc', fontSize: '0.77rem' }}>{label}</Box>
-                    <Box sx={{ width: '22%', p: '3px 6px', textAlign: 'right', fontSize: '0.77rem' }}>{amount}</Box>
-                  </Box>
-                ))}
-
-                {/* TOTAL DEDUCTIONS */}
-                <Box sx={{ display: 'flex', borderTop: '1px solid #999', borderBottom: '1px solid #999', fontWeight: 700 }}>
-                  <Box sx={{ flex: 1, p: '5px 8px', borderRight: '1px solid #ccc', textAlign: 'right', fontSize: '0.78rem' }}>TOTAL DEDUCTIONS:</Box>
-                  <Box sx={{ width: '22%', p: '5px 6px', textAlign: 'right', fontSize: '0.78rem' }}>{fmt(totalDed)}</Box>
-                </Box>
-
-                {/* NET PAY */}
-                <Box sx={{ display: 'flex', borderBottom: '1px solid #999', bgcolor: '#fff9c4', fontWeight: 700 }}>
-                  <Box sx={{ flex: 1, p: '5px 8px', borderRight: '1px solid #ccc', textAlign: 'center', fontSize: '0.78rem' }}>NET PAY</Box>
-                  <Box sx={{ width: '22%', p: '5px 6px', textAlign: 'right', fontSize: '0.78rem' }}>{fmt(netAmt)}</Box>
-                </Box>
-
-                {/* Acknowledgment */}
-                <Box sx={{ p: '8px', borderBottom: '1px solid #ccc', fontSize: '0.72rem', lineHeight: 1.7 }}>
-                  I acknowledge to have received the amount of{' '}
-                  <strong>{fmt(netAmt)}</strong>{' '}
-                  and have no further claim for services rendered.
-                </Box>
-                <Box sx={{ display: 'flex', alignItems: 'flex-end', p: '10px 8px', gap: 2 }}>
-                  <Box sx={{ fontSize: '0.72rem', whiteSpace: 'nowrap' }}>
-                    Date:{' '}
-                    <strong>
-                      {selected.payslipDate
-                        ? new Date(selected.payslipDate + 'T00:00:00').toLocaleDateString('en-PH', { year: 'numeric', month: 'long', day: 'numeric' })
-                        : '___________'}
-                    </strong>
-                  </Box>
-                  <Box sx={{ flex: 1, textAlign: 'center' }}>
-                    <Box sx={{ fontWeight: 700, fontSize: '0.78rem', pb: '4px', borderBottom: '1px solid #333' }}>
-                      {selected.employee.toUpperCase()}
+                <Box sx={{ px: 1.5, py: 1.25 }}>
+                  <Typography fontWeight={900} sx={{ color: GREEN_UI.text, mb: 1, display: 'flex', alignItems: 'center', gap: 0.75 }}>
+                    <Paid sx={{ fontSize: 18, color: GREEN_UI.greenDark }} /> Earnings
+                  </Typography>
+                  <Box sx={{ border: `1px solid ${GREEN_UI.border}`, borderRadius: '16px', overflow: 'hidden' }}>
+                    <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 120px 120px', bgcolor: GREEN_UI.cardBgSoft, borderBottom: `1px solid ${GREEN_UI.border}` }}>
+                      <Typography sx={{ p: 1, fontSize: '0.73rem', fontWeight: 900, color: GREEN_UI.muted }}>Item</Typography>
+                      <Typography sx={{ p: 1, fontSize: '0.73rem', fontWeight: 900, color: GREEN_UI.muted, textAlign: 'right' }}>Days/Hours/Mins.</Typography>
+                      <Typography sx={{ p: 1, fontSize: '0.73rem', fontWeight: 900, color: GREEN_UI.muted, textAlign: 'right' }}>Amount</Typography>
                     </Box>
-                    <Box sx={{ fontSize: '0.72rem', mt: '3px' }}>{selected.position || '—'}</Box>
+                    {earningsRows.map(([label, days, amount]) => (
+                      <Box key={label} sx={{ display: 'grid', gridTemplateColumns: '1fr 120px 120px', borderBottom: `1px solid ${GREEN_UI.border}` }}>
+                        <Typography sx={{ p: 1, fontSize: '0.77rem', color: GREEN_UI.text }}>{label}</Typography>
+                        <Typography sx={{ p: 1, fontSize: '0.77rem', color: GREEN_UI.text, textAlign: 'right' }}>{days}</Typography>
+                        <Typography sx={{ p: 1, fontSize: '0.77rem', color: GREEN_UI.text, textAlign: 'right', fontWeight: 800 }}>{amount}</Typography>
+                      </Box>
+                    ))}
+                    <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 120px', bgcolor: '#fff9d7' }}>
+                      <Typography sx={{ p: 1, fontSize: '0.78rem', fontWeight: 900, color: GREEN_UI.text, textAlign: 'center' }}>GROSS PAY</Typography>
+                      <Typography sx={{ p: 1, fontSize: '0.78rem', fontWeight: 900, color: GREEN_UI.text, textAlign: 'right' }}>{fmt(grossAmt)}</Typography>
+                    </Box>
                   </Box>
                 </Box>
-              </Box>
+
+                <Box sx={{ px: 1.5, py: 1.25 }}>
+                  <Typography fontWeight={900} sx={{ color: GREEN_UI.text, mb: 1, display: 'flex', alignItems: 'center', gap: 0.75 }}>
+                    <Payments sx={{ fontSize: 18, color: '#9c2f2f' }} /> Deductions
+                  </Typography>
+                  <Box sx={{ border: `1px solid ${GREEN_UI.border}`, borderRadius: '16px', overflow: 'hidden' }}>
+                    {deductionRows.map(([label, amount]) => (
+                      <Box key={label} sx={{ display: 'grid', gridTemplateColumns: '1fr 130px', borderBottom: `1px solid ${GREEN_UI.border}` }}>
+                        <Typography sx={{ p: 1, fontSize: '0.77rem', color: GREEN_UI.text }}>{label}</Typography>
+                        <Typography sx={{ p: 1, fontSize: '0.77rem', color: GREEN_UI.text, textAlign: 'right', fontWeight: 800 }}>{amount}</Typography>
+                      </Box>
+                    ))}
+                    <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 130px', bgcolor: GREEN_UI.cardBgSoft, borderBottom: `1px solid ${GREEN_UI.border}` }}>
+                      <Typography sx={{ p: 1, fontSize: '0.78rem', fontWeight: 900, color: GREEN_UI.text, textAlign: 'right' }}>TOTAL DEDUCTIONS</Typography>
+                      <Typography sx={{ p: 1, fontSize: '0.78rem', fontWeight: 900, color: '#9c2f2f', textAlign: 'right' }}>{fmt(totalDed)}</Typography>
+                    </Box>
+                    <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 130px', bgcolor: '#fff9d7' }}>
+                      <Typography sx={{ p: 1, fontSize: '0.82rem', fontWeight: 900, color: GREEN_UI.greenDark, textAlign: 'center' }}>NET PAY</Typography>
+                      <Typography sx={{ p: 1, fontSize: '0.82rem', fontWeight: 900, color: GREEN_UI.greenDark, textAlign: 'right' }}>{fmt(netAmt)}</Typography>
+                    </Box>
+                  </Box>
+                </Box>
+
+                <Box sx={{ p: 1.5, borderTop: `1px solid ${GREEN_UI.border}` }}>
+                  <Typography variant="caption" sx={{ color: GREEN_UI.muted, lineHeight: 1.7, display: 'block' }}>
+                    I acknowledge to have received the amount of <strong>{fmt(netAmt)}</strong> and have no further claim for services rendered.
+                  </Typography>
+                  <Box sx={{ display: 'flex', alignItems: 'flex-end', mt: 2, gap: 2, flexWrap: 'wrap' }}>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75, color: GREEN_UI.muted }}>
+                      <EventNote sx={{ fontSize: 17 }} />
+                      <Typography variant="caption" fontWeight={800}>
+                        Date:{' '}
+                        {selected.payslipDate
+                          ? new Date(selected.payslipDate + 'T00:00:00').toLocaleDateString('en-PH', { year: 'numeric', month: 'long', day: 'numeric' })
+                          : '___________'}
+                      </Typography>
+                    </Box>
+                    <Box sx={{ flex: 1, minWidth: 220, textAlign: 'center' }}>
+                      <Typography sx={{ fontWeight: 900, fontSize: '0.82rem', pb: '4px', borderBottom: `1px solid ${GREEN_UI.text}`, color: GREEN_UI.text }}>
+                        {selected.employee.toUpperCase()}
+                      </Typography>
+                      <Typography variant="caption" sx={{ color: GREEN_UI.muted }}>{selected.position || '—'}</Typography>
+                    </Box>
+                  </Box>
+                </Box>
+              </Paper>
             );
           })()}
         </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setViewDialog(false)}>Close</Button>
+        <DialogActions sx={{ px: 2.25, py: 1.75, borderTop: `1px solid ${GREEN_UI.border}`, bgcolor: '#fbfef9' }}>
+          <Button onClick={() => setViewDialog(false)} sx={{ ...pillButtonSx, color: GREEN_UI.muted }}>
+            Close
+          </Button>
           {selected && selected.status === 'Released' && (
             <Button
               variant="contained"
               startIcon={<Print />}
               onClick={() => handlePrint(selected!)}
+              sx={{
+                ...pillButtonSx,
+                bgcolor: GREEN_UI.green,
+                boxShadow: '0 12px 24px rgba(58, 168, 101, 0.22)',
+                '&:hover': { bgcolor: GREEN_UI.greenDark, boxShadow: '0 16px 28px rgba(31, 122, 70, 0.24)' },
+              }}
             >
               Print Payslip
             </Button>
@@ -714,7 +1147,11 @@ export default function EmployeePayslips() {
         onClose={() => setSnackbar(s => ({ ...s, open: false }))}
         anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
       >
-        <Alert severity={snackbar.severity} onClose={() => setSnackbar(s => ({ ...s, open: false }))}>
+        <Alert
+          severity={snackbar.severity}
+          onClose={() => setSnackbar(s => ({ ...s, open: false }))}
+          sx={{ borderRadius: '16px', border: `1px solid ${GREEN_UI.border}` }}
+        >
           {snackbar.message}
         </Alert>
       </Snackbar>

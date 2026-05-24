@@ -1,5 +1,5 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { useNavigate } from 'react-router';
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useNavigate } from "react-router";
 import {
   Alert,
   Box,
@@ -9,9 +9,11 @@ import {
   CircularProgress,
   Divider,
   Grid,
+  LinearProgress,
   Paper,
+  Stack,
   Typography,
-} from '@mui/material';
+} from "@mui/material";
 import {
   AccountBalance,
   CloudUpload,
@@ -25,8 +27,8 @@ import {
   PersonAddAlt1,
   QueryStats,
   WarningAmber,
-} from '@mui/icons-material';
-import { supabase } from '../../lib/supabaseClient';
+} from "@mui/icons-material";
+import { supabase } from "../../lib/supabaseClient";
 
 interface Stats {
   activeEmployees: number;
@@ -55,35 +57,45 @@ const DEFAULT_STATS: Stats = {
 };
 
 const normalizeText = (value: unknown): string =>
-  String(value ?? '')
+  String(value ?? "")
     .trim()
     .toLowerCase()
-    .replace(/[_-]+/g, ' ')
-    .replace(/\s+/g, ' ');
+    .replace(/[_-]+/g, " ")
+    .replace(/\s+/g, " ");
 
 const toNumber = (value: unknown): number => {
-  if (typeof value === 'number' && Number.isFinite(value)) return value;
+  if (typeof value === "number" && Number.isFinite(value)) return value;
 
-  const parsed = Number(String(value ?? '').replace(/[,%₱]/g, '').trim());
+  const parsed = Number(
+    String(value ?? "")
+      .replace(/[,%₱]/g, "")
+      .trim(),
+  );
   return Number.isFinite(parsed) ? parsed : 0;
 };
 
 const toBoolean = (value: unknown): boolean => {
-  if (typeof value === 'boolean') return value;
+  if (typeof value === "boolean") return value;
   const normalized = normalizeText(value);
-  return normalized === 'true' || normalized === 'yes' || normalized === '1';
+  return normalized === "true" || normalized === "yes" || normalized === "1";
 };
 
 const isPendingApplicationStatus = (status: unknown): boolean => {
   const normalized = normalizeText(status);
 
-  return ['submitted', 'pending', 'for review', 'under review'].includes(normalized);
+  return ["submitted", "pending", "for review", "under review"].includes(
+    normalized,
+  );
 };
 
 const isForInterviewStatus = (status: unknown): boolean => {
   const normalized = normalizeText(status);
 
-  return normalized.includes('interview') && !normalized.includes('cancelled') && !normalized.includes('rejected');
+  return (
+    normalized.includes("interview") &&
+    !normalized.includes("cancelled") &&
+    !normalized.includes("rejected")
+  );
 };
 
 const isPendingHrValidationRequest = (request: StatusRecord): boolean => {
@@ -91,9 +103,15 @@ const isPendingHrValidationRequest = (request: StatusRecord): boolean => {
   const supervisorStatus = normalizeText(request.supervisor_status);
   const hrStatus = normalizeText(request.hr_status);
 
-  const alreadyClosed = ['approved', 'disapproved', 'rejected', 'cancelled'].includes(overallStatus);
-  const supervisorApproved = overallStatus === 'supervisor approved' || supervisorStatus === 'approved';
-  const waitingForHr = !hrStatus || hrStatus === 'pending';
+  const alreadyClosed = [
+    "approved",
+    "disapproved",
+    "rejected",
+    "cancelled",
+  ].includes(overallStatus);
+  const supervisorApproved =
+    overallStatus === "supervisor approved" || supervisorStatus === "approved";
+  const waitingForHr = !hrStatus || hrStatus === "pending";
 
   return supervisorApproved && waitingForHr && !alreadyClosed;
 };
@@ -102,8 +120,8 @@ const isAttendanceIssue = (row: StatusRecord): boolean => {
   const validationStatus = normalizeText(row.validation_status);
 
   return (
-    validationStatus === 'needs review' ||
-    validationStatus === 'invalid' ||
+    validationStatus === "needs review" ||
+    validationStatus === "invalid" ||
     toBoolean(row.is_late) ||
     toBoolean(row.is_undertime) ||
     toBoolean(row.is_absent) ||
@@ -115,7 +133,7 @@ const isPayrollForReview = (status: unknown): boolean => {
   const normalized = normalizeText(status);
 
   // Reviewed = forwarded to Accounting/Finance; Approved = processed but not yet released.
-  return normalized === 'reviewed' || normalized === 'approved';
+  return normalized === "reviewed" || normalized === "approved";
 };
 
 const fetchRows = async <T extends StatusRecord>(
@@ -126,7 +144,9 @@ const fetchRows = async <T extends StatusRecord>(
   let query = (supabase as any).from(table).select(columns);
 
   if (orderBy) {
-    query = query.order(orderBy.column, { ascending: orderBy.ascending ?? false });
+    query = query.order(orderBy.column, {
+      ascending: orderBy.ascending ?? false,
+    });
   }
 
   const { data, error } = await query;
@@ -137,33 +157,33 @@ const fetchRows = async <T extends StatusRecord>(
 };
 
 const fetchActiveEmployeesCount = async (): Promise<number> => {
-  const rows = await fetchRows('employees', 'id, employee_id, status');
+  const rows = await fetchRows("employees", "id, employee_id, status");
 
-  return rows.filter((row) => normalizeText(row.status) === 'active').length;
+  return rows.filter((row) => normalizeText(row.status) === "active").length;
 };
 
 const fetchPendingApplicationsCount = async (): Promise<number> => {
-  const rows = await fetchRows('applicants', 'id, applicant_id, status');
+  const rows = await fetchRows("applicants", "id, applicant_id, status");
 
   return rows.filter((row) => isPendingApplicationStatus(row.status)).length;
 };
 
 const fetchForInterviewCount = async (): Promise<number> => {
-  const rows = await fetchRows('applicants', 'id, applicant_id, status');
+  const rows = await fetchRows("applicants", "id, applicant_id, status");
 
   return rows.filter((row) => isForInterviewStatus(row.status)).length;
 };
 
 const fetchPendingRequestsCount = async (): Promise<number> => {
-  const rows = await fetchRows('employee_requests', 'id, request_id, status');
+  const rows = await fetchRows("employee_requests", "id, request_id, status");
 
-  return rows.filter((row) => normalizeText(row.status) === 'pending').length;
+  return rows.filter((row) => normalizeText(row.status) === "pending").length;
 };
 
 const fetchPendingHrValidationCount = async (): Promise<number> => {
   const rows = await fetchRows(
-    'employee_requests',
-    'id, request_id, status, supervisor_status, hr_status',
+    "employee_requests",
+    "id, request_id, status, supervisor_status, hr_status",
   );
 
   return rows.filter(isPendingHrValidationRequest).length;
@@ -171,29 +191,32 @@ const fetchPendingHrValidationCount = async (): Promise<number> => {
 
 const fetchAttendanceIssuesCount = async (): Promise<number> => {
   const rows = await fetchRows(
-    'attendance_logs',
-    'id, log_id, validation_status, is_late, is_undertime, is_absent, is_incomplete',
+    "attendance_logs",
+    "id, log_id, validation_status, is_late, is_undertime, is_absent, is_incomplete",
   );
 
   return rows.filter(isAttendanceIssue).length;
 };
 
 const fetchPayrollForReviewCount = async (): Promise<number> => {
-  const rows = await fetchRows('payroll_summaries', 'id, payroll_id, status');
+  const rows = await fetchRows("payroll_summaries", "id, payroll_id, status");
 
   return rows.filter((row) => isPayrollForReview(row.status)).length;
 };
 
-const fetchTopPerformer = async (): Promise<Pick<Stats, 'topEvaluee' | 'topScore'>> => {
+const fetchTopPerformer = async (): Promise<
+  Pick<Stats, "topEvaluee" | "topScore">
+> => {
   const dssRows = await fetchRows(
-    'dss_results',
-    'id, result_id, top_employee_name, highest_score, status, result_period_end, created_at',
-    { column: 'result_period_end', ascending: false },
+    "dss_results",
+    "id, result_id, top_employee_name, highest_score, status, result_period_end, created_at",
+    { column: "result_period_end", ascending: false },
   );
 
   const latestPublishedDss =
-    dssRows.find((row) => ['approved', 'exported', 'reviewed'].includes(normalizeText(row.status))) ??
-    dssRows.find((row) => String(row.top_employee_name ?? '').trim());
+    dssRows.find((row) =>
+      ["approved", "exported", "reviewed"].includes(normalizeText(row.status)),
+    ) ?? dssRows.find((row) => String(row.top_employee_name ?? "").trim());
 
   if (latestPublishedDss?.top_employee_name) {
     return {
@@ -203,12 +226,15 @@ const fetchTopPerformer = async (): Promise<Pick<Stats, 'topEvaluee' | 'topScore
   }
 
   const topRankedItems = await fetchRows(
-    'dss_result_items',
-    'id, item_id, employee_name, final_weighted_score, rank_no, created_at',
-    { column: 'created_at', ascending: false },
+    "dss_result_items",
+    "id, item_id, employee_name, final_weighted_score, rank_no, created_at",
+    { column: "created_at", ascending: false },
   );
 
-  const topRankedItem = topRankedItems.find((row) => toNumber(row.rank_no) === 1 && String(row.employee_name ?? '').trim());
+  const topRankedItem = topRankedItems.find(
+    (row) =>
+      toNumber(row.rank_no) === 1 && String(row.employee_name ?? "").trim(),
+  );
 
   if (topRankedItem) {
     return {
@@ -218,20 +244,28 @@ const fetchTopPerformer = async (): Promise<Pick<Stats, 'topEvaluee' | 'topScore
   }
 
   const evaluationRows = await fetchRows(
-    'employee_evaluations',
-    'id, evaluation_id, employee_name, employee_id, final_weighted_score, status, updated_at',
-    { column: 'updated_at', ascending: false },
+    "employee_evaluations",
+    "id, evaluation_id, employee_name, employee_id, final_weighted_score, status, updated_at",
+    { column: "updated_at", ascending: false },
   );
 
   const rankedEvaluations = evaluationRows
-    .filter((row) => ['approved', 'reviewed', 'submitted'].includes(normalizeText(row.status)))
-    .sort((a, b) => toNumber(b.final_weighted_score) - toNumber(a.final_weighted_score));
+    .filter((row) =>
+      ["approved", "reviewed", "submitted"].includes(normalizeText(row.status)),
+    )
+    .sort(
+      (a, b) =>
+        toNumber(b.final_weighted_score) - toNumber(a.final_weighted_score),
+    );
 
   const topEvaluation = rankedEvaluations[0];
 
   if (topEvaluation) {
     return {
-      topEvaluee: String(topEvaluation.employee_name ?? topEvaluation.employee_id ?? '').trim() || null,
+      topEvaluee:
+        String(
+          topEvaluation.employee_name ?? topEvaluation.employee_id ?? "",
+        ).trim() || null,
       topScore: toNumber(topEvaluation.final_weighted_score),
     };
   }
@@ -239,10 +273,17 @@ const fetchTopPerformer = async (): Promise<Pick<Stats, 'topEvaluee' | 'topScore
   return { topEvaluee: null, topScore: null };
 };
 
-const resolveLiveDashboardStats = async (): Promise<{ stats: Stats; failedSources: string[] }> => {
+const resolveLiveDashboardStats = async (): Promise<{
+  stats: Stats;
+  failedSources: string[];
+}> => {
   const failedSources: string[] = [];
 
-  const safe = async <T,>(label: string, fallback: T, task: () => Promise<T>): Promise<T> => {
+  const safe = async <T,>(
+    label: string,
+    fallback: T,
+    task: () => Promise<T>,
+  ): Promise<T> => {
     try {
       return await task();
     } catch (error) {
@@ -262,14 +303,18 @@ const resolveLiveDashboardStats = async (): Promise<{ stats: Stats; failedSource
     payrollForReview,
     topPerformer,
   ] = await Promise.all([
-    safe('Active Employees', 0, fetchActiveEmployeesCount),
-    safe('Pending Applications', 0, fetchPendingApplicationsCount),
-    safe('For Interview', 0, fetchForInterviewCount),
-    safe('Pending Requests', 0, fetchPendingRequestsCount),
-    safe('Pending HR Validation', 0, fetchPendingHrValidationCount),
-    safe('Attendance Issues', 0, fetchAttendanceIssuesCount),
-    safe('Payroll For Review', 0, fetchPayrollForReviewCount),
-    safe('Top Performer', { topEvaluee: null, topScore: null }, fetchTopPerformer),
+    safe("Active Employees", 0, fetchActiveEmployeesCount),
+    safe("Pending Applications", 0, fetchPendingApplicationsCount),
+    safe("For Interview", 0, fetchForInterviewCount),
+    safe("Pending Requests", 0, fetchPendingRequestsCount),
+    safe("Pending HR Validation", 0, fetchPendingHrValidationCount),
+    safe("Attendance Issues", 0, fetchAttendanceIssuesCount),
+    safe("Payroll For Review", 0, fetchPayrollForReviewCount),
+    safe(
+      "Top Performer",
+      { topEvaluee: null, topScore: null },
+      fetchTopPerformer,
+    ),
   ]);
 
   return {
@@ -286,6 +331,42 @@ const resolveLiveDashboardStats = async (): Promise<{ stats: Stats; failedSource
     },
     failedSources,
   };
+};
+
+const GREEN_UI = {
+  pageBg: "radial-gradient(circle at top left, rgba(220, 246, 219, 0.95), rgba(248, 252, 245, 0.98) 34%, #f7fbf3 100%)",
+  cardBg: "rgba(255, 255, 255, 0.92)",
+  cardBgSoft: "rgba(245, 252, 241, 0.88)",
+  border: "rgba(139, 184, 144, 0.24)",
+  borderStrong: "rgba(73, 156, 92, 0.32)",
+  green: "#3aa865",
+  greenDark: "#1f7a46",
+  greenSoft: "#e6f8e9",
+  text: "#1e2d24",
+  muted: "#6c7d70",
+  shadow: "0 20px 55px rgba(43, 91, 55, 0.10)",
+  shadowSoft: "0 12px 28px rgba(43, 91, 55, 0.08)",
+};
+
+const softCardSx = {
+  borderRadius: "26px",
+  border: `1px solid ${GREEN_UI.border}`,
+  background: GREEN_UI.cardBg,
+  boxShadow: GREEN_UI.shadow,
+};
+
+const innerCardSx = {
+  borderRadius: "20px",
+  border: `1px solid ${GREEN_UI.border}`,
+  background: GREEN_UI.cardBgSoft,
+  boxShadow: GREEN_UI.shadowSoft,
+};
+
+const pillButtonSx = {
+  borderRadius: 999,
+  textTransform: "none",
+  fontWeight: 700,
+  px: 2,
 };
 
 export default function HRDashboard() {
@@ -308,7 +389,8 @@ export default function HRDashboard() {
     }
 
     try {
-      const { stats: liveStats, failedSources } = await resolveLiveDashboardStats();
+      const { stats: liveStats, failedSources } =
+        await resolveLiveDashboardStats();
 
       if (!isMountedRef.current) return;
 
@@ -316,16 +398,20 @@ export default function HRDashboard() {
       setLastUpdatedAt(new Date());
 
       if (failedSources.length > 0) {
-        setErrorMessage(`Some live indicators could not be loaded: ${failedSources.join(', ')}.`);
+        setErrorMessage(
+          `Some live indicators could not be loaded: ${failedSources.join(", ")}.`,
+        );
       } else {
         setErrorMessage(null);
       }
     } catch (error) {
       if (!isMountedRef.current) return;
 
-      console.error('Dashboard live stats error:', error);
+      console.error("Dashboard live stats error:", error);
       setStats(DEFAULT_STATS);
-      setErrorMessage('Unable to load live dashboard indicators. Please check Supabase access and table permissions.');
+      setErrorMessage(
+        "Unable to load live dashboard indicators. Please check Supabase access and table permissions.",
+      );
     } finally {
       if (!isMountedRef.current) return;
 
@@ -354,15 +440,47 @@ export default function HRDashboard() {
     };
 
     const channel = supabase
-      .channel('hr-dashboard-live-indicators')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'employees' }, scheduleSilentRefresh)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'applicants' }, scheduleSilentRefresh)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'employee_requests' }, scheduleSilentRefresh)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'attendance_logs' }, scheduleSilentRefresh)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'payroll_summaries' }, scheduleSilentRefresh)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'dss_results' }, scheduleSilentRefresh)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'dss_result_items' }, scheduleSilentRefresh)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'employee_evaluations' }, scheduleSilentRefresh)
+      .channel("hr-dashboard-live-indicators")
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "employees" },
+        scheduleSilentRefresh,
+      )
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "applicants" },
+        scheduleSilentRefresh,
+      )
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "employee_requests" },
+        scheduleSilentRefresh,
+      )
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "attendance_logs" },
+        scheduleSilentRefresh,
+      )
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "payroll_summaries" },
+        scheduleSilentRefresh,
+      )
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "dss_results" },
+        scheduleSilentRefresh,
+      )
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "dss_result_items" },
+        scheduleSilentRefresh,
+      )
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "employee_evaluations" },
+        scheduleSilentRefresh,
+      )
       .subscribe();
 
     return () => {
@@ -374,98 +492,321 @@ export default function HRDashboard() {
   const statCards = useMemo(
     () => [
       {
-        title: 'Active Employees',
-        value: loading ? '…' : String(stats.activeEmployees),
+        title: "Active Employees",
+        value: loading ? "…" : String(stats.activeEmployees),
         icon: <PeopleAlt />,
-        color: '#1F7A47',
+        color: "#2F9E5E",
+        softColor: "#E5F7EA",
+        helper: "Currently employed personnel",
       },
       {
-        title: 'Pending Applications',
-        value: loading ? '…' : String(stats.pendingApplications),
+        title: "Pending Applications",
+        value: loading ? "…" : String(stats.pendingApplications),
         icon: <PersonAddAlt1 />,
-        color: '#ed6c02',
+        color: "#ED8A1F",
+        softColor: "#FFF1DE",
+        helper: "Applicants awaiting review",
       },
       {
-        title: 'For Interview',
-        value: loading ? '…' : String(stats.forInterviewCount),
+        title: "For Interview",
+        value: loading ? "…" : String(stats.forInterviewCount),
         icon: <EventAvailable />,
-        color: '#2F8F8B',
+        color: "#2B9C95",
+        softColor: "#DFF7F5",
+        helper: "Candidates ready for interview",
       },
       {
-        title: 'Pending HR Validation',
-        value: loading ? '…' : String(stats.supervisorApprovedRequests),
+        title: "Pending HR Validation",
+        value: loading ? "…" : String(stats.supervisorApprovedRequests),
         icon: <PendingActions />,
-        color: '#9c27b0',
+        color: "#8B5AD8",
+        softColor: "#F0E9FF",
+        helper: "Requests waiting for HR action",
       },
       {
-        title: 'Attendance Issues',
-        value: loading ? '…' : String(stats.attendanceIssues),
+        title: "Attendance Issues",
+        value: loading ? "…" : String(stats.attendanceIssues),
         icon: <WarningAmber />,
-        color: '#d32f2f',
+        color: "#D85C5C",
+        softColor: "#FFEAEA",
+        helper: "Logs that need checking",
       },
       {
-        title: 'Payroll For Review',
-        value: loading ? '…' : String(stats.payrollForReview),
+        title: "Payroll For Review",
+        value: loading ? "…" : String(stats.payrollForReview),
         icon: <AccountBalance />,
-        color: '#0277BD',
+        color: "#2E7BCF",
+        softColor: "#E7F0FF",
+        helper: "Payroll summaries to verify",
       },
       {
-        title: 'Top Performer',
+        title: "Top Performer",
         value: loading
-          ? '…'
+          ? "…"
           : stats.topEvaluee
-            ? `${stats.topEvaluee} (${stats.topScore?.toFixed(1) ?? '0.0'}%)`
-            : 'No data',
+            ? `${stats.topEvaluee} (${stats.topScore?.toFixed(1) ?? "0.0"}%)`
+            : "No data",
         icon: <EmojiEvents />,
-        color: '#b8860b',
+        color: "#B98913",
+        softColor: "#FFF4D8",
+        helper: "Latest DSS performance result",
       },
     ],
     [loading, stats],
   );
 
   const shortcuts = [
-    { title: 'Manage Employees', icon: <ManageAccounts />, path: '/dashboard/employees', color: '#1F7A47' },
-    { title: 'Review Applications', icon: <PersonAddAlt1 />, path: '/dashboard/recruitment', color: '#ed6c02' },
-    { title: 'Import Attendance', icon: <CloudUpload />, path: '/dashboard/attendance', color: '#2F8F8B' },
-    { title: 'Generate Payroll', icon: <Payments />, path: '/dashboard/payroll', color: '#0277BD' },
-    { title: 'View DSS Results', icon: <QueryStats />, path: '/dashboard/evaluation', color: '#9c27b0' },
-    { title: 'User Accounts', icon: <GroupAdd />, path: '/dashboard/users', color: '#b8860b' },
+    {
+      title: "Manage Employees",
+      icon: <ManageAccounts />,
+      path: "/dashboard/employees",
+      color: "#2F9E5E",
+    },
+    {
+      title: "Review Applications",
+      icon: <PersonAddAlt1 />,
+      path: "/dashboard/recruitment",
+      color: "#ED8A1F",
+    },
+    {
+      title: "Import Attendance",
+      icon: <CloudUpload />,
+      path: "/dashboard/attendance",
+      color: "#2B9C95",
+    },
+    {
+      title: "Generate Payroll",
+      icon: <Payments />,
+      path: "/dashboard/payroll",
+      color: "#2E7BCF",
+    },
+    {
+      title: "View DSS Results",
+      icon: <QueryStats />,
+      path: "/dashboard/evaluation",
+      color: "#8B5AD8",
+    },
+    {
+      title: "User Accounts",
+      icon: <GroupAdd />,
+      path: "/dashboard/users",
+      color: "#B98913",
+    },
   ];
 
   const lastUpdatedLabel = lastUpdatedAt
-    ? `Last updated ${lastUpdatedAt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}`
-    : 'Waiting for live data';
+    ? `Last updated ${lastUpdatedAt.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" })}`
+    : "Waiting for live data";
+
+  const activityItems = [
+    {
+      label: "Employees",
+      value: loading ? "…" : stats.activeEmployees,
+      color: "#2F9E5E",
+    },
+    {
+      label: "Applications",
+      value: loading ? "…" : stats.pendingApplications,
+      color: "#ED8A1F",
+    },
+    {
+      label: "HR Validation",
+      value: loading ? "…" : stats.supervisorApprovedRequests,
+      color: "#8B5AD8",
+    },
+  ];
 
   return (
-    <Box>
-      <Box sx={{ mb: 3 }}>
-        <Typography
-          variant="h4"
-          fontWeight="bold"
-          sx={{ fontSize: { xs: '1.35rem', sm: '1.75rem', md: '2.125rem' } }}
-        >
-          HR / Admin Dashboard
-        </Typography>
-        <Typography variant="body2" color="text.secondary">
-          Welcome to Buenaventura Estate HRIS
-        </Typography>
-      </Box>
+    <Box
+      sx={{
+        minHeight: "100%",
+        p: { xs: 1.5, sm: 2.25, md: 3 },
+        background: GREEN_UI.pageBg,
+        color: GREEN_UI.text,
+        borderRadius: { xs: 0, md: "32px" },
+      }}
+    >
+      <Paper
+        elevation={0}
+        sx={{
+          ...softCardSx,
+          position: "relative",
+          overflow: "hidden",
+          mb: 2.5,
+          p: { xs: 2, sm: 2.75, md: 3.25 },
+          background:
+            "linear-gradient(135deg, rgba(255,255,255,0.98) 0%, rgba(239,250,235,0.96) 60%, rgba(225,248,224,0.94) 100%)",
+        }}
+      >
+        <Box
+          sx={{
+            position: "absolute",
+            top: -80,
+            right: -60,
+            width: 220,
+            height: 220,
+            borderRadius: "50%",
+            background: "rgba(89, 188, 121, 0.16)",
+            filter: "blur(2px)",
+          }}
+        />
+        <Box
+          sx={{
+            position: "absolute",
+            bottom: -95,
+            right: 90,
+            width: 190,
+            height: 190,
+            borderRadius: "50%",
+            background: "rgba(185, 230, 162, 0.20)",
+          }}
+        />
 
-      {(loading || refreshing || lastUpdatedAt) && (
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, my: 2 }}>
-          {(loading || refreshing) && <CircularProgress size={18} />}
-          <Typography variant="body2" color="text.secondary">
-            {loading ? 'Loading live stats…' : refreshing ? 'Refreshing live stats…' : lastUpdatedLabel}
-          </Typography>
-        </Box>
-      )}
+        <Stack
+          direction={{ xs: "column", md: "row" }}
+          spacing={{ xs: 2, md: 3 }}
+          alignItems={{ xs: "flex-start", md: "center" }}
+          justifyContent="space-between"
+          sx={{ position: "relative", zIndex: 1 }}
+        >
+          <Box sx={{ maxWidth: 720 }}>
+            <Box
+              sx={{
+                display: "inline-flex",
+                alignItems: "center",
+                gap: 1,
+                px: 1.4,
+                py: 0.65,
+                mb: 1.5,
+                borderRadius: 999,
+                bgcolor: GREEN_UI.greenSoft,
+                color: GREEN_UI.greenDark,
+                border: `1px solid ${GREEN_UI.borderStrong}`,
+                fontSize: "0.78rem",
+                fontWeight: 800,
+                letterSpacing: "0.02em",
+              }}
+            >
+              <Box
+                sx={{
+                  width: 7,
+                  height: 7,
+                  borderRadius: "50%",
+                  bgcolor: GREEN_UI.green,
+                }}
+              />
+              Live HR/Admin Workspace
+            </Box>
+
+            <Typography
+              variant="h4"
+              fontWeight={900}
+              sx={{
+                color: GREEN_UI.text,
+                lineHeight: 1.08,
+                letterSpacing: "-0.045em",
+                fontSize: { xs: "1.55rem", sm: "2rem", md: "2.35rem" },
+              }}
+            >
+              HR / Admin Dashboard
+            </Typography>
+            <Typography
+              sx={{
+                mt: 1.25,
+                color: GREEN_UI.muted,
+                maxWidth: 620,
+                fontSize: { xs: "0.92rem", md: "1rem" },
+              }}
+            >
+              Welcome to Buenaventura Estate HRIS. Monitor employees,
+              applications, requests, attendance, payroll, and DSS performance
+              in one clean workspace.
+            </Typography>
+          </Box>
+
+          <Paper
+            elevation={0}
+            sx={{
+              width: { xs: "100%", md: 260 },
+              ...innerCardSx,
+              p: 2,
+            }}
+          >
+            <Typography
+              sx={{
+                fontSize: "0.78rem",
+                fontWeight: 800,
+                color: GREEN_UI.muted,
+                mb: 1,
+              }}
+            >
+              SYSTEM STATUS
+            </Typography>
+            <Stack direction="row" spacing={1.3} alignItems="center">
+              {(loading || refreshing) && (
+                <CircularProgress
+                  size={22}
+                  thickness={4}
+                  sx={{ color: GREEN_UI.green }}
+                />
+              )}
+              {!(loading || refreshing) && (
+                <Box
+                  sx={{
+                    width: 22,
+                    height: 22,
+                    borderRadius: "50%",
+                    bgcolor: GREEN_UI.greenSoft,
+                    border: `6px solid ${GREEN_UI.green}`,
+                  }}
+                />
+              )}
+              <Box sx={{ minWidth: 0 }}>
+                <Typography
+                  sx={{
+                    color: GREEN_UI.text,
+                    fontWeight: 900,
+                    fontSize: "0.95rem",
+                  }}
+                >
+                  {loading
+                    ? "Loading live stats…"
+                    : refreshing
+                      ? "Refreshing live stats…"
+                      : "Live data synced"}
+                </Typography>
+                <Typography
+                  noWrap
+                  sx={{ color: GREEN_UI.muted, fontSize: "0.78rem" }}
+                >
+                  {loading || refreshing
+                    ? "Please wait a moment"
+                    : lastUpdatedLabel}
+                </Typography>
+              </Box>
+            </Stack>
+          </Paper>
+        </Stack>
+      </Paper>
 
       {errorMessage && !loading && (
         <Alert
           severity="warning"
-          sx={{ mb: 2 }}
+          sx={{
+            mb: 2.5,
+            borderRadius: "18px",
+            border: "1px solid rgba(237, 138, 31, 0.22)",
+            bgcolor: "#FFF8EC",
+            color: "#5F431F",
+            "& .MuiAlert-icon": { color: "#ED8A1F" },
+          }}
           action={
-            <Button color="inherit" size="small" onClick={() => void loadDashboardStats(false)}>
+            <Button
+              color="inherit"
+              size="small"
+              sx={pillButtonSx}
+              onClick={() => void loadDashboardStats(false)}
+            >
               Retry
             </Button>
           }
@@ -474,96 +815,424 @@ export default function HRDashboard() {
         </Alert>
       )}
 
-      <Grid container spacing={{ xs: 2, md: 2.5 }} sx={{ mb: 4 }}>
-        {statCards.map((stat) => (
-          <Grid key={stat.title} size={{ xs: 12, sm: 6, md: 4, lg: 3 }} sx={{ display: 'flex' }}>
+      <Grid
+        container
+        spacing={{ xs: 2, md: 2.5 }}
+        sx={{ mb: { xs: 2.5, md: 3 } }}
+      >
+        {statCards.map((stat, index) => (
+          <Grid
+            key={stat.title}
+            size={{
+              xs: 12,
+              sm: 6,
+              md: index === 6 ? 6 : 4,
+              lg: index === 6 ? 6 : 3,
+            }}
+            sx={{ display: "flex" }}
+          >
             <Card
               elevation={0}
               sx={{
-                height: 96,
-                width: '100%',
-                border: '1px solid',
-                borderColor: 'divider',
-                transition: 'box-shadow 0.2s',
-                '&:hover': { boxShadow: 4 },
+                position: "relative",
+                overflow: "hidden",
+                width: "100%",
+                minHeight: 126,
+                ...softCardSx,
+                transition:
+                  "transform 180ms ease, box-shadow 180ms ease, border-color 180ms ease",
+                "&::before": {
+                  content: '""',
+                  position: "absolute",
+                  top: 0,
+                  left: 0,
+                  right: 0,
+                  height: 4,
+                  bgcolor: stat.color,
+                  opacity: 0.86,
+                },
+                "&:hover": {
+                  transform: "translateY(-3px)",
+                  boxShadow: "0 22px 48px rgba(43, 91, 55, 0.13)",
+                  borderColor: GREEN_UI.borderStrong,
+                },
               }}
             >
-              <CardContent
-                sx={{
-                  height: '100%',
-                  display: 'flex',
-                  alignItems: 'center',
-                  p: '16px !important',
-                }}
-              >
-                <Box sx={{ display: 'flex', alignItems: 'center', width: '100%', gap: 2 }}>
-                  <Box
-                    sx={{
-                      bgcolor: stat.color,
-                      borderRadius: '14px',
-                      p: 1.5,
-                      display: 'flex',
-                      flexShrink: 0,
-                    }}
-                  >
-                    <Box sx={{ color: 'white', display: 'flex', fontSize: '1.35rem' }}>{stat.icon}</Box>
-                  </Box>
+              <CardContent sx={{ p: { xs: 2, md: 2.25 }, height: "100%" }}>
+                <Stack
+                  direction="row"
+                  spacing={1.6}
+                  alignItems="flex-start"
+                  justifyContent="space-between"
+                >
                   <Box sx={{ minWidth: 0, flex: 1 }}>
                     <Typography
-                      fontWeight="bold"
                       sx={{
-                        fontSize: '1.25rem',
-                        lineHeight: 1.2,
-                        overflow: 'hidden',
-                        textOverflow: 'ellipsis',
-                        whiteSpace: 'nowrap',
+                        color: GREEN_UI.muted,
+                        fontSize: "0.78rem",
+                        fontWeight: 800,
+                        textTransform: "uppercase",
+                        letterSpacing: "0.06em",
+                        mb: 1.1,
+                      }}
+                    >
+                      {stat.title}
+                    </Typography>
+                    <Typography
+                      fontWeight={900}
+                      sx={{
+                        color: GREEN_UI.text,
+                        fontSize: {
+                          xs: index === 6 ? "1.25rem" : "2rem",
+                          md: index === 6 ? "1.45rem" : "2.25rem",
+                        },
+                        lineHeight: 1.04,
+                        overflow: "hidden",
+                        textOverflow: "ellipsis",
+                        whiteSpace: "nowrap",
                       }}
                     >
                       {stat.value}
                     </Typography>
                     <Typography
-                      variant="caption"
-                      color="text.secondary"
-                      sx={{ display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
+                      sx={{
+                        mt: 1.2,
+                        color: GREEN_UI.muted,
+                        fontSize: "0.83rem",
+                        overflow: "hidden",
+                        textOverflow: "ellipsis",
+                        whiteSpace: "nowrap",
+                      }}
                     >
-                      {stat.title}
+                      {stat.helper}
                     </Typography>
                   </Box>
-                </Box>
+
+                  <Box
+                    sx={{
+                      width: 50,
+                      height: 50,
+                      borderRadius: "16px",
+                      display: "grid",
+                      placeItems: "center",
+                      color: stat.color,
+                      bgcolor: stat.softColor,
+                      flexShrink: 0,
+                      boxShadow: `0 10px 26px ${stat.color}24`,
+                      "& svg": { fontSize: 27 },
+                    }}
+                  >
+                    {stat.icon}
+                  </Box>
+                </Stack>
               </CardContent>
             </Card>
           </Grid>
         ))}
       </Grid>
 
-      <Paper elevation={0} sx={{ p: { xs: 2, sm: 3 }, border: '1px solid', borderColor: 'divider' }}>
-        <Typography variant="h6" gutterBottom fontWeight="bold">
-          Quick Actions
-        </Typography>
-        <Divider sx={{ mb: 2 }} />
-        <Grid container spacing={2}>
-          {shortcuts.map((shortcut) => (
-            <Grid key={shortcut.title} size={{ xs: 12, sm: 6, md: 4 }}>
-              <Button
-                fullWidth
-                variant="outlined"
-                size="large"
-                startIcon={<Box sx={{ color: shortcut.color, display: 'flex' }}>{shortcut.icon}</Box>}
-                onClick={() => navigate(shortcut.path)}
+      <Grid container spacing={{ xs: 2, md: 2.5 }}>
+        <Grid size={{ xs: 12, lg: 8 }}>
+          <Paper
+            elevation={0}
+            sx={{
+              height: "100%",
+              p: { xs: 2, sm: 2.5, md: 3 },
+              ...softCardSx,
+            }}
+          >
+            <Stack
+              direction={{ xs: "column", sm: "row" }}
+              spacing={1.5}
+              alignItems={{ xs: "flex-start", sm: "center" }}
+              justifyContent="space-between"
+              sx={{ mb: 2.25 }}
+            >
+              <Box>
+                <Typography
+                  sx={{
+                    color: GREEN_UI.text,
+                    fontSize: "1.25rem",
+                    fontWeight: 900,
+                    letterSpacing: "-0.02em",
+                  }}
+                >
+                  Quick Actions
+                </Typography>
+                <Typography
+                  sx={{ color: GREEN_UI.muted, fontSize: "0.88rem", mt: 0.35 }}
+                >
+                  Open the HR modules you use most often.
+                </Typography>
+              </Box>
+              <Box
                 sx={{
-                  py: 1.5,
-                  justifyContent: 'flex-start',
-                  borderColor: 'divider',
-                  color: 'text.primary',
-                  '&:hover': { borderColor: shortcut.color, bgcolor: `${shortcut.color}11` },
+                  px: 1.25,
+                  py: 0.6,
+                  borderRadius: 999,
+                  color: "#247C47",
+                  bgcolor: "#E9F8EC",
+                  fontSize: "0.78rem",
+                  fontWeight: 800,
+                  border: "1px solid rgba(47, 158, 94, 0.16)",
                 }}
               >
-                {shortcut.title}
-              </Button>
+                {shortcuts.length} modules
+              </Box>
+            </Stack>
+
+            <Divider
+              sx={{ mb: 2.25, borderColor: "rgba(143, 183, 141, 0.18)" }}
+            />
+
+            <Grid container spacing={1.5}>
+              {shortcuts.map((shortcut) => (
+                <Grid key={shortcut.title} size={{ xs: 12, sm: 6, md: 4 }}>
+                  <Button
+                    fullWidth
+                    size="large"
+                    onClick={() => navigate(shortcut.path)}
+                    sx={{
+                      minHeight: 76,
+                      justifyContent: "flex-start",
+                      gap: 1.35,
+                      px: 1.5,
+                      py: 1.35,
+                      borderRadius: 3.5,
+                      color: GREEN_UI.text,
+                      bgcolor: "#F8FCF6",
+                      border: "1px solid rgba(143, 183, 141, 0.20)",
+                      textTransform: "none",
+                      fontWeight: 900,
+                      boxShadow: "none",
+                      transition:
+                        "transform 180ms ease, background 180ms ease, border-color 180ms ease, box-shadow 180ms ease",
+                      "&:hover": {
+                        transform: "translateY(-2px)",
+                        bgcolor: "#FFFFFF",
+                        borderColor: `${shortcut.color}55`,
+                        boxShadow: `0 14px 32px ${shortcut.color}1F`,
+                      },
+                    }}
+                  >
+                    <Box
+                      sx={{
+                        width: 42,
+                        height: 42,
+                        borderRadius: "16px",
+                        display: "grid",
+                        placeItems: "center",
+                        color: shortcut.color,
+                        bgcolor: `${shortcut.color}18`,
+                        flexShrink: 0,
+                        "& svg": { fontSize: 23 },
+                      }}
+                    >
+                      {shortcut.icon}
+                    </Box>
+                    <Box sx={{ minWidth: 0, textAlign: "left" }}>
+                      <Typography
+                        noWrap
+                        sx={{ fontSize: "0.92rem", fontWeight: 900 }}
+                      >
+                        {shortcut.title}
+                      </Typography>
+                      <Typography
+                        noWrap
+                        sx={{
+                          color: GREEN_UI.muted,
+                          fontSize: "0.76rem",
+                          fontWeight: 600,
+                          mt: 0.25,
+                        }}
+                      >
+                        Go to module
+                      </Typography>
+                    </Box>
+                  </Button>
+                </Grid>
+              ))}
             </Grid>
-          ))}
+          </Paper>
         </Grid>
-      </Paper>
+
+        <Grid size={{ xs: 12, lg: 4 }}>
+          <Stack spacing={2} sx={{ height: "100%" }}>
+            <Paper
+              elevation={0}
+              sx={{
+                p: { xs: 2, sm: 2.5 },
+                ...softCardSx,
+                background: "linear-gradient(135deg, #EAF9EA 0%, #FFFFFF 100%)",
+              }}
+            >
+              <Stack
+                direction="row"
+                alignItems="center"
+                justifyContent="space-between"
+                sx={{ mb: 2 }}
+              >
+                <Box>
+                  <Typography
+                    sx={{
+                      color: GREEN_UI.text,
+                      fontSize: "1.05rem",
+                      fontWeight: 900,
+                    }}
+                  >
+                    Today’s Snapshot
+                  </Typography>
+                  <Typography sx={{ color: GREEN_UI.muted, fontSize: "0.8rem" }}>
+                    Key workload indicators
+                  </Typography>
+                </Box>
+                <Box
+                  sx={{
+                    width: 42,
+                    height: 42,
+                    borderRadius: "16px",
+                    display: "grid",
+                    placeItems: "center",
+                    color: "#2F9E5E",
+                    bgcolor: "#E1F6E7",
+                  }}
+                >
+                  <QueryStats />
+                </Box>
+              </Stack>
+
+              <Stack spacing={1.7}>
+                {activityItems.map((item) => (
+                  <Box key={item.label}>
+                    <Stack
+                      direction="row"
+                      alignItems="center"
+                      justifyContent="space-between"
+                      sx={{ mb: 0.7 }}
+                    >
+                      <Typography
+                        sx={{
+                          color: "#506352",
+                          fontSize: "0.82rem",
+                          fontWeight: 800,
+                        }}
+                      >
+                        {item.label}
+                      </Typography>
+                      <Typography
+                        sx={{
+                          color: GREEN_UI.text,
+                          fontSize: "0.85rem",
+                          fontWeight: 900,
+                        }}
+                      >
+                        {item.value}
+                      </Typography>
+                    </Stack>
+                    <LinearProgress
+                      variant="determinate"
+                      value={
+                        loading ? 18 : Math.min(100, Number(item.value) * 10)
+                      }
+                      sx={{
+                        height: 8,
+                        borderRadius: 999,
+                        bgcolor: "rgba(143, 183, 141, 0.16)",
+                        "& .MuiLinearProgress-bar": {
+                          borderRadius: 999,
+                          bgcolor: item.color,
+                        },
+                      }}
+                    />
+                  </Box>
+                ))}
+              </Stack>
+            </Paper>
+
+            <Paper
+              elevation={0}
+              sx={{
+                flex: 1,
+                p: { xs: 2, sm: 2.5 },
+                ...softCardSx,
+                background:
+                  "linear-gradient(145deg, rgba(47,158,94,0.14) 0%, rgba(255,255,255,0.94) 46%, rgba(229,247,234,0.9) 100%)",
+                overflow: "hidden",
+                position: "relative",
+              }}
+            >
+              <Box
+                sx={{
+                  position: "absolute",
+                  right: -46,
+                  bottom: -46,
+                  width: 150,
+                  height: 150,
+                  borderRadius: "50%",
+                  bgcolor: "rgba(47, 158, 94, 0.12)",
+                }}
+              />
+              <Box sx={{ position: "relative", zIndex: 1 }}>
+                <Box
+                  sx={{
+                    width: 48,
+                    height: 48,
+                    borderRadius: "16px",
+                    display: "grid",
+                    placeItems: "center",
+                    color: "#2F9E5E",
+                    bgcolor: "#FFFFFF",
+                    boxShadow: "0 12px 26px rgba(47, 158, 94, 0.16)",
+                    mb: 1.5,
+                  }}
+                >
+                  <EmojiEvents />
+                </Box>
+                <Typography
+                  sx={{
+                    color: GREEN_UI.text,
+                    fontSize: "1.05rem",
+                    fontWeight: 900,
+                  }}
+                >
+                  Performance Highlight
+                </Typography>
+                <Typography
+                  sx={{
+                    color: GREEN_UI.muted,
+                    fontSize: "0.84rem",
+                    mt: 0.5,
+                    mb: 1.5,
+                  }}
+                >
+                  Latest top performer from approved or reviewed DSS records.
+                </Typography>
+                <Box
+                  sx={{
+                    p: 1.5,
+                    borderRadius: "20px",
+                    bgcolor: "rgba(255,255,255,0.82)",
+                    border: "1px solid rgba(143, 183, 141, 0.18)",
+                  }}
+                >
+                  <Typography noWrap sx={{ color: GREEN_UI.text, fontWeight: 900 }}>
+                    {loading ? "Loading…" : (stats.topEvaluee ?? "No data yet")}
+                  </Typography>
+                  <Typography
+                    sx={{ color: GREEN_UI.muted, fontSize: "0.8rem", mt: 0.25 }}
+                  >
+                    {loading
+                      ? "Fetching score"
+                      : stats.topScore !== null
+                        ? `${stats.topScore.toFixed(1)}% final score`
+                        : "No published score available"}
+                  </Typography>
+                </Box>
+              </Box>
+            </Paper>
+          </Stack>
+        </Grid>
+      </Grid>
     </Box>
   );
 }

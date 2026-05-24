@@ -16,6 +16,14 @@ import {
   EditNote,
   AddCircle,
   RemoveCircle,
+  PersonSearch,
+  BadgeOutlined,
+  WorkOutline,
+  CalendarToday,
+  EventAvailable,
+  TuneOutlined,
+  DeleteOutline,
+  HowToReg,
 } from '@mui/icons-material';
 import {
   Alert,
@@ -153,6 +161,93 @@ const ALL_STATUSES: AppStatus[] = [
   'Not Qualified',
   'Not Hired',
 ];
+
+
+const GREEN_UI = {
+  pageBg: 'radial-gradient(circle at top left, rgba(220, 246, 219, 0.95), rgba(248, 252, 245, 0.98) 34%, #f7fbf3 100%)',
+  cardBg: 'rgba(255, 255, 255, 0.92)',
+  cardBgSoft: 'rgba(245, 252, 241, 0.88)',
+  border: 'rgba(139, 184, 144, 0.24)',
+  borderStrong: 'rgba(73, 156, 92, 0.32)',
+  green: '#3aa865',
+  greenDark: '#1f7a46',
+  greenSoft: '#e6f8e9',
+  text: '#1e2d24',
+  muted: '#6c7d70',
+  shadow: '0 20px 55px rgba(43, 91, 55, 0.10)',
+  shadowSoft: '0 12px 28px rgba(43, 91, 55, 0.08)',
+};
+
+const softCardSx = {
+  borderRadius: '26px',
+  border: `1px solid ${GREEN_UI.border}`,
+  background: GREEN_UI.cardBg,
+  boxShadow: GREEN_UI.shadow,
+};
+
+const innerCardSx = {
+  borderRadius: '20px',
+  border: `1px solid ${GREEN_UI.border}`,
+  background: GREEN_UI.cardBgSoft,
+  boxShadow: GREEN_UI.shadowSoft,
+};
+
+const pillButtonSx = {
+  borderRadius: 999,
+  textTransform: 'none',
+  fontWeight: 700,
+  px: 2,
+};
+
+const tableHeaderIconSx = {
+  fontSize: 16,
+  color: 'inherit',
+};
+
+const chipIconSx = {
+  '& .MuiChip-icon': {
+    color: 'inherit',
+    fontSize: 16,
+    ml: 0.65,
+  },
+};
+
+const statusChipSx = (status: AppStatus) => {
+  const styles: Record<AppStatus, { bg: string; color: string; border: string }> = {
+    Submitted: { bg: '#f4f7f3', color: '#5f6e63', border: '#dce8da' },
+    'Under Review': { bg: '#eaf6ff', color: '#24658f', border: '#b9ddf4' },
+    'Missing Requirements': { bg: '#fff7e0', color: '#9b6b00', border: '#f5d786' },
+    'For Interview': { bg: '#e9f6ff', color: '#1d6f9c', border: '#b7dff7' },
+    Hired: { bg: '#e5f8e9', color: '#217a43', border: '#a9dfb6' },
+    'Not Qualified': { bg: '#fdeaea', color: '#9c2f2f', border: '#efb8b8' },
+    'Not Hired': { bg: '#fdeaea', color: '#9c2f2f', border: '#efb8b8' },
+  };
+
+  const selected = styles[status] ?? styles.Submitted;
+
+  return {
+    bgcolor: selected.bg,
+    color: selected.color,
+    borderColor: selected.border,
+    fontWeight: 800,
+    borderRadius: 999,
+    '& .MuiChip-label': { px: 1.25 },
+  };
+};
+
+const softTextFieldSx = {
+  '& .MuiOutlinedInput-root': {
+    borderRadius: '16px',
+    backgroundColor: '#fbfef9',
+    transition: 'all 180ms ease',
+    '& fieldset': { borderColor: GREEN_UI.border },
+    '&:hover fieldset': { borderColor: GREEN_UI.borderStrong },
+    '&.Mui-focused fieldset': { borderColor: GREEN_UI.green, borderWidth: 1.5 },
+    '&.Mui-disabled': { backgroundColor: '#f6fbf4' },
+  },
+  '& .MuiInputLabel-root': { color: GREEN_UI.muted },
+  '& .MuiInputBase-input.Mui-disabled': { WebkitTextFillColor: GREEN_UI.text },
+};
 
 const APPLICANT_LIST_COLUMNS = `
   applicant_id,
@@ -1017,6 +1112,36 @@ export default function RecruitmentManagement() {
 
   const displayData = tabData[tab]?.data ?? applications;
 
+  const recruitmentStats = useMemo(
+    () => [
+      {
+        label: 'Total Applications',
+        value: applications.length,
+        caption: 'All submitted applicants',
+        icon: <InsertDriveFile fontSize="small" />,
+      },
+      {
+        label: 'For Review',
+        value: applications.filter(a => a.status === 'Submitted' || a.status === 'Under Review').length,
+        caption: 'Needs HR checking',
+        icon: <EditNote fontSize="small" />,
+      },
+      {
+        label: 'For Interview',
+        value: applications.filter(a => a.status === 'For Interview').length,
+        caption: 'Ready for schedule / decision',
+        icon: <Event fontSize="small" />,
+      },
+      {
+        label: 'Hired',
+        value: applications.filter(a => a.status === 'Hired').length,
+        caption: 'Converted to employees',
+        icon: <TaskAlt fontSize="small" />,
+      },
+    ],
+    [applications]
+  );
+
   const updateEditField = (field: keyof Application, value: any) => {
     setEditAppForm(prev => ({ ...prev, [field]: value }));
   };
@@ -1048,6 +1173,7 @@ export default function RecruitmentManagement() {
           rows={options?.rows}
           InputLabelProps={options?.type === 'date' ? { shrink: true } : undefined}
           onChange={event => field && updateEditField(field, event.target.value)}
+          sx={softTextFieldSx}
         />
       </Grid>
     );
@@ -1055,16 +1181,30 @@ export default function RecruitmentManagement() {
 
   const renderProfileSectionTitle = (title: string) => (
     <Grid size={12}>
-      <Divider sx={{ my: 1 }} />
-      <Typography variant="subtitle2" color="text.secondary" fontWeight={700}>
-        {title}
-      </Typography>
+      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mt: 1, mb: 0.5 }}>
+        <Box
+          sx={{
+            width: 34,
+            height: 6,
+            borderRadius: 999,
+            background: `linear-gradient(90deg, ${GREEN_UI.green}, rgba(58, 168, 101, 0.08))`,
+          }}
+        />
+        <Typography
+          variant="subtitle2"
+          fontWeight={900}
+          sx={{ color: GREEN_UI.greenDark, letterSpacing: 0.4, textTransform: 'uppercase' }}
+        >
+          {title}
+        </Typography>
+      </Box>
+      <Divider sx={{ borderColor: GREEN_UI.border, mb: 1 }} />
     </Grid>
   );
 
   const renderRequirementChecklist = () => (
     <Grid size={12}>
-      <Paper elevation={0} sx={{ p: 2, borderRadius: 2, border: '1px solid', borderColor: 'divider' }}>
+      <Paper elevation={0} sx={{ p: { xs: 1.75, sm: 2.25 }, ...innerCardSx }}>
         <Box sx={{ display: 'flex', justifyContent: 'space-between', gap: 1, alignItems: 'center', flexWrap: 'wrap', mb: 1 }}>
           <Box>
             <Typography fontWeight={700}>Requirements Checklist</Typography>
@@ -1080,6 +1220,7 @@ export default function RecruitmentManagement() {
               startIcon={<EditNote />}
               onClick={() => setEditReqDialog(true)}
               disabled={saving || Boolean(isRequirementsLocked)}
+              sx={{ ...pillButtonSx, borderColor: GREEN_UI.borderStrong, color: GREEN_UI.greenDark }}
             >
               Edit Checklist
             </Button>
@@ -1166,7 +1307,7 @@ export default function RecruitmentManagement() {
           value={reqForm.requirementsNote}
           disabled={!canEditRequirements || saving}
           onChange={event => setReqForm({ ...reqForm, requirementsNote: event.target.value })}
-          sx={{ mt: 1.5 }}
+          sx={{ mt: 1.5, ...softTextFieldSx }}
         />
 
         {isHR && (
@@ -1175,6 +1316,7 @@ export default function RecruitmentManagement() {
               variant="contained"
               size="small"
               onClick={() => selectedApp && handleSaveRequirements(selectedApp.id)}
+              sx={{ ...pillButtonSx, bgcolor: GREEN_UI.green, '&:hover': { bgcolor: GREEN_UI.greenDark } }}
               disabled={!canEditRequirements || saving || !selectedApp}
               startIcon={saving ? <CircularProgress color="inherit" size={16} /> : <TaskAlt />}
             >
@@ -1349,7 +1491,15 @@ export default function RecruitmentManagement() {
 
     return (
       <Grid key={`${doc.name}-${index}`} size={{ xs: 12, sm: 6 }}>
-        <Paper elevation={0} sx={{ p: 1.5, borderRadius: 2, border: '1px solid', borderColor: 'divider' }}>
+        <Paper
+          elevation={0}
+          sx={{
+            p: 1.6,
+            ...innerCardSx,
+            transition: 'transform 180ms ease, box-shadow 180ms ease',
+            '&:hover': { transform: 'translateY(-2px)', boxShadow: '0 18px 36px rgba(43, 91, 55, 0.12)' },
+          }}
+        >
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
             <DocIcon name={doc.name} type={type} />
             <Box sx={{ minWidth: 0, flex: 1 }}>
@@ -1366,13 +1516,14 @@ export default function RecruitmentManagement() {
             </Box>
           </Box>
 
-          <Box sx={{ display: 'flex', gap: 1, mt: 1 }}>
+          <Box sx={{ display: 'flex', gap: 1, mt: 1.25, flexWrap: 'wrap' }}>
             <Button
               size="small"
               variant="outlined"
               startIcon={isLoadingThisDocument ? <CircularProgress color="inherit" size={14} /> : <Visibility />}
               disabled={documentsLoading}
               onClick={() => handlePreviewDocument({ ...doc, type })}
+              sx={{ ...pillButtonSx, borderColor: GREEN_UI.borderStrong, color: GREEN_UI.greenDark }}
             >
               {isLoadingThisDocument ? 'Loading…' : 'Preview'}
             </Button>
@@ -1382,6 +1533,7 @@ export default function RecruitmentManagement() {
               startIcon={isLoadingThisDocument ? <CircularProgress color="inherit" size={14} /> : <FileDownload />}
               disabled={documentsLoading}
               onClick={() => handleDownloadDocument({ ...doc, type })}
+              sx={{ ...pillButtonSx, borderColor: GREEN_UI.borderStrong, color: GREEN_UI.greenDark }}
             >
               {isLoadingThisDocument ? 'Loading…' : 'Download'}
             </Button>
@@ -1428,133 +1580,452 @@ export default function RecruitmentManagement() {
   };
 
   return (
-    <Box>
-      <Box
+    <Box
+      sx={{
+        minHeight: '100%',
+        p: { xs: 1.5, sm: 2.25, md: 3 },
+        background: GREEN_UI.pageBg,
+        color: GREEN_UI.text,
+        borderRadius: { xs: 0, md: '32px' },
+      }}
+    >
+      <Paper
+        elevation={0}
         sx={{
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: { xs: 'flex-start', sm: 'center' },
-          flexWrap: 'wrap',
-          gap: 2,
-          mb: 3,
+          ...softCardSx,
+          p: { xs: 2, sm: 2.75, md: 3.25 },
+          mb: 2.5,
+          position: 'relative',
+          overflow: 'hidden',
+          background:
+            'linear-gradient(135deg, rgba(255,255,255,0.98) 0%, rgba(239,250,235,0.96) 60%, rgba(225,248,224,0.94) 100%)',
+          '&:before': {
+            content: '""',
+            position: 'absolute',
+            width: 260,
+            height: 260,
+            borderRadius: '50%',
+            right: -90,
+            top: -110,
+            background: 'rgba(76, 175, 80, 0.12)',
+          },
+          '&:after': {
+            content: '""',
+            position: 'absolute',
+            width: 160,
+            height: 160,
+            borderRadius: '50%',
+            left: { xs: '70%', md: '44%' },
+            bottom: -95,
+            background: 'rgba(174, 222, 144, 0.18)',
+          },
         }}
       >
-        <Box>
-          <Typography
-            variant="h4"
-            gutterBottom
-            fontWeight="bold"
-            sx={{ fontSize: { xs: '1.35rem', sm: '1.75rem', md: '2.125rem' } }}
-          >
-            Recruitment & Application Management
-          </Typography>
-          <Typography variant="body2" color="text.secondary">
-            {isHR
-              ? 'Review applications, check requirements, and schedule interviews'
-              : isGM
-                ? 'Conduct interviews and input final hiring decisions'
-                : 'View job applications'}
-          </Typography>
-        </Box>
+        <Box
+          sx={{
+            position: 'relative',
+            zIndex: 1,
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: { xs: 'flex-start', md: 'center' },
+            flexWrap: 'wrap',
+            gap: 2,
+          }}
+        >
+          <Box sx={{ maxWidth: 720 }}>
+            <Chip
+              icon={<PersonSearch />}
+              label="Recruitment Workspace"
+              size="small"
+              sx={{
+                ...chipIconSx,
+                mb: 1.2,
+                bgcolor: GREEN_UI.greenSoft,
+                color: GREEN_UI.greenDark,
+                fontWeight: 900,
+                borderRadius: 999,
+              }}
+            />
+            <Typography
+              variant="h4"
+              fontWeight={900}
+              sx={{
+                fontSize: { xs: '1.55rem', sm: '2rem', md: '2.35rem' },
+                color: GREEN_UI.text,
+                letterSpacing: '-0.04em',
+                lineHeight: 1.08,
+                mb: 0.75,
+              }}
+            >
+              Recruitment & Application Management
+            </Typography>
+            <Typography variant="body2" sx={{ color: GREEN_UI.muted, maxWidth: 650, lineHeight: 1.7 }}>
+              {isHR
+                ? 'Review applications, verify requirements, schedule interviews, and keep each applicant moving smoothly through the hiring flow.'
+                : isGM
+                  ? 'Review interview-ready applicants and record final hiring decisions in a clean, focused workspace.'
+                  : 'View submitted job applications and their current processing status.'}
+            </Typography>
+          </Box>
 
-        <Box sx={{ display: 'flex', gap: 1 }}>
-          <Tooltip title="Refresh">
-            <span>
-              <IconButton onClick={() => fetchApplications({ silent: true })} disabled={loading || refreshing}>
-                {refreshing ? <CircularProgress size={20} /> : <Sync />}
-              </IconButton>
-            </span>
-          </Tooltip>
+          <Box sx={{ display: 'flex', gap: 1, alignItems: 'center', flexWrap: 'wrap' }}>
+            <Tooltip title="Refresh applications">
+              <span>
+                <Button
+                  variant="contained"
+                  startIcon={refreshing ? <CircularProgress size={16} color="inherit" /> : <Sync />}
+                  onClick={() => fetchApplications({ silent: true })}
+                  disabled={loading || refreshing}
+                  sx={{
+                    ...pillButtonSx,
+                    py: 1.1,
+                    bgcolor: GREEN_UI.green,
+                    boxShadow: '0 12px 24px rgba(58, 168, 101, 0.25)',
+                    '&:hover': { bgcolor: GREEN_UI.greenDark, boxShadow: '0 16px 28px rgba(31, 122, 70, 0.28)' },
+                  }}
+                >
+                  {refreshing ? 'Refreshing…' : 'Refresh'}
+                </Button>
+              </span>
+            </Tooltip>
+          </Box>
         </Box>
-      </Box>
+      </Paper>
+
+      <Grid container spacing={1.5} sx={{ mb: 2.5 }}>
+        {recruitmentStats.map(stat => (
+          <Grid key={stat.label} size={{ xs: 12, sm: 6, md: 3 }}>
+            <Paper
+              elevation={0}
+              sx={{
+                ...softCardSx,
+                p: 2,
+                minHeight: 126,
+                display: 'flex',
+                flexDirection: 'column',
+                justifyContent: 'space-between',
+                transition: 'transform 180ms ease, box-shadow 180ms ease',
+                '&:hover': { transform: 'translateY(-3px)', boxShadow: '0 22px 48px rgba(43, 91, 55, 0.13)' },
+              }}
+            >
+              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 1.5 }}>
+                <Box>
+                  <Typography variant="body2" sx={{ color: GREEN_UI.muted, fontWeight: 800 }}>
+                    {stat.label}
+                  </Typography>
+                  <Typography variant="h4" fontWeight={900} sx={{ color: GREEN_UI.text, mt: 0.5, letterSpacing: '-0.04em' }}>
+                    {stat.value}
+                  </Typography>
+                </Box>
+                <Box
+                  sx={{
+                    width: 42,
+                    height: 42,
+                    borderRadius: '16px',
+                    display: 'grid',
+                    placeItems: 'center',
+                    bgcolor: GREEN_UI.greenSoft,
+                    color: GREEN_UI.greenDark,
+                    flexShrink: 0,
+                  }}
+                >
+                  {stat.icon}
+                </Box>
+              </Box>
+              <Typography variant="caption" sx={{ color: GREEN_UI.muted, mt: 1.2 }}>
+                {stat.caption}
+              </Typography>
+            </Paper>
+          </Grid>
+        ))}
+      </Grid>
 
       {error && (
-        <Alert severity="error" sx={{ mb: 2 }} action={<Button size="small" onClick={() => fetchApplications()}>Retry</Button>}>
+        <Alert
+          severity="error"
+          sx={{ mb: 2, borderRadius: '18px', border: `1px solid ${GREEN_UI.border}` }}
+          action={
+            <Button size="small" onClick={() => fetchApplications()} sx={{ ...pillButtonSx }}>
+              Retry
+            </Button>
+          }
+        >
           {error}
         </Alert>
       )}
 
-      <Paper sx={{ mb: 2 }}>
-        <Tabs value={tab} onChange={(_, value) => setTab(value)} variant="scrollable" scrollButtons="auto">
+      <Paper elevation={0} sx={{ ...softCardSx, mb: 2, p: { xs: 0.75, sm: 1 }, overflow: 'hidden' }}>
+        <Tabs
+          value={tab}
+          onChange={(_, value) => setTab(value)}
+          variant="scrollable"
+          scrollButtons="auto"
+          sx={{
+            minHeight: 52,
+            '& .MuiTabs-indicator': { display: 'none' },
+            '& .MuiTab-root': {
+              minHeight: 42,
+              mx: 0.35,
+              my: 0.5,
+              px: 1.6,
+              borderRadius: '999px',
+              textTransform: 'none',
+              fontWeight: 800,
+              color: GREEN_UI.muted,
+              transition: 'all 180ms ease',
+            },
+            '& .Mui-selected': {
+              bgcolor: GREEN_UI.greenSoft,
+              color: `${GREEN_UI.greenDark} !important`,
+              boxShadow: 'inset 0 0 0 1px rgba(58, 168, 101, 0.18)',
+            },
+          }}
+        >
           {tabData.map((tabItem, index) => (
             <Tab key={tabItem.label} label={`${tabItem.label} (${tabItem.data.length})`} value={index} />
           ))}
         </Tabs>
       </Paper>
 
-      <TableContainer component={Paper} sx={{ overflowX: 'auto' }}>
-        {refreshing && !loading && <LinearProgress />}
+      <TableContainer
+        component={Paper}
+        elevation={0}
+        sx={{
+          ...softCardSx,
+          overflowX: 'auto',
+          '&::-webkit-scrollbar': { height: 10 },
+          '&::-webkit-scrollbar-thumb': { bgcolor: '#cfe8d1', borderRadius: 999 },
+        }}
+      >
+        {refreshing && !loading && <LinearProgress sx={{ bgcolor: '#edf7eb', '& .MuiLinearProgress-bar': { bgcolor: GREEN_UI.green } }} />}
         {loading ? (
-          <Box sx={{ display: 'flex', justifyContent: 'center', py: 6, gap: 2 }}>
-            <CircularProgress size={28} />
-            <Typography color="text.secondary">Loading…</Typography>
+          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', py: 7, gap: 2 }}>
+            <CircularProgress size={28} sx={{ color: GREEN_UI.green }} />
+            <Typography sx={{ color: GREEN_UI.muted, fontWeight: 700 }}>Loading applications…</Typography>
           </Box>
         ) : (
-          <Table sx={{ minWidth: 750 }}>
+          <Table sx={{ minWidth: 850, '& th, & td': { borderColor: 'rgba(139, 184, 144, 0.16)' } }}>
             <TableHead>
-              <TableRow>
-                <TableCell sx={{ whiteSpace: 'nowrap' }}>App ID</TableCell>
-                <TableCell sx={{ whiteSpace: 'nowrap' }}>Applicant Name</TableCell>
-                <TableCell sx={{ whiteSpace: 'nowrap' }}>Position</TableCell>
-                <TableCell sx={{ whiteSpace: 'nowrap' }}>Date Applied</TableCell>
-                <TableCell sx={{ whiteSpace: 'nowrap' }}>Interview Date</TableCell>
-                <TableCell sx={{ whiteSpace: 'nowrap' }}>Status</TableCell>
-                <TableCell sx={{ whiteSpace: 'nowrap', minWidth: 140 }}>Actions</TableCell>
+              <TableRow
+                sx={{
+                  background: 'linear-gradient(90deg, #eff8eb 0%, #f8fcf5 100%)',
+                  '& th': {
+                    color: GREEN_UI.greenDark,
+                    fontWeight: 900,
+                    fontSize: '0.78rem',
+                    letterSpacing: '0.02em',
+                    textTransform: 'uppercase',
+                    py: 1.7,
+                  },
+                }}
+              >
+                <TableCell sx={{ whiteSpace: 'nowrap' }}>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75 }}>
+                    App ID
+                  </Box>
+                </TableCell>
+                <TableCell sx={{ whiteSpace: 'nowrap' }}>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75 }}>
+                    Applicant Name
+                  </Box>
+                </TableCell>
+                <TableCell sx={{ whiteSpace: 'nowrap' }}>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75 }}>
+                    Position
+                  </Box>
+                </TableCell>
+                <TableCell sx={{ whiteSpace: 'nowrap' }}>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75 }}>
+                    Date Applied
+                  </Box>
+                </TableCell>
+                <TableCell sx={{ whiteSpace: 'nowrap' }}>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75 }}>
+                    Interview Date
+                  </Box>
+                </TableCell>
+                <TableCell sx={{ whiteSpace: 'nowrap' }}>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75 }}>
+                    Status
+                  </Box>
+                </TableCell>
+                <TableCell sx={{ whiteSpace: 'nowrap', minWidth: 210 }}>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75 }}>
+                    <TuneOutlined sx={tableHeaderIconSx} />
+                    Actions
+                  </Box>
+                </TableCell>
               </TableRow>
             </TableHead>
             <TableBody>
               {displayData.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={7} align="center" sx={{ py: 5, color: 'text.secondary' }}>
-                    No applications in this category.
+                  <TableCell colSpan={7} align="center" sx={{ py: 7 }}>
+                    <Box sx={{ maxWidth: 360, mx: 'auto' }}>
+                      <Box
+                        sx={{
+                          width: 54,
+                          height: 54,
+                          borderRadius: '20px',
+                          display: 'grid',
+                          placeItems: 'center',
+                          mx: 'auto',
+                          mb: 1.5,
+                          bgcolor: GREEN_UI.greenSoft,
+                          color: GREEN_UI.greenDark,
+                        }}
+                      >
+                        <InsertDriveFile />
+                      </Box>
+                      <Typography fontWeight={900} sx={{ color: GREEN_UI.text }}>
+                        No applications in this category
+                      </Typography>
+                      <Typography variant="body2" sx={{ color: GREEN_UI.muted, mt: 0.5 }}>
+                        Once applicants reach this status, they will appear here automatically.
+                      </Typography>
+                    </Box>
                   </TableCell>
                 </TableRow>
               ) : (
                 displayData.map(app => (
-                  <TableRow key={app.id} hover>
+                  <TableRow
+                    key={app.id}
+                    hover
+                    sx={{
+                      transition: 'background 160ms ease',
+                      '&:hover': { bgcolor: 'rgba(231, 247, 229, 0.52)' },
+                      '& td': { py: 1.55, color: GREEN_UI.text },
+                    }}
+                  >
                     <TableCell>
-                      <Chip label={app.id} size="small" variant="outlined" />
+                      <Chip
+                        icon={<BadgeOutlined />}
+                        label={app.id}
+                        size="small"
+                        variant="outlined"
+                        sx={{
+                          ...chipIconSx,
+                          borderRadius: 999,
+                          fontWeight: 800,
+                          bgcolor: '#f8fcf5',
+                          borderColor: GREEN_UI.border,
+                          color: GREEN_UI.greenDark,
+                        }}
+                      />
                     </TableCell>
-                    <TableCell sx={{ whiteSpace: 'nowrap' }}>{app.name}</TableCell>
-                    <TableCell sx={{ whiteSpace: 'nowrap' }}>{app.position}</TableCell>
-                    <TableCell sx={{ whiteSpace: 'nowrap' }}>{formatDateTime(app.dateApplied)}</TableCell>
                     <TableCell sx={{ whiteSpace: 'nowrap' }}>
-                      {formatInterviewDateTime(app.interviewDate, app.interviewTime)}
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                        <Box
+                          sx={{
+                            width: 34,
+                            height: 34,
+                            borderRadius: '14px',
+                            display: 'grid',
+                            placeItems: 'center',
+                            bgcolor: GREEN_UI.greenSoft,
+                            color: GREEN_UI.greenDark,
+                            flexShrink: 0,
+                            fontWeight: 900,
+                            fontSize: '0.82rem',
+                          }}
+                        >
+                          {app.name?.charAt(0)?.toUpperCase() || 'A'}
+                        </Box>
+                        <Typography fontWeight={800} sx={{ color: GREEN_UI.text }}>
+                          {app.name}
+                        </Typography>
+                      </Box>
+                    </TableCell>
+                    <TableCell sx={{ whiteSpace: 'nowrap' }}>
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75 }}>
+                        <WorkOutline sx={{ fontSize: 17, color: GREEN_UI.greenDark }} />
+                        <Typography variant="body2" sx={{ color: GREEN_UI.muted, fontWeight: 700 }}>
+                          {app.position || '—'}
+                        </Typography>
+                      </Box>
+                    </TableCell>
+                    <TableCell sx={{ whiteSpace: 'nowrap' }}>
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75, color: GREEN_UI.muted, fontWeight: 700 }}>
+                        <CalendarToday sx={{ fontSize: 17, color: GREEN_UI.greenDark }} />
+                        {formatDateTime(app.dateApplied)}
+                      </Box>
+                    </TableCell>
+                    <TableCell sx={{ whiteSpace: 'nowrap' }}>
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75, color: GREEN_UI.muted, fontWeight: 700 }}>
+                        <EventAvailable sx={{ fontSize: 17, color: GREEN_UI.greenDark }} />
+                        {formatInterviewDateTime(app.interviewDate, app.interviewTime)}
+                      </Box>
                     </TableCell>
                     <TableCell>
-                      <Chip label={app.status} color={STATUS_COLORS[app.status] ?? 'default'} size="small" sx={{ whiteSpace: 'nowrap' }} />
+                      <Chip
+                        icon={<TaskAlt />}
+                        label={app.status}
+                        size="small"
+                        variant="outlined"
+                        sx={{ ...chipIconSx, ...statusChipSx(app.status), whiteSpace: 'nowrap' }}
+                      />
                     </TableCell>
                     <TableCell sx={{ whiteSpace: 'nowrap' }}>
-                      <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5, alignItems: 'flex-start' }}>
+                      <Box sx={{ display: 'flex', gap: 0.75, alignItems: 'center', flexWrap: 'wrap' }}>
                         <Chip
+                          icon={<Visibility />}
                           label="View Profile"
                           size="small"
                           clickable
                           variant="outlined"
-                          color="primary"
                           onClick={() => openView(app)}
-                          sx={{ minWidth: 110 }}
+                          sx={{
+                            ...chipIconSx,
+                            minWidth: 110,
+                            justifyContent: 'center',
+                            borderRadius: 999,
+                            fontWeight: 800,
+                            borderColor: GREEN_UI.borderStrong,
+                            color: GREEN_UI.greenDark,
+                            bgcolor: '#ffffff',
+                            '&:hover': { bgcolor: GREEN_UI.greenSoft },
+                          }}
                         />
                         {isGM && app.status === 'For Interview' && (
                           <Chip
+                            icon={<HowToReg />}
                             label="Hiring Decision"
                             size="small"
                             clickable
                             variant="outlined"
-                            color="success"
                             onClick={() => openView(app)}
-                            sx={{ minWidth: 110 }}
+                            sx={{
+                              ...chipIconSx,
+                              minWidth: 122,
+                              justifyContent: 'center',
+                              borderRadius: 999,
+                              fontWeight: 800,
+                              borderColor: '#a9dfb6',
+                              color: GREEN_UI.greenDark,
+                              bgcolor: '#f4fbf5',
+                              '&:hover': { bgcolor: '#e5f8e9' },
+                            }}
                           />
                         )}
                         {(isHR || isGM) && (
                           <Chip
+                            icon={<DeleteOutline />}
                             label="Delete"
                             size="small"
                             clickable
                             variant="outlined"
-                            color="error"
                             onClick={() => handleDelete(app.id)}
-                            sx={{ minWidth: 110 }}
+                            sx={{
+                              ...chipIconSx,
+                              minWidth: 76,
+                              justifyContent: 'center',
+                              borderRadius: 999,
+                              fontWeight: 800,
+                              borderColor: '#efb8b8',
+                              color: '#9c2f2f',
+                              bgcolor: '#fffafa',
+                              '&:hover': { bgcolor: '#fdeaea' },
+                            }}
                           />
                         )}
                       </Box>
@@ -1572,15 +2043,58 @@ export default function RecruitmentManagement() {
         onClose={closeViewDialog}
         maxWidth="md"
         fullWidth
+        PaperProps={{
+          sx: {
+            borderRadius: { xs: '22px', sm: '30px' },
+            overflow: 'hidden',
+            border: `1px solid ${GREEN_UI.border}`,
+            background: '#fbfff9',
+            boxShadow: '0 28px 70px rgba(27, 73, 37, 0.18)',
+          },
+        }}
       >
-        <DialogTitle fontWeight={700}>
+        <DialogTitle
+          fontWeight={900}
+          sx={{
+            px: { xs: 2, sm: 3 },
+            py: 2.25,
+            background: 'linear-gradient(135deg, #ffffff 0%, #eef9ea 100%)',
+            borderBottom: `1px solid ${GREEN_UI.border}`,
+          }}
+        >
           <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 1 }}>
-            <span>Application — {selectedApp?.id}</span>
-            {selectedApp && <Chip label={selectedApp.status} color={STATUS_COLORS[selectedApp.status] ?? 'default'} />}
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+              <Box
+                sx={{
+                  width: 34,
+                  height: 34,
+                  borderRadius: '14px',
+                  display: 'grid',
+                  placeItems: 'center',
+                  bgcolor: GREEN_UI.greenSoft,
+                  color: GREEN_UI.greenDark,
+                  flexShrink: 0,
+                }}
+              >
+                <PersonSearch fontSize="small" />
+              </Box>
+              <Typography fontWeight={900} sx={{ color: GREEN_UI.text }}>
+                Application — {selectedApp?.id}
+              </Typography>
+            </Box>
+            {selectedApp && (
+              <Chip
+                icon={<TaskAlt />}
+                label={selectedApp.status}
+                size="small"
+                variant="outlined"
+                sx={{ ...chipIconSx, ...statusChipSx(selectedApp.status) }}
+              />
+            )}
           </Box>
         </DialogTitle>
 
-        <DialogContent>
+        <DialogContent sx={{ px: { xs: 2, sm: 3 }, py: 2.5, bgcolor: '#fbfff9' }}>
           {profileLoading && (
             <Box sx={{ mb: 2 }}>
               <LinearProgress sx={{ mb: 1 }} />
@@ -1705,8 +2219,8 @@ export default function RecruitmentManagement() {
                   {characterReferences.length > 0 ? (
                     characterReferences.map((reference: any, index: number) => (
                       <Grid key={`reference-${index}`} size={12}>
-                        <Paper elevation={0} sx={{ p: 2, borderRadius: 2, border: '1px solid', borderColor: 'divider' }}>
-                          <Typography fontWeight={700} sx={{ mb: 1 }}>
+                        <Paper elevation={0} sx={{ p: 2, ...innerCardSx }}>
+                          <Typography fontWeight={900} sx={{ mb: 1, color: GREEN_UI.greenDark }}>
                             Character Reference {index + 1}
                           </Typography>
                           <Grid container spacing={2}>
@@ -1759,6 +2273,7 @@ export default function RecruitmentManagement() {
                           value={gmForm.interviewFeedback}
                           onChange={event => setGmForm({ ...gmForm, interviewFeedback: event.target.value })}
                           disabled={saving}
+                          sx={softTextFieldSx}
                         />
                       </Grid>
                     </>
@@ -1768,17 +2283,26 @@ export default function RecruitmentManagement() {
             })()}
         </DialogContent>
 
-        <DialogActions sx={{ px: 3, pb: 2, gap: 1, flexWrap: 'wrap' }}>
+        <DialogActions
+          sx={{
+            px: { xs: 2, sm: 3 },
+            py: 2,
+            gap: 1,
+            flexWrap: 'wrap',
+            bgcolor: '#ffffff',
+            borderTop: `1px solid ${GREEN_UI.border}`,
+          }}
+        >
           {selectedApp && (isHR || isGM) && (
             <TextField
               select
               size="small"
-              variant="standard"
+              variant="outlined"
               label="Status Update"
               value={selectedApp.status}
               onChange={event => handleUpdateStatus(selectedApp.id, event.target.value as AppStatus)}
               disabled={saving}
-              sx={{ minWidth: 190, mr: 'auto' }}
+              sx={{ minWidth: 210, mr: 'auto', ...softTextFieldSx }}
             >
               {ALL_STATUSES.map(status => (
                 <MenuItem key={status} value={status}>
@@ -1790,6 +2314,12 @@ export default function RecruitmentManagement() {
           {selectedApp && (isHR || isGM) && (
             <Button
               variant={viewEditMode ? 'contained' : 'outlined'}
+              sx={{
+                ...pillButtonSx,
+                ...(viewEditMode
+                  ? { bgcolor: GREEN_UI.green, '&:hover': { bgcolor: GREEN_UI.greenDark } }
+                  : { borderColor: GREEN_UI.borderStrong, color: GREEN_UI.greenDark }),
+              }}
               onClick={async () => {
                 if (!viewEditMode) {
                   setEditAppForm(selectedApp);
@@ -1812,12 +2342,13 @@ export default function RecruitmentManagement() {
                 setViewEditMode(false);
               }}
               disabled={saving}
+              sx={{ ...pillButtonSx }}
             >
               Cancel Edit
             </Button>
           )}
 
-          <Button onClick={closeViewDialog}>Close</Button>
+          <Button onClick={closeViewDialog} sx={{ ...pillButtonSx }}>Close</Button>
 
           {isHR && selectedApp?.status === 'For Interview' && (
               <Button
@@ -1825,6 +2356,7 @@ export default function RecruitmentManagement() {
                 color="info"
                 startIcon={<CalendarMonth />}
                 disabled={saving}
+                sx={{ ...pillButtonSx, borderColor: '#b7dff7', color: '#1d6f9c' }}
                 onClick={() => {
                   setInterviewDialog(true);
                   setIForm({
@@ -1847,6 +2379,7 @@ export default function RecruitmentManagement() {
                 startIcon={<CancelOutlined />}
                 onClick={() => handleHiringDecision(selectedApp.id, 'Not Qualified')}
                 disabled={saving}
+                sx={{ ...pillButtonSx }}
               >
                 Not Qualified
               </Button>
@@ -1856,6 +2389,7 @@ export default function RecruitmentManagement() {
                 startIcon={<TaskAlt />}
                 onClick={() => handleHiringDecision(selectedApp.id, 'Hired')}
                 disabled={saving}
+                sx={{ ...pillButtonSx, bgcolor: GREEN_UI.green, '&:hover': { bgcolor: GREEN_UI.greenDark } }}
               >
                 Hire Applicant
               </Button>
@@ -1869,11 +2403,30 @@ export default function RecruitmentManagement() {
         onClose={() => setPreviewDoc(null)}
         maxWidth="lg"
         fullWidth
-        PaperProps={{ sx: { height: '90vh', display: 'flex', flexDirection: 'column' } }}
+        PaperProps={{
+          sx: {
+            height: '90vh',
+            display: 'flex',
+            flexDirection: 'column',
+            borderRadius: { xs: '18px', sm: '28px' },
+            overflow: 'hidden',
+            border: `1px solid ${GREEN_UI.border}`,
+            boxShadow: '0 28px 70px rgba(27, 73, 37, 0.18)',
+          },
+        }}
       >
         <DialogTitle
           fontWeight={700}
-          sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', pb: 1, gap: 1 }}
+          sx={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            gap: 1,
+            px: { xs: 2, sm: 3 },
+            py: 2,
+            background: 'linear-gradient(135deg, #ffffff 0%, #eef9ea 100%)',
+            borderBottom: `1px solid ${GREEN_UI.border}`,
+          }}
         >
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, minWidth: 0 }}>
             {previewDoc && <DocIcon name={previewDoc.name} type={previewDoc.type} />}
@@ -1886,12 +2439,12 @@ export default function RecruitmentManagement() {
             size="small"
             startIcon={<FileDownload />}
             onClick={() => previewDoc && downloadFile(previewDoc.data, previewDoc.name)}
-            sx={{ flexShrink: 0 }}
+            sx={{ flexShrink: 0, ...pillButtonSx, borderColor: GREEN_UI.borderStrong, color: GREEN_UI.greenDark }}
           >
             Download
           </Button>
         </DialogTitle>
-        <DialogContent sx={{ flex: 1, overflow: 'hidden', p: 1, display: 'flex', flexDirection: 'column' }}>
+        <DialogContent sx={{ flex: 1, overflow: 'hidden', p: 1.5, display: 'flex', flexDirection: 'column', bgcolor: '#fbfff9' }}>
           {previewDoc &&
             (() => {
               const isPdf = previewDoc.type === 'application/pdf' || previewDoc.name.toLowerCase().endsWith('.pdf');
@@ -1917,8 +2470,9 @@ export default function RecruitmentManagement() {
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'center',
-                      bgcolor: '#f0f0f0',
-                      borderRadius: 2,
+                      bgcolor: '#f6fbf4',
+                      borderRadius: '20px',
+                      border: `1px solid ${GREEN_UI.border}`,
                     }}
                   >
                     <img
@@ -1945,25 +2499,51 @@ export default function RecruitmentManagement() {
                   <Typography variant="body2" color="text.disabled">
                     ({previewDoc.type || 'unknown type'})
                   </Typography>
-                  <Button variant="contained" startIcon={<FileDownload />} onClick={() => downloadFile(previewDoc.data, previewDoc.name)}>
+                  <Button
+                    variant="contained"
+                    startIcon={<FileDownload />}
+                    onClick={() => downloadFile(previewDoc.data, previewDoc.name)}
+                    sx={{ ...pillButtonSx, bgcolor: GREEN_UI.green, '&:hover': { bgcolor: GREEN_UI.greenDark } }}
+                  >
                     Download to view
                   </Button>
                 </Box>
               );
             })()}
         </DialogContent>
-        <DialogActions sx={{ px: 3, pb: 2 }}>
-          <Button onClick={() => setPreviewDoc(null)}>Close</Button>
+        <DialogActions sx={{ px: 3, py: 2, borderTop: `1px solid ${GREEN_UI.border}`, bgcolor: '#ffffff' }}>
+          <Button onClick={() => setPreviewDoc(null)} sx={{ ...pillButtonSx }}>Close</Button>
         </DialogActions>
       </Dialog>
 
-      <Dialog open={interviewDialog} onClose={() => setInterviewDialog(false)} maxWidth="sm" fullWidth>
-        <DialogTitle fontWeight={700}>
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-            <Event color="info" /> Schedule Interview — {selectedApp?.name}
+      <Dialog
+        open={interviewDialog}
+        onClose={() => setInterviewDialog(false)}
+        maxWidth="sm"
+        fullWidth
+        PaperProps={{
+          sx: {
+            borderRadius: { xs: '22px', sm: '28px' },
+            overflow: 'hidden',
+            border: `1px solid ${GREEN_UI.border}`,
+            boxShadow: '0 28px 70px rgba(27, 73, 37, 0.18)',
+          },
+        }}
+      >
+        <DialogTitle
+          fontWeight={900}
+          sx={{
+            px: { xs: 2, sm: 3 },
+            py: 2.25,
+            background: 'linear-gradient(135deg, #ffffff 0%, #eef9ea 100%)',
+            borderBottom: `1px solid ${GREEN_UI.border}`,
+          }}
+        >
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, color: GREEN_UI.greenDark }}>
+            <Event /> Schedule Interview — {selectedApp?.name}
           </Box>
         </DialogTitle>
-        <DialogContent>
+        <DialogContent sx={{ px: { xs: 2, sm: 3 }, py: 2.5, bgcolor: '#fbfff9' }}>
           <Grid container spacing={2} sx={{ mt: 0.5 }}>
             <Grid size={{ xs: 12, md: 6 }}>
               <TextField
@@ -1974,7 +2554,8 @@ export default function RecruitmentManagement() {
                 onChange={event => setIForm({ ...iForm, interviewDate: event.target.value })}
                 InputLabelProps={{ shrink: true }}
                 required
-              />
+                              sx={softTextFieldSx}
+/>
             </Grid>
             <Grid size={{ xs: 12, md: 6 }}>
               <TextField
@@ -1984,7 +2565,8 @@ export default function RecruitmentManagement() {
                 value={iForm.interviewTime}
                 onChange={event => setIForm({ ...iForm, interviewTime: event.target.value })}
                 InputLabelProps={{ shrink: true }}
-              />
+                              sx={softTextFieldSx}
+/>
             </Grid>
             <Grid size={12}>
               <TextField
@@ -1992,7 +2574,8 @@ export default function RecruitmentManagement() {
                 label="Interview Location"
                 value={iForm.interviewLocation}
                 onChange={event => setIForm({ ...iForm, interviewLocation: event.target.value })}
-              />
+                              sx={softTextFieldSx}
+/>
             </Grid>
             <Grid size={12}>
               <TextField
@@ -2003,31 +2586,54 @@ export default function RecruitmentManagement() {
                 value={iForm.interviewNotes}
                 onChange={event => setIForm({ ...iForm, interviewNotes: event.target.value })}
                 placeholder="e.g. Please bring original documents and 2 valid IDs."
-              />
+                              sx={softTextFieldSx}
+/>
             </Grid>
           </Grid>
         </DialogContent>
-        <DialogActions sx={{ px: 3, pb: 2 }}>
-          <Button onClick={() => setInterviewDialog(false)}>Cancel</Button>
+        <DialogActions sx={{ px: 3, py: 2, borderTop: `1px solid ${GREEN_UI.border}`, bgcolor: '#ffffff' }}>
+          <Button onClick={() => setInterviewDialog(false)} sx={{ ...pillButtonSx }}>Cancel</Button>
           <Button
             variant="contained"
             color="info"
             startIcon={saving ? <CircularProgress size={16} color="inherit" /> : <CalendarMonth />}
             onClick={handleScheduleInterview}
             disabled={saving || !iForm.interviewDate}
+            sx={{ ...pillButtonSx, bgcolor: GREEN_UI.green, '&:hover': { bgcolor: GREEN_UI.greenDark } }}
           >
             {saving ? 'Saving…' : 'Confirm Interview Schedule'}
           </Button>
         </DialogActions>
       </Dialog>
 
-      <Dialog open={editReqDialog} onClose={() => setEditReqDialog(false)} maxWidth="sm" fullWidth>
-        <DialogTitle fontWeight={700}>
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-            <EditNote color="primary" /> Edit Requirements Checklist
+      <Dialog
+        open={editReqDialog}
+        onClose={() => setEditReqDialog(false)}
+        maxWidth="sm"
+        fullWidth
+        PaperProps={{
+          sx: {
+            borderRadius: { xs: '22px', sm: '28px' },
+            overflow: 'hidden',
+            border: `1px solid ${GREEN_UI.border}`,
+            boxShadow: '0 28px 70px rgba(27, 73, 37, 0.18)',
+          },
+        }}
+      >
+        <DialogTitle
+          fontWeight={900}
+          sx={{
+            px: { xs: 2, sm: 3 },
+            py: 2.25,
+            background: 'linear-gradient(135deg, #ffffff 0%, #eef9ea 100%)',
+            borderBottom: `1px solid ${GREEN_UI.border}`,
+          }}
+        >
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, color: GREEN_UI.greenDark }}>
+            <EditNote /> Edit Requirements Checklist
           </Box>
         </DialogTitle>
-        <DialogContent>
+        <DialogContent sx={{ px: { xs: 2, sm: 3 }, py: 2.5, bgcolor: '#fbfff9' }}>
           <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
             Standard requirements are fixed. You may add custom requirements below.
           </Typography>
@@ -2089,7 +2695,8 @@ export default function RecruitmentManagement() {
                   setNewReqText('');
                 }
               }}
-            />
+                          sx={softTextFieldSx}
+/>
             <Button
               variant="contained"
               startIcon={<AddCircle />}
@@ -2101,15 +2708,19 @@ export default function RecruitmentManagement() {
                 });
                 setNewReqText('');
               }}
-              sx={{ flexShrink: 0 }}
+              sx={{ flexShrink: 0, ...pillButtonSx, bgcolor: GREEN_UI.green, '&:hover': { bgcolor: GREEN_UI.greenDark } }}
             >
               Add
             </Button>
           </Box>
         </DialogContent>
-        <DialogActions sx={{ px: 3, pb: 2 }}>
-          <Button onClick={() => setEditReqDialog(false)}>Close</Button>
-          <Button variant="contained" onClick={() => setEditReqDialog(false)}>
+        <DialogActions sx={{ px: 3, py: 2, borderTop: `1px solid ${GREEN_UI.border}`, bgcolor: '#ffffff' }}>
+          <Button onClick={() => setEditReqDialog(false)} sx={{ ...pillButtonSx }}>Close</Button>
+          <Button
+            variant="contained"
+            onClick={() => setEditReqDialog(false)}
+            sx={{ ...pillButtonSx, bgcolor: GREEN_UI.green, '&:hover': { bgcolor: GREEN_UI.greenDark } }}
+          >
             Done
           </Button>
         </DialogActions>

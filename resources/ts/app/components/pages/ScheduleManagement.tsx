@@ -3,14 +3,29 @@ import {
   Box, Typography, Paper, Button, Table, TableBody, TableCell,
   TableContainer, TableHead, TableRow, Dialog, DialogTitle,
   DialogContent, DialogActions, TextField, MenuItem, Chip, Grid,
-  CircularProgress, Alert, Snackbar, Tooltip, IconButton,
-  Autocomplete, Divider,
+  CircularProgress, Alert, Snackbar, Tooltip,
+  Autocomplete,
 } from '@mui/material';
 import {
-  AddCircleOutline, Sync, TaskAlt, DoneAll, CloudUpload,
-  CancelOutlined, EditOutlined as EditIcon, CheckCircleOutline,
+  AccessTime,
+  AddCircleOutline,
+  AssignmentTurnedIn,
+  CalendarMonth,
+  CancelOutlined,
+  CheckCircleOutline,
+  CloudUpload,
+  DoneAll,
+  EditOutlined as EditIcon,
+  EventAvailable,
+  FilterAlt,
+  InsertDriveFile,
+  PersonOutline,
+  Storefront,
+  Sync,
+  TaskAlt,
+  ViewWeek,
+  WorkOutline,
 } from '@mui/icons-material';
-import { CalendarMonth } from '@mui/icons-material';
 import * as XLSX from 'xlsx';
 import { supabase } from "../../lib/supabaseClient";
 import { OUTLETS, POSITIONS } from '../../lib/constants';
@@ -63,6 +78,105 @@ const SHIFT_PRESETS = [
 ];
 
 const BREAK_TIME_OPTIONS = ['30 minutes', '1 hour', '1 hour 30 minutes', '2 hours'];
+
+const GREEN_UI = {
+  pageBg: 'radial-gradient(circle at top left, rgba(220, 246, 219, 0.95), rgba(248, 252, 245, 0.98) 34%, #f7fbf3 100%)',
+  cardBg: 'rgba(255, 255, 255, 0.92)',
+  cardBgSoft: 'rgba(245, 252, 241, 0.88)',
+  border: 'rgba(139, 184, 144, 0.24)',
+  borderStrong: 'rgba(73, 156, 92, 0.32)',
+  green: '#3aa865',
+  greenDark: '#1f7a46',
+  greenSoft: '#e6f8e9',
+  text: '#1e2d24',
+  muted: '#6c7d70',
+  shadow: '0 20px 55px rgba(43, 91, 55, 0.10)',
+  shadowSoft: '0 12px 28px rgba(43, 91, 55, 0.08)',
+};
+
+const softCardSx = {
+  borderRadius: '26px',
+  border: `1px solid ${GREEN_UI.border}`,
+  background: GREEN_UI.cardBg,
+  boxShadow: GREEN_UI.shadow,
+};
+
+const innerCardSx = {
+  borderRadius: '20px',
+  border: `1px solid ${GREEN_UI.border}`,
+  background: GREEN_UI.cardBgSoft,
+  boxShadow: GREEN_UI.shadowSoft,
+};
+
+const pillButtonSx = {
+  borderRadius: 999,
+  textTransform: 'none',
+  fontWeight: 700,
+  px: 2,
+};
+
+const softTextFieldSx = {
+  '& .MuiOutlinedInput-root': {
+    borderRadius: '16px',
+    backgroundColor: '#fbfef9',
+    transition: 'all 180ms ease',
+    '& fieldset': { borderColor: GREEN_UI.border },
+    '&:hover fieldset': { borderColor: GREEN_UI.borderStrong },
+    '&.Mui-focused fieldset': { borderColor: GREEN_UI.green, borderWidth: 1.5 },
+    '&.Mui-disabled': { backgroundColor: '#f6fbf4' },
+  },
+  '& .MuiInputLabel-root': { color: GREEN_UI.muted },
+  '& .MuiInputBase-input.Mui-disabled': { WebkitTextFillColor: GREEN_UI.text },
+};
+
+const statusChipSx = (status: Schedule['status']) => {
+  const styles: Record<Schedule['status'], { bg: string; color: string; border: string }> = {
+    Draft: { bg: '#f4f7f3', color: '#5f6e63', border: '#dce8da' },
+    Published: { bg: '#e9f6ff', color: '#1d6f9c', border: '#b7dff7' },
+    Confirmed: { bg: '#e5f8e9', color: '#217a43', border: '#a9dfb6' },
+    Declined: { bg: '#fdeaea', color: '#9c2f2f', border: '#efb8b8' },
+  };
+
+  const selected = styles[status] ?? styles.Draft;
+
+  return {
+    bgcolor: selected.bg,
+    color: selected.color,
+    borderColor: selected.border,
+    fontWeight: 800,
+    borderRadius: 999,
+    '& .MuiChip-label': { px: 1.25 },
+  };
+};
+
+const actionChipSx = (tone: 'primary' | 'success' | 'danger' | 'neutral' = 'primary') => {
+  const styles = {
+    primary: { border: GREEN_UI.borderStrong, color: GREEN_UI.greenDark, bg: '#ffffff', hover: GREEN_UI.greenSoft },
+    success: { border: '#a9dfb6', color: GREEN_UI.greenDark, bg: '#f4fbf5', hover: '#e5f8e9' },
+    danger: { border: '#efb8b8', color: '#9c2f2f', bg: '#fffafa', hover: '#fdeaea' },
+    neutral: { border: GREEN_UI.border, color: GREEN_UI.muted, bg: '#ffffff', hover: '#f4f8f2' },
+  }[tone];
+
+  return {
+    minWidth: 110,
+    justifyContent: 'center',
+    borderRadius: 999,
+    fontWeight: 800,
+    borderColor: styles.border,
+    color: styles.color,
+    bgcolor: styles.bg,
+    '&:hover': { bgcolor: styles.hover },
+  };
+};
+
+const outletChipSx = {
+  borderRadius: 999,
+  fontWeight: 800,
+  bgcolor: '#f8fcf5',
+  borderColor: GREEN_UI.border,
+  color: GREEN_UI.greenDark,
+};
+
 
 const getWeekRange = (offsetWeeks: number = 0): string => {
   const today = new Date();
@@ -617,180 +731,555 @@ const scheduleId =
     }
   };
 
+  const scheduleStats = [
+    {
+      label: 'Total Schedules',
+      value: schedules.length,
+      caption: 'All loaded weekly schedule records.',
+      icon: <ViewWeek fontSize="small" />,
+    },
+    {
+      label: 'Draft',
+      value: schedules.filter(s => s.status === 'Draft').length,
+      caption: 'Schedules still waiting to be published.',
+      icon: <EditIcon fontSize="small" />,
+    },
+    {
+      label: 'Published',
+      value: schedules.filter(s => s.status === 'Published').length,
+      caption: 'Schedules visible for employee confirmation.',
+      icon: <EventAvailable fontSize="small" />,
+    },
+    {
+      label: 'Confirmed',
+      value: schedules.filter(s => s.status === 'Confirmed').length,
+      caption: 'Schedules already acknowledged by employees.',
+      icon: <DoneAll fontSize="small" />,
+    },
+  ];
+
   return (
-    <Box>
-      {/* ── Page header ──────────────────────────────────────────────────── */}
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: { xs: 'flex-start', sm: 'center' }, flexWrap: 'wrap', gap: 2, mb: 3 }}>
-        <Box>
-          <Typography variant="h4" gutterBottom fontWeight="bold" sx={{ fontSize: { xs: '1.35rem', sm: '1.75rem', md: '2.125rem' } }}>
-            Employee Schedule Management
-          </Typography>
-        </Box>
-        <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
-          <Tooltip title="Refresh"><span><IconButton onClick={fetchSchedules} disabled={loading}><Sync /></IconButton></span></Tooltip>
-          {canPublish && (
-            <Button variant="contained" startIcon={<AddCircleOutline />} onClick={() => { setForm(EMPTY); setOpenDialog(true);}} sx={{ flexShrink: 0 }}>
-              Create Schedule
-            </Button>
-          )}
-          {canPublish && (
-            <Button variant="contained" startIcon={<CloudUpload />} onClick={() => excelRef.current?.click()} sx={{ flexShrink: 0 }}>
-              Import Excel
-            </Button>
-          )}
-          <input ref={excelRef} type="file" accept=".xlsx, .xls" style={{ display: 'none' }} onChange={handleExcelImport} />
-        </Box>
-      </Box>
+    <Box
+      sx={{
+        minHeight: '100%',
+        p: { xs: 1.5, sm: 2.25, md: 3 },
+        background: GREEN_UI.pageBg,
+        color: GREEN_UI.text,
+        borderRadius: { xs: 0, md: '32px' },
+      }}
+    >
+      <Paper
+        elevation={0}
+        sx={{
+          ...softCardSx,
+          p: { xs: 2, sm: 2.75, md: 3.25 },
+          mb: 2.5,
+          position: 'relative',
+          overflow: 'hidden',
+          background:
+            'linear-gradient(135deg, rgba(255,255,255,0.98) 0%, rgba(239,250,235,0.96) 60%, rgba(225,248,224,0.94) 100%)',
+          '&:before': {
+            content: '""',
+            position: 'absolute',
+            width: 260,
+            height: 260,
+            borderRadius: '50%',
+            right: -90,
+            top: -110,
+            background: 'rgba(76, 175, 80, 0.12)',
+          },
+          '&:after': {
+            content: '""',
+            position: 'absolute',
+            width: 160,
+            height: 160,
+            borderRadius: '50%',
+            left: { xs: '70%', md: '44%' },
+            bottom: -95,
+            background: 'rgba(174, 222, 144, 0.18)',
+          },
+        }}
+      >
+        <Box
+          sx={{
+            position: 'relative',
+            zIndex: 1,
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: { xs: 'flex-start', md: 'center' },
+            flexWrap: 'wrap',
+            gap: 2,
+          }}
+        >
+          <Box sx={{ maxWidth: 720 }}>
+            <Chip
+              icon={<CalendarMonth sx={{ fontSize: '0.9rem !important' }} />}
+              label="Schedule Workspace"
+              size="small"
+              sx={{
+                mb: 1.2,
+                bgcolor: GREEN_UI.greenSoft,
+                color: GREEN_UI.greenDark,
+                fontWeight: 900,
+                borderRadius: 999,
+                '& .MuiChip-icon': { color: GREEN_UI.greenDark },
+              }}
+            />
+            <Typography
+              variant="h4"
+              fontWeight={900}
+              sx={{
+                fontSize: { xs: '1.55rem', sm: '2rem', md: '2.35rem' },
+                color: GREEN_UI.text,
+                letterSpacing: '-0.04em',
+                lineHeight: 1.08,
+                mb: 0.75,
+              }}
+            >
+              Employee Schedule Management
+            </Typography>
+            <Typography variant="body2" sx={{ color: GREEN_UI.muted, maxWidth: 650, lineHeight: 1.7 }}>
+              {canPublish
+                ? 'Create weekly schedules, publish them for employee confirmation, and manage schedule revisions in one clean workspace.'
+                : 'View your published weekly schedules and confirm or decline them when needed.'}
+            </Typography>
+          </Box>
 
-      {error &&
-        <Alert severity="error" sx={{ mb: 2 }} action={<Button size="small" onClick={fetchSchedules}>Retry</Button>}>{error}</Alert>
-      }
+          <Box sx={{ display: 'flex', gap: 1, alignItems: 'center', flexWrap: 'wrap' }}>
+            <Tooltip title="Refresh schedules">
+              <span>
+                <Button
+                  variant="contained"
+                  startIcon={loading ? <CircularProgress size={16} color="inherit" /> : <Sync />}
+                  onClick={fetchSchedules}
+                  disabled={loading}
+                  sx={{
+                    ...pillButtonSx,
+                    py: 1.1,
+                    bgcolor: GREEN_UI.green,
+                    boxShadow: '0 12px 24px rgba(58, 168, 101, 0.25)',
+                    '&:hover': { bgcolor: GREEN_UI.greenDark, boxShadow: '0 16px 28px rgba(31, 122, 70, 0.28)' },
+                  }}
+                >
+                  {loading ? 'Refreshing…' : 'Refresh'}
+                </Button>
+              </span>
+            </Tooltip>
+            {canPublish && (
+              <Button
+                variant="contained"
+                startIcon={<AddCircleOutline />}
+                onClick={() => { setForm(EMPTY); setOpenDialog(true); }}
+                sx={{
+                  ...pillButtonSx,
+                  py: 1.1,
+                  bgcolor: GREEN_UI.greenDark,
+                  boxShadow: '0 12px 24px rgba(31, 122, 70, 0.22)',
+                  '&:hover': { bgcolor: '#19693b' },
+                }}
+              >
+                Create Schedule
+              </Button>
+            )}
+            {canPublish && (
+              <Button
+                variant="outlined"
+                startIcon={importingExcel ? <CircularProgress size={16} color="inherit" /> : <CloudUpload />}
+                onClick={() => excelRef.current?.click()}
+                disabled={importingExcel}
+                sx={{
+                  ...pillButtonSx,
+                  py: 1.1,
+                  borderColor: GREEN_UI.borderStrong,
+                  color: GREEN_UI.greenDark,
+                  bgcolor: '#ffffff',
+                  '&:hover': { borderColor: GREEN_UI.green, bgcolor: GREEN_UI.greenSoft },
+                }}
+              >
+                {importingExcel ? 'Importing…' : 'Import Excel'}
+              </Button>
+            )}
+            <input ref={excelRef} type="file" accept=".xlsx, .xls" style={{ display: 'none' }} onChange={handleExcelImport} />
+          </Box>
+        </Box>
+      </Paper>
 
-      {/* ── Outlet Filter ─────────────────────────────────────────────────── */}
-      <Paper sx={{ p: 2, mb: 2 }}>
-        <Grid container spacing={2}>
-          <Grid size={{ xs: 12, md: 4 }}>
-            <TextField fullWidth select label="Filter by Outlet" value={filterOutlet}
+      <Grid container spacing={1.5} sx={{ mb: 2.5 }}>
+        {scheduleStats.map(stat => (
+          <Grid key={stat.label} size={{ xs: 12, sm: 6, md: 3 }}>
+            <Paper
+              elevation={0}
+              sx={{
+                ...softCardSx,
+                p: 2,
+                minHeight: 126,
+                display: 'flex',
+                flexDirection: 'column',
+                justifyContent: 'space-between',
+                transition: 'transform 180ms ease, box-shadow 180ms ease',
+                '&:hover': { transform: 'translateY(-3px)', boxShadow: '0 22px 48px rgba(43, 91, 55, 0.13)' },
+              }}
+            >
+              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 1.5 }}>
+                <Box>
+                  <Typography variant="body2" sx={{ color: GREEN_UI.muted, fontWeight: 800 }}>
+                    {stat.label}
+                  </Typography>
+                  <Typography variant="h4" fontWeight={900} sx={{ color: GREEN_UI.text, mt: 0.5, letterSpacing: '-0.04em' }}>
+                    {stat.value}
+                  </Typography>
+                </Box>
+                <Box
+                  sx={{
+                    width: 42,
+                    height: 42,
+                    borderRadius: '16px',
+                    display: 'grid',
+                    placeItems: 'center',
+                    bgcolor: GREEN_UI.greenSoft,
+                    color: GREEN_UI.greenDark,
+                    flexShrink: 0,
+                  }}
+                >
+                  {stat.icon}
+                </Box>
+              </Box>
+              <Typography variant="caption" sx={{ color: GREEN_UI.muted, mt: 1.2 }}>
+                {stat.caption}
+              </Typography>
+            </Paper>
+          </Grid>
+        ))}
+      </Grid>
+
+      {error && (
+        <Alert
+          severity="error"
+          sx={{ mb: 2, borderRadius: '18px', border: `1px solid ${GREEN_UI.border}` }}
+          action={
+            <Button size="small" onClick={fetchSchedules} sx={{ ...pillButtonSx }}>
+              Retry
+            </Button>
+          }
+        >
+          {error}
+        </Alert>
+      )}
+
+      <Paper elevation={0} sx={{ ...softCardSx, p: { xs: 1.5, sm: 2 }, mb: 2.5 }}>
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', gap: 2, alignItems: { xs: 'flex-start', md: 'center' }, flexWrap: 'wrap', mb: 1.5 }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.2 }}>
+            <Box
+              sx={{
+                width: 40,
+                height: 40,
+                borderRadius: '16px',
+                display: 'grid',
+                placeItems: 'center',
+                bgcolor: GREEN_UI.greenSoft,
+                color: GREEN_UI.greenDark,
+              }}
+            >
+              <FilterAlt fontSize="small" />
+            </Box>
+            <Box>
+              <Typography fontWeight={900} sx={{ color: GREEN_UI.text }}>
+                Filter Schedules
+              </Typography>
+              <Typography variant="caption" sx={{ color: GREEN_UI.muted }}>
+                Narrow records by outlet or branch.
+              </Typography>
+            </Box>
+          </Box>
+          <Chip
+            icon={<Storefront sx={{ fontSize: '0.9rem !important' }} />}
+            label={filterOutlet === 'all' ? 'All Outlets' : filterOutlet}
+            size="small"
+            variant="outlined"
+            sx={{ ...outletChipSx, '& .MuiChip-icon': { color: GREEN_UI.greenDark } }}
+          />
+        </Box>
+
+        <Grid container spacing={1.5} alignItems="center">
+          <Grid size={{ xs: 12, md: 5 }}>
+            <TextField
+              fullWidth
+              select
+              label="Filter by Outlet"
+              value={filterOutlet}
               onChange={e => setFilterOutlet(e.target.value)}
-              InputLabelProps={{ shrink: true }}>
+              InputLabelProps={{ shrink: true }}
+              size="small"
+              sx={softTextFieldSx}
+            >
               <MenuItem key="all" value="all">All Outlets</MenuItem>
               {OUTLETS.map(o => <MenuItem key={o} value={o}>{o}</MenuItem>)}
             </TextField>
           </Grid>
-          <Grid size={{ xs: 12, md: 4 }}>
-            <Button fullWidth variant="outlined" sx={{ height: '56px' }} onClick={() => setFilterOutlet('all')}>
+          <Grid size={{ xs: 12, md: 3 }}>
+            <Button
+              fullWidth
+              variant="outlined"
+              startIcon={<CancelOutlined />}
+              onClick={() => setFilterOutlet('all')}
+              sx={{
+                ...pillButtonSx,
+                height: 40,
+                borderColor: GREEN_UI.borderStrong,
+                color: GREEN_UI.greenDark,
+                bgcolor: '#ffffff',
+                '&:hover': { borderColor: GREEN_UI.green, bgcolor: GREEN_UI.greenSoft },
+              }}
+            >
               Clear Filter
             </Button>
           </Grid>
         </Grid>
       </Paper>
 
-      {/* ── Schedule Table ─────────────────────────────────────────────────── */}
-      <TableContainer component={Paper} sx={{ overflowX: 'auto' }}>
+      <TableContainer
+        component={Paper}
+        elevation={0}
+        sx={{
+          ...softCardSx,
+          overflowX: 'auto',
+          '&::-webkit-scrollbar': { height: 10 },
+          '&::-webkit-scrollbar-thumb': { bgcolor: '#cfe8d1', borderRadius: 999 },
+        }}
+      >
         {loading ? (
-          <Box sx={{ display: 'flex', justifyContent: 'center', py: 6, gap: 2 }}>
-            <CircularProgress size={28} /><Typography color="text.secondary">Loading…</Typography>
+          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', py: 7, gap: 2 }}>
+            <CircularProgress size={28} sx={{ color: GREEN_UI.green }} />
+            <Typography sx={{ color: GREEN_UI.muted, fontWeight: 700 }}>Loading schedules…</Typography>
           </Box>
         ) : (
-          <Table sx={{ minWidth: 1000 }}>
+          <Table sx={{ minWidth: 1180, '& th, & td': { borderColor: 'rgba(139, 184, 144, 0.16)' } }}>
             <TableHead>
-              <TableRow>
-                <TableCell>ID</TableCell>
-                <TableCell>Employee</TableCell>
-                <TableCell>Position</TableCell>
-                <TableCell>Outlet</TableCell>
-                <TableCell>Week</TableCell>
-                <TableCell>Break Time</TableCell>
-                {DAY_LABELS.map(d => <TableCell key={d}>{d}</TableCell>)}
-                <TableCell>Status</TableCell>
-                <TableCell>Actions</TableCell>
+              <TableRow
+                sx={{
+                  background: 'linear-gradient(90deg, #eff8eb 0%, #f8fcf5 100%)',
+                  '& th': {
+                    color: GREEN_UI.greenDark,
+                    fontWeight: 900,
+                    fontSize: '0.78rem',
+                    letterSpacing: '0.02em',
+                    textTransform: 'uppercase',
+                    py: 1.7,
+                  },
+                }}
+              >
+                <TableCell sx={{ whiteSpace: 'nowrap' }}>ID</TableCell>
+                <TableCell sx={{ whiteSpace: 'nowrap' }}>Employee</TableCell>
+                <TableCell sx={{ whiteSpace: 'nowrap' }}>Position</TableCell>
+                <TableCell sx={{ whiteSpace: 'nowrap' }}>Outlet</TableCell>
+                <TableCell sx={{ whiteSpace: 'nowrap' }}>Week</TableCell>
+                <TableCell sx={{ whiteSpace: 'nowrap' }}>Break Time</TableCell>
+                {DAY_LABELS.map(d => <TableCell key={d} sx={{ whiteSpace: 'nowrap' }}>{d}</TableCell>)}
+                <TableCell sx={{ whiteSpace: 'nowrap' }}>Status</TableCell>
+                <TableCell sx={{ whiteSpace: 'nowrap', minWidth: 230 }}>Actions</TableCell>
               </TableRow>
             </TableHead>
             <TableBody>
               {filtered.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={13} align="center" sx={{ py: 5, color: 'text.secondary' }}>
-                    {schedules.length === 0 ? 'No schedules yet. Click "Create Schedule" to add one.' : 'No schedules match your filter.'}
+                  <TableCell colSpan={15} align="center" sx={{ py: 7 }}>
+                    <Box sx={{ maxWidth: 380, mx: 'auto' }}>
+                      <Box
+                        sx={{
+                          width: 54,
+                          height: 54,
+                          borderRadius: '20px',
+                          display: 'grid',
+                          placeItems: 'center',
+                          mx: 'auto',
+                          mb: 1.5,
+                          bgcolor: GREEN_UI.greenSoft,
+                          color: GREEN_UI.greenDark,
+                        }}
+                      >
+                        <InsertDriveFile />
+                      </Box>
+                      <Typography fontWeight={900} sx={{ color: GREEN_UI.text }}>
+                        {schedules.length === 0 ? 'No schedules yet' : 'No schedules match your filter'}
+                      </Typography>
+                      <Typography variant="body2" sx={{ color: GREEN_UI.muted, mt: 0.5 }}>
+                        {schedules.length === 0
+                          ? 'Create a weekly schedule or import an Excel file to start assigning shifts.'
+                          : 'Try clearing the outlet filter to view more schedule records.'}
+                      </Typography>
+                    </Box>
                   </TableCell>
                 </TableRow>
               ) : filtered.map(s => (
-                <TableRow key={s.id} hover>
-                  <TableCell><Chip label={s.id} size="small" variant="outlined" /></TableCell>
-                  <TableCell>{s.employee}</TableCell>
-                  <TableCell sx={{ fontSize: '0.8rem' }}>{s.position}</TableCell>
+                <TableRow
+                  key={s.id}
+                  hover
+                  sx={{
+                    transition: 'background 160ms ease',
+                    '&:hover': { bgcolor: 'rgba(231, 247, 229, 0.52)' },
+                    '& td': { py: 1.55, color: GREEN_UI.text },
+                  }}
+                >
                   <TableCell>
-                    <Chip label={s.outlet || '—'} size="small" color={
-                      s.outlet === 'Maria Clara Restaurant' ? 'success' :
-                      s.outlet === 'Maria Clara Resort' ? 'primary' : 'warning'
-                    } variant="outlined" sx={{ fontSize: '0.72rem' }} />
-                  </TableCell>
-                  <TableCell sx={{ whiteSpace: 'nowrap' }}>{s.week}</TableCell>
-                  <TableCell>{s.breakTime || "—"}</TableCell>
-                  {DAYS.map(d => (
-                    <TableCell key={d} sx={{ fontSize: '0.78rem', color: s[d as keyof Schedule] === 'Off' ? 'text.disabled' : 'inherit' }}>
-                      {(s[d as keyof Schedule] as string) || '—'}
-                    </TableCell>
-                  ))}
-
-                  {/* Status chip */}
-                  <TableCell>
-                    <Chip label={s.status} size="small"
-                      color={
-                        s.status === 'Confirmed' ? 'success' :
-                        s.status === 'Published' ? 'primary' :
-                        s.status === 'Declined'  ? 'error'   : 'default'
-                      }
+                    <Chip
+                      icon={<AssignmentTurnedIn sx={{ fontSize: '0.85rem !important' }} />}
+                      label={s.id}
+                      size="small"
+                      variant="outlined"
+                      sx={{ borderRadius: 999, fontWeight: 800, bgcolor: '#f8fcf5', borderColor: GREEN_UI.border, '& .MuiChip-icon': { color: GREEN_UI.greenDark } }}
                     />
                   </TableCell>
-
-                  {/* Actions */}
                   <TableCell sx={{ whiteSpace: 'nowrap' }}>
-
-                    {/* HR / Supervisor: Publish (Draft only), Edit, Delete */}
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                      <Box
+                        sx={{
+                          width: 34,
+                          height: 34,
+                          borderRadius: '14px',
+                          display: 'grid',
+                          placeItems: 'center',
+                          bgcolor: GREEN_UI.greenSoft,
+                          color: GREEN_UI.greenDark,
+                          flexShrink: 0,
+                        }}
+                      >
+                        <PersonOutline fontSize="small" />
+                      </Box>
+                      <Box>
+                        <Typography fontWeight={800} sx={{ color: GREEN_UI.text, lineHeight: 1.2 }}>
+                          {s.employee || '—'}
+                        </Typography>
+                        <Typography variant="caption" sx={{ color: GREEN_UI.muted }}>
+                          {s.employeeId || 'No employee ID'}
+                        </Typography>
+                      </Box>
+                    </Box>
+                  </TableCell>
+                  <TableCell sx={{ whiteSpace: 'nowrap' }}>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75 }}>
+                      <WorkOutline sx={{ fontSize: 17, color: GREEN_UI.greenDark }} />
+                      <Typography variant="body2" sx={{ color: GREEN_UI.muted, fontWeight: 700 }}>
+                        {s.position || '—'}
+                      </Typography>
+                    </Box>
+                  </TableCell>
+                  <TableCell sx={{ whiteSpace: 'nowrap' }}>
+                    <Chip
+                      icon={<Storefront sx={{ fontSize: '0.85rem !important' }} />}
+                      label={s.outlet || '—'}
+                      size="small"
+                      variant="outlined"
+                      sx={{ ...outletChipSx, '& .MuiChip-icon': { color: GREEN_UI.greenDark } }}
+                    />
+                  </TableCell>
+                  <TableCell sx={{ whiteSpace: 'nowrap' }}>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75 }}>
+                      <CalendarMonth sx={{ fontSize: 17, color: GREEN_UI.greenDark }} />
+                      <Typography variant="body2" fontWeight={700} sx={{ color: GREEN_UI.text }}>
+                        {s.week || '—'}
+                      </Typography>
+                    </Box>
+                  </TableCell>
+                  <TableCell sx={{ whiteSpace: 'nowrap' }}>
+                    <Chip
+                      icon={<AccessTime sx={{ fontSize: '0.85rem !important' }} />}
+                      label={s.breakTime || '—'}
+                      size="small"
+                      variant="outlined"
+                      sx={{ borderRadius: 999, fontWeight: 800, bgcolor: '#ffffff', borderColor: GREEN_UI.border, color: GREEN_UI.muted, '& .MuiChip-icon': { color: GREEN_UI.muted } }}
+                    />
+                  </TableCell>
+                  {DAYS.map(d => {
+                    const shiftValue = (s[d as keyof Schedule] as string) || '—';
+                    const isOff = shiftValue === 'Off';
+                    return (
+                      <TableCell key={d} sx={{ minWidth: 118 }}>
+                        <Typography
+                          variant="caption"
+                          sx={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            minHeight: 28,
+                            px: 1.1,
+                            borderRadius: 999,
+                            bgcolor: isOff ? '#f4f7f3' : '#f8fcf5',
+                            color: isOff ? '#9aa6a0' : GREEN_UI.text,
+                            border: `1px solid ${GREEN_UI.border}`,
+                            fontWeight: 800,
+                            whiteSpace: 'nowrap',
+                          }}
+                        >
+                          {shiftValue}
+                        </Typography>
+                      </TableCell>
+                    );
+                  })}
+                  <TableCell>
+                    <Chip label={s.status} size="small" variant="outlined" sx={statusChipSx(s.status)} />
+                  </TableCell>
+                  <TableCell sx={{ whiteSpace: 'nowrap' }}>
                     {canPublish && (
-                      <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5, alignItems: 'flex-start' }}>
+                      <Box sx={{ display: 'flex', gap: 0.75, alignItems: 'center', flexWrap: 'wrap' }}>
                         {s.status === 'Draft' && (
                           <Chip
+                            icon={<TaskAlt sx={{ fontSize: '0.85rem !important' }} />}
                             label="Publish"
                             size="small"
                             clickable
                             variant="outlined"
-                            color="success"
                             onClick={() => handlePublish(s)}
-                            sx={{ minWidth: 110 }}
+                            sx={{ ...actionChipSx('success'), '& .MuiChip-icon': { color: GREEN_UI.greenDark } }}
                           />
                         )}
                         <Chip
+                          icon={<EditIcon sx={{ fontSize: '0.85rem !important' }} />}
                           label="Edit Schedule"
                           size="small"
                           clickable
                           variant="outlined"
-                          color="primary"
                           onClick={() => openEditDialog(s)}
-                          sx={{ minWidth: 110 }}
+                          sx={{ ...actionChipSx('primary'), '& .MuiChip-icon': { color: GREEN_UI.greenDark } }}
                         />
                         <Chip
+                          icon={<CancelOutlined sx={{ fontSize: '0.85rem !important' }} />}
                           label="Delete"
                           size="small"
                           clickable
                           variant="outlined"
-                          color="error"
                           onClick={() => handleDelete(s.id)}
-                          sx={{ minWidth: 110 }}
+                          sx={{ ...actionChipSx('danger'), minWidth: 78, '& .MuiChip-icon': { color: '#9c2f2f' } }}
                         />
                       </Box>
                     )}
 
-                    {/* Employee: Confirm + Decline (only on Published) */}
                     {canConfirm && s.status === 'Published' && (
-                      <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5, alignItems: 'flex-start' }}>
+                      <Box sx={{ display: 'flex', gap: 0.75, alignItems: 'center', flexWrap: 'wrap' }}>
                         <Chip
+                          icon={<CheckCircleOutline sx={{ fontSize: '0.85rem !important' }} />}
                           label="Confirm"
                           size="small"
                           clickable
-                          variant="filled"
-                          color="success"
+                          variant="outlined"
                           onClick={() => handleConfirm(s.id)}
-                          sx={{ minWidth: 110 }}
+                          sx={{ ...actionChipSx('success'), '& .MuiChip-icon': { color: GREEN_UI.greenDark } }}
                         />
                         <Chip
+                          icon={<CancelOutlined sx={{ fontSize: '0.85rem !important' }} />}
                           label="Decline"
                           size="small"
                           clickable
                           variant="outlined"
-                          color="error"
                           onClick={() => handleDecline(s.id)}
-                          sx={{ minWidth: 110 }}
+                          sx={{ ...actionChipSx('danger'), '& .MuiChip-icon': { color: '#9c2f2f' } }}
                         />
                       </Box>
                     )}
 
-                    {/* Employee: already actioned */}
                     {canConfirm && s.status !== 'Published' && (
-                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                        {s.status === 'Confirmed' && <CheckCircleOutline fontSize="small" color="success" />}
-                        {s.status === 'Declined'  && <CancelOutlined fontSize="small" color="error" />}
-                        <Typography variant="caption" color="text.disabled" sx={{ fontStyle: 'italic' }}>
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75 }}>
+                        {s.status === 'Confirmed' && <CheckCircleOutline fontSize="small" sx={{ color: GREEN_UI.greenDark }} />}
+                        {s.status === 'Declined' && <CancelOutlined fontSize="small" sx={{ color: '#9c2f2f' }} />}
+                        <Typography variant="caption" sx={{ color: GREEN_UI.muted, fontStyle: 'italic', fontWeight: 700 }}>
                           {s.status === 'Confirmed' ? 'Confirmed' : s.status === 'Declined' ? 'Declined' : '—'}
                         </Typography>
                       </Box>
@@ -803,195 +1292,420 @@ const scheduleId =
         )}
       </TableContainer>
 
-      {/* ── Create Schedule Dialog ─────────────────────────────────────────── */}
-      <Dialog open={openDialog} onClose={() => setOpenDialog(false)} maxWidth="md" fullWidth>
-        <DialogTitle fontWeight={700}>Create Weekly Schedule</DialogTitle>
-        <DialogContent>
-          {importingExcel && <Alert severity="info" sx={{ mb: 2 }}>⏳ Importing from Excel…</Alert>}
-          <Grid container spacing={2} sx={{ mt: 1 }}>
-            {/* Employee — position AND outlet auto-fill on select */}
-            <Grid size={{ xs: 12, md: 4 }}>
-              <TextField fullWidth select label="Select Employee" value={form.employeeId || ""} required onChange={(e) => {
-              const selected = employeeList.find(emp => emp.employeeId === e.target.value);
-
-              setForm(prev => ({
-                ...prev,
-                employeeId: selected?.employeeId ?? "",
-                employee: selected?.name ?? "",
-                position: selected?.position ?? "",
-                outlet: selected?.outlet ?? "",
-              }));
-                }}
-                InputLabelProps={{ shrink: true }}
-              >
-                <MenuItem key="emp-empty" value="">
-                  Select employee…
-                </MenuItem>
-
-                {employeeList.map(emp => (
-                  <MenuItem key={emp.employeeId} value={emp.employeeId}>
-                    {emp.name}
-                  </MenuItem>
-                ))}
-</TextField>
-            </Grid>
-            <Grid size={{ xs: 12, md: 4 }}>
-              <TextField fullWidth select label="Position" value={form.position}
-                onChange={e => setForm({ ...form, position: e.target.value })}
-                InputLabelProps={{ shrink: true }}>
-                <MenuItem key="pos-empty" value="">Select position…</MenuItem>
-                {AVAILABLE_POSITIONS.map(p => <MenuItem key={p} value={p}>{p}</MenuItem>)}
-              </TextField>
-            </Grid>
-            <Grid size={{ xs: 12, md: 4 }}>
-              <TextField fullWidth select label="Outlet / Branch" value={form.outlet}
-                onChange={e => setForm(prev => ({ ...prev, outlet: e.target.value }))}
-                InputLabelProps={{ shrink: true }}>
-                <MenuItem key="outlet-empty" value="">Select outlet</MenuItem>
-                {OUTLETS.map(o => <MenuItem key={o} value={o}>{o}</MenuItem>)}
-              </TextField>
-            </Grid>
-            <Grid size={{ xs: 12, md: 6 }}>
-              <TextField fullWidth label="Week Period" required value={form.week}
-                onChange={e => setForm({ ...form, week: e.target.value })}
-                placeholder="e.g. May 12–18, 2026" />
-              <Box sx={{ display: 'flex', gap: 0.75, mt: 0.75, flexWrap: 'wrap' }}>
-                <Chip icon={<CalendarMonth sx={{ fontSize: '0.85rem !important' }} />}
-                  label="This Week" size="small" variant="outlined" color="primary" clickable
-                  onClick={() => setForm({ ...form, week: getWeekRange(0) })} />
-                <Chip icon={<CalendarMonth sx={{ fontSize: '0.85rem !important' }} />}
-                  label="Next Week" size="small" variant="outlined" clickable
-                  onClick={() => setForm({ ...form, week: getWeekRange(1) })} />
-              </Box>
-            </Grid>
-            <Grid size={{ xs: 12, md: 6 }}>
-              <Autocomplete freeSolo options={BREAK_TIME_OPTIONS} value={form.breakTime}
-                onChange={(_, v) => setForm({ ...form, breakTime: v ?? '' })}
-                onInputChange={(_, v) => setForm({ ...form, breakTime: v })}
-                renderInput={(params) => (
-                  <TextField {...params} fullWidth label="Break Time" placeholder="e.g. 1 hour" InputLabelProps={{ shrink: true }} />
-                )} />
-            </Grid>
-          </Grid>
-
-          <Divider sx={{ mt: 3, mb: 2 }}>
-            <Typography variant="caption" color="text.secondary">Daily Schedule Assignment</Typography>
-          </Divider>
-          <Grid container spacing={1.5}>
-            {DAYS.map(day => (
-              <Grid key={day} size={{ xs: 12, sm: 6, md: 3 }}>
-                <Autocomplete freeSolo options={SHIFT_PRESETS}
-                  value={form[day as keyof typeof form] || ''}
-                  onChange={(_, v) => setForm({ ...form, [day]: v ?? '' })}
-                  onInputChange={(_, v) => setForm({ ...form, [day]: v })}
-                  renderInput={(params) => (
-                    <TextField {...params} fullWidth
-                      label={day.charAt(0).toUpperCase() + day.slice(1)}
-                      placeholder="e.g. 8:00 AM – 5:00 PM"
-                      InputLabelProps={{ shrink: true }} />
-                  )} />
+      <Dialog
+        open={openDialog}
+        onClose={() => setOpenDialog(false)}
+        maxWidth="md"
+        fullWidth
+        PaperProps={{
+          sx: {
+            borderRadius: { xs: '22px', sm: '30px' },
+            overflow: 'hidden',
+            border: `1px solid ${GREEN_UI.border}`,
+            background: '#fbfff9',
+            boxShadow: '0 28px 70px rgba(27, 73, 37, 0.18)',
+          },
+        }}
+      >
+        <DialogTitle
+          fontWeight={900}
+          sx={{
+            px: { xs: 2, sm: 3 },
+            py: 2.25,
+            background: 'linear-gradient(135deg, #ffffff 0%, #eef9ea 100%)',
+            borderBottom: `1px solid ${GREEN_UI.border}`,
+          }}
+        >
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.2 }}>
+            <Box sx={{ width: 40, height: 40, borderRadius: '16px', display: 'grid', placeItems: 'center', bgcolor: GREEN_UI.greenSoft, color: GREEN_UI.greenDark }}>
+              <AddCircleOutline fontSize="small" />
+            </Box>
+            <Box>
+              <Typography fontWeight={900} sx={{ color: GREEN_UI.text }}>
+                Create Weekly Schedule
+              </Typography>
+              <Typography variant="caption" sx={{ color: GREEN_UI.muted }}>
+                Assign employee shifts and save them as draft before publishing.
+              </Typography>
+            </Box>
+          </Box>
+        </DialogTitle>
+        <DialogContent sx={{ px: { xs: 2, sm: 3 }, py: 2.5, bgcolor: '#fbfff9' }}>
+          {importingExcel && <Alert severity="info" sx={{ mb: 2, borderRadius: '16px' }}>⏳ Importing from Excel…</Alert>}
+          <Paper elevation={0} sx={{ ...innerCardSx, p: { xs: 1.5, sm: 2 }, mb: 2 }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1.5 }}>
+              <PersonOutline sx={{ color: GREEN_UI.greenDark }} />
+              <Typography fontWeight={900} sx={{ color: GREEN_UI.text }}>Employee Assignment</Typography>
+            </Box>
+            <Grid container spacing={2}>
+              <Grid size={{ xs: 12, md: 4 }}>
+                <TextField
+                  fullWidth
+                  select
+                  label="Select Employee"
+                  value={form.employeeId || ""}
+                  required
+                  size="small"
+                  sx={softTextFieldSx}
+                  onChange={(e) => {
+                    const selected = employeeList.find(emp => emp.employeeId === e.target.value);
+                    setForm(prev => ({
+                      ...prev,
+                      employeeId: selected?.employeeId ?? "",
+                      employee: selected?.name ?? "",
+                      position: selected?.position ?? "",
+                      outlet: selected?.outlet ?? "",
+                    }));
+                  }}
+                  InputLabelProps={{ shrink: true }}
+                >
+                  <MenuItem key="emp-empty" value="">Select employee…</MenuItem>
+                  {employeeList.map(emp => (
+                    <MenuItem key={emp.employeeId} value={emp.employeeId}>{emp.name}</MenuItem>
+                  ))}
+                </TextField>
               </Grid>
-            ))}
-          </Grid>
+              <Grid size={{ xs: 12, md: 4 }}>
+                <TextField
+                  fullWidth
+                  select
+                  label="Position"
+                  value={form.position}
+                  size="small"
+                  sx={softTextFieldSx}
+                  onChange={e => setForm({ ...form, position: e.target.value })}
+                  InputLabelProps={{ shrink: true }}
+                >
+                  <MenuItem key="pos-empty" value="">Select position…</MenuItem>
+                  {AVAILABLE_POSITIONS.map(p => <MenuItem key={p} value={p}>{p}</MenuItem>)}
+                </TextField>
+              </Grid>
+              <Grid size={{ xs: 12, md: 4 }}>
+                <TextField
+                  fullWidth
+                  select
+                  label="Outlet / Branch"
+                  value={form.outlet}
+                  size="small"
+                  sx={softTextFieldSx}
+                  onChange={e => setForm(prev => ({ ...prev, outlet: e.target.value }))}
+                  InputLabelProps={{ shrink: true }}
+                >
+                  <MenuItem key="outlet-empty" value="">Select outlet</MenuItem>
+                  {OUTLETS.map(o => <MenuItem key={o} value={o}>{o}</MenuItem>)}
+                </TextField>
+              </Grid>
+            </Grid>
+          </Paper>
+
+          <Paper elevation={0} sx={{ ...innerCardSx, p: { xs: 1.5, sm: 2 }, mb: 2 }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1.5 }}>
+              <CalendarMonth sx={{ color: GREEN_UI.greenDark }} />
+              <Typography fontWeight={900} sx={{ color: GREEN_UI.text }}>Week and Break Setup</Typography>
+            </Box>
+            <Grid container spacing={2}>
+              <Grid size={{ xs: 12, md: 6 }}>
+                <TextField
+                  fullWidth
+                  label="Week Period"
+                  required
+                  value={form.week}
+                  onChange={e => setForm({ ...form, week: e.target.value })}
+                  placeholder="e.g. May 12–18, 2026"
+                  size="small"
+                  sx={softTextFieldSx}
+                />
+                <Box sx={{ display: 'flex', gap: 0.75, mt: 0.9, flexWrap: 'wrap' }}>
+                  <Chip
+                    icon={<CalendarMonth sx={{ fontSize: '0.85rem !important' }} />}
+                    label="This Week"
+                    size="small"
+                    variant="outlined"
+                    clickable
+                    onClick={() => setForm({ ...form, week: getWeekRange(0) })}
+                    sx={{ ...actionChipSx('primary'), minWidth: 102, '& .MuiChip-icon': { color: GREEN_UI.greenDark } }}
+                  />
+                  <Chip
+                    icon={<CalendarMonth sx={{ fontSize: '0.85rem !important' }} />}
+                    label="Next Week"
+                    size="small"
+                    variant="outlined"
+                    clickable
+                    onClick={() => setForm({ ...form, week: getWeekRange(1) })}
+                    sx={{ ...actionChipSx('neutral'), minWidth: 102, '& .MuiChip-icon': { color: GREEN_UI.muted } }}
+                  />
+                </Box>
+              </Grid>
+              <Grid size={{ xs: 12, md: 6 }}>
+                <Autocomplete
+                  freeSolo
+                  options={BREAK_TIME_OPTIONS}
+                  value={form.breakTime}
+                  onChange={(_, v) => setForm({ ...form, breakTime: v ?? '' })}
+                  onInputChange={(_, v) => setForm({ ...form, breakTime: v })}
+                  renderInput={(params) => (
+                    <TextField {...params} fullWidth label="Break Time" placeholder="e.g. 1 hour" size="small" InputLabelProps={{ shrink: true }} sx={softTextFieldSx} />
+                  )}
+                />
+              </Grid>
+            </Grid>
+          </Paper>
+
+          <Paper elevation={0} sx={{ ...innerCardSx, p: { xs: 1.5, sm: 2 } }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1.5 }}>
+              <AccessTime sx={{ color: GREEN_UI.greenDark }} />
+              <Typography fontWeight={900} sx={{ color: GREEN_UI.text }}>Daily Schedule Assignment</Typography>
+            </Box>
+            <Grid container spacing={1.5}>
+              {DAYS.map(day => (
+                <Grid key={day} size={{ xs: 12, sm: 6, md: 3 }}>
+                  <Autocomplete
+                    freeSolo
+                    options={SHIFT_PRESETS}
+                    value={form[day as keyof typeof form] || ''}
+                    onChange={(_, v) => setForm({ ...form, [day]: v ?? '' })}
+                    onInputChange={(_, v) => setForm({ ...form, [day]: v })}
+                    renderInput={(params) => (
+                      <TextField
+                        {...params}
+                        fullWidth
+                        label={day.charAt(0).toUpperCase() + day.slice(1)}
+                        placeholder="e.g. 8:00 AM – 5:00 PM"
+                        size="small"
+                        InputLabelProps={{ shrink: true }}
+                        sx={softTextFieldSx}
+                      />
+                    )}
+                  />
+                </Grid>
+              ))}
+            </Grid>
+          </Paper>
         </DialogContent>
-        <DialogActions sx={{ px: 3, pb: 2 }}>
-          <Button onClick={() => setOpenDialog(false)}>Cancel</Button>
-          <Button variant="contained" onClick={handleSaveDraft} disabled={saving}
-            startIcon={saving ? <CircularProgress size={16} color="inherit" /> : undefined}>
+        <DialogActions sx={{ px: { xs: 2, sm: 3 }, py: 2, bgcolor: '#fbfff9', borderTop: `1px solid ${GREEN_UI.border}` }}>
+          <Button startIcon={<CancelOutlined />} onClick={() => setOpenDialog(false)} sx={{ ...pillButtonSx, color: GREEN_UI.muted }}>
+            Cancel
+          </Button>
+          <Button
+            variant="contained"
+            onClick={handleSaveDraft}
+            disabled={saving}
+            startIcon={saving ? <CircularProgress size={16} color="inherit" /> : <TaskAlt />}
+            sx={{ ...pillButtonSx, bgcolor: GREEN_UI.green, '&:hover': { bgcolor: GREEN_UI.greenDark } }}
+          >
             {saving ? 'Saving…' : 'Save as Draft'}
           </Button>
         </DialogActions>
       </Dialog>
 
-      {/* ── Edit Schedule Dialog ───────────────────────────────────────────── */}
-      <Dialog open={editDialog} onClose={() => setEditDialog(false)} maxWidth="md" fullWidth>
-        <DialogTitle fontWeight={700}>Edit Schedule — {editRecord?.id}</DialogTitle>
-        <DialogContent>
-          <Alert severity="warning" icon={<EditIcon fontSize="inherit" />} sx={{ mb: 2 }}>
-            Saving will reset this schedule's status to <strong>Draft</strong> and notify the employee to re-confirm.
+      <Dialog
+        open={editDialog}
+        onClose={() => setEditDialog(false)}
+        maxWidth="md"
+        fullWidth
+        PaperProps={{
+          sx: {
+            borderRadius: { xs: '22px', sm: '30px' },
+            overflow: 'hidden',
+            border: `1px solid ${GREEN_UI.border}`,
+            background: '#fbfff9',
+            boxShadow: '0 28px 70px rgba(27, 73, 37, 0.18)',
+          },
+        }}
+      >
+        <DialogTitle
+          fontWeight={900}
+          sx={{
+            px: { xs: 2, sm: 3 },
+            py: 2.25,
+            background: 'linear-gradient(135deg, #ffffff 0%, #eef9ea 100%)',
+            borderBottom: `1px solid ${GREEN_UI.border}`,
+          }}
+        >
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.2 }}>
+            <Box sx={{ width: 40, height: 40, borderRadius: '16px', display: 'grid', placeItems: 'center', bgcolor: GREEN_UI.greenSoft, color: GREEN_UI.greenDark }}>
+              <EditIcon fontSize="small" />
+            </Box>
+            <Box>
+              <Typography fontWeight={900} sx={{ color: GREEN_UI.text }}>
+                Edit Schedule — {editRecord?.id}
+              </Typography>
+              <Typography variant="caption" sx={{ color: GREEN_UI.muted }}>
+                Updating a schedule returns it to draft and notifies the employee.
+              </Typography>
+            </Box>
+          </Box>
+        </DialogTitle>
+        <DialogContent sx={{ px: { xs: 2, sm: 3 }, py: 2.5, bgcolor: '#fbfff9' }}>
+          <Alert severity="warning" icon={<EditIcon fontSize="inherit" />} sx={{ mb: 2, borderRadius: '16px', border: `1px solid ${GREEN_UI.border}` }}>
+            Saving will reset this schedule&apos;s status to <strong>Draft</strong> and notify the employee to re-confirm.
           </Alert>
-          <Grid container spacing={2} sx={{ mt: 0 }}>
-            <Grid size={{ xs: 12, md: 4 }}>
-              <TextField fullWidth label="Employee Name" required value={editForm.employee}
-                onChange={e => setEditForm({ ...editForm, employee: e.target.value })} />
-            </Grid>
-            <Grid size={{ xs: 12, md: 4 }}>
-              <TextField fullWidth select label="Position" value={editForm.position}
-                onChange={e => setEditForm({ ...editForm, position: e.target.value })}
-                InputLabelProps={{ shrink: true }}>
-                <MenuItem key="edit-pos-empty" value="">Select position…</MenuItem>
-                {AVAILABLE_POSITIONS.map(p => <MenuItem key={p} value={p}>{p}</MenuItem>)}
-              </TextField>
-            </Grid>
-            <Grid size={{ xs: 12, md: 4 }}>
-              <TextField fullWidth select label="Outlet / Branch" value={editForm.outlet}
-                onChange={e => setEditForm(prev => ({ ...prev, outlet: e.target.value }))}
-                InputLabelProps={{ shrink: true }}>
-                <MenuItem key="edit-outlet-empty" value="">Select outlet…</MenuItem>
-                {OUTLETS.map(o => <MenuItem key={o} value={o}>{o}</MenuItem>)}
-              </TextField>
-            </Grid>
-            <Grid size={{ xs: 12, md: 6 }}>
-              <TextField fullWidth label="Week Period" required value={editForm.week}
-                onChange={e => setEditForm({ ...editForm, week: e.target.value })}
-                placeholder="e.g. May 12–18, 2026" />
-              <Box sx={{ display: 'flex', gap: 0.75, mt: 0.75, flexWrap: 'wrap' }}>
-                <Chip icon={<CalendarMonth sx={{ fontSize: '0.85rem !important' }} />}
-                  label="This Week" size="small" variant="outlined" color="primary" clickable
-                  onClick={() => setEditForm({ ...editForm, week: getWeekRange(0) })} />
-                <Chip icon={<CalendarMonth sx={{ fontSize: '0.85rem !important' }} />}
-                  label="Next Week" size="small" variant="outlined" clickable
-                  onClick={() => setEditForm({ ...editForm, week: getWeekRange(1) })} />
-              </Box>
-            </Grid>
-            <Grid size={{ xs: 12, md: 6 }}>
-              <Autocomplete freeSolo options={BREAK_TIME_OPTIONS} value={editForm.breakTime}
-                onChange={(_, v) => setEditForm({ ...editForm, breakTime: v ?? '' })}
-                onInputChange={(_, v) => setEditForm({ ...editForm, breakTime: v })}
-                renderInput={(params) => (
-                  <TextField {...params} fullWidth label="Break Time" placeholder="e.g. 1 hour" InputLabelProps={{ shrink: true }} />
-                )} />
-            </Grid>
-          </Grid>
 
-          <Divider sx={{ mt: 3, mb: 2 }}>
-            <Typography variant="caption" color="text.secondary">Daily Schedule Assignment</Typography>
-          </Divider>
-          <Grid container spacing={1.5}>
-            {DAYS.map(day => (
-              <Grid key={day} size={{ xs: 12, sm: 6, md: 3 }}>
-                <Autocomplete freeSolo options={SHIFT_PRESETS}
-                  value={editForm[day as keyof typeof editForm] || ''}
-                  onChange={(_, v) => setEditForm({ ...editForm, [day]: v ?? '' })}
-                  onInputChange={(_, v) => setEditForm({ ...editForm, [day]: v })}
-                  renderInput={(params) => (
-                    <TextField {...params} fullWidth
-                      label={day.charAt(0).toUpperCase() + day.slice(1)}
-                      placeholder="e.g. 8:00 AM – 5:00 PM"
-                      InputLabelProps={{ shrink: true }} />
-                  )} />
+          <Paper elevation={0} sx={{ ...innerCardSx, p: { xs: 1.5, sm: 2 }, mb: 2 }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1.5 }}>
+              <PersonOutline sx={{ color: GREEN_UI.greenDark }} />
+              <Typography fontWeight={900} sx={{ color: GREEN_UI.text }}>Employee Assignment</Typography>
+            </Box>
+            <Grid container spacing={2}>
+              <Grid size={{ xs: 12, md: 4 }}>
+                <TextField
+                  fullWidth
+                  label="Employee Name"
+                  required
+                  value={editForm.employee}
+                  onChange={e => setEditForm({ ...editForm, employee: e.target.value })}
+                  size="small"
+                  sx={softTextFieldSx}
+                />
               </Grid>
-            ))}
-          </Grid>
+              <Grid size={{ xs: 12, md: 4 }}>
+                <TextField
+                  fullWidth
+                  select
+                  label="Position"
+                  value={editForm.position}
+                  onChange={e => setEditForm({ ...editForm, position: e.target.value })}
+                  InputLabelProps={{ shrink: true }}
+                  size="small"
+                  sx={softTextFieldSx}
+                >
+                  <MenuItem key="edit-pos-empty" value="">Select position…</MenuItem>
+                  {AVAILABLE_POSITIONS.map(p => <MenuItem key={p} value={p}>{p}</MenuItem>)}
+                </TextField>
+              </Grid>
+              <Grid size={{ xs: 12, md: 4 }}>
+                <TextField
+                  fullWidth
+                  select
+                  label="Outlet / Branch"
+                  value={editForm.outlet}
+                  onChange={e => setEditForm(prev => ({ ...prev, outlet: e.target.value }))}
+                  InputLabelProps={{ shrink: true }}
+                  size="small"
+                  sx={softTextFieldSx}
+                >
+                  <MenuItem key="edit-outlet-empty" value="">Select outlet…</MenuItem>
+                  {OUTLETS.map(o => <MenuItem key={o} value={o}>{o}</MenuItem>)}
+                </TextField>
+              </Grid>
+            </Grid>
+          </Paper>
+
+          <Paper elevation={0} sx={{ ...innerCardSx, p: { xs: 1.5, sm: 2 }, mb: 2 }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1.5 }}>
+              <CalendarMonth sx={{ color: GREEN_UI.greenDark }} />
+              <Typography fontWeight={900} sx={{ color: GREEN_UI.text }}>Week and Break Setup</Typography>
+            </Box>
+            <Grid container spacing={2}>
+              <Grid size={{ xs: 12, md: 6 }}>
+                <TextField
+                  fullWidth
+                  label="Week Period"
+                  required
+                  value={editForm.week}
+                  onChange={e => setEditForm({ ...editForm, week: e.target.value })}
+                  placeholder="e.g. May 12–18, 2026"
+                  size="small"
+                  sx={softTextFieldSx}
+                />
+                <Box sx={{ display: 'flex', gap: 0.75, mt: 0.9, flexWrap: 'wrap' }}>
+                  <Chip
+                    icon={<CalendarMonth sx={{ fontSize: '0.85rem !important' }} />}
+                    label="This Week"
+                    size="small"
+                    variant="outlined"
+                    clickable
+                    onClick={() => setEditForm({ ...editForm, week: getWeekRange(0) })}
+                    sx={{ ...actionChipSx('primary'), minWidth: 102, '& .MuiChip-icon': { color: GREEN_UI.greenDark } }}
+                  />
+                  <Chip
+                    icon={<CalendarMonth sx={{ fontSize: '0.85rem !important' }} />}
+                    label="Next Week"
+                    size="small"
+                    variant="outlined"
+                    clickable
+                    onClick={() => setEditForm({ ...editForm, week: getWeekRange(1) })}
+                    sx={{ ...actionChipSx('neutral'), minWidth: 102, '& .MuiChip-icon': { color: GREEN_UI.muted } }}
+                  />
+                </Box>
+              </Grid>
+              <Grid size={{ xs: 12, md: 6 }}>
+                <Autocomplete
+                  freeSolo
+                  options={BREAK_TIME_OPTIONS}
+                  value={editForm.breakTime}
+                  onChange={(_, v) => setEditForm({ ...editForm, breakTime: v ?? '' })}
+                  onInputChange={(_, v) => setEditForm({ ...editForm, breakTime: v })}
+                  renderInput={(params) => (
+                    <TextField {...params} fullWidth label="Break Time" placeholder="e.g. 1 hour" size="small" InputLabelProps={{ shrink: true }} sx={softTextFieldSx} />
+                  )}
+                />
+              </Grid>
+            </Grid>
+          </Paper>
+
+          <Paper elevation={0} sx={{ ...innerCardSx, p: { xs: 1.5, sm: 2 } }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1.5 }}>
+              <AccessTime sx={{ color: GREEN_UI.greenDark }} />
+              <Typography fontWeight={900} sx={{ color: GREEN_UI.text }}>Daily Schedule Assignment</Typography>
+            </Box>
+            <Grid container spacing={1.5}>
+              {DAYS.map(day => (
+                <Grid key={day} size={{ xs: 12, sm: 6, md: 3 }}>
+                  <Autocomplete
+                    freeSolo
+                    options={SHIFT_PRESETS}
+                    value={editForm[day as keyof typeof editForm] || ''}
+                    onChange={(_, v) => setEditForm({ ...editForm, [day]: v ?? '' })}
+                    onInputChange={(_, v) => setEditForm({ ...editForm, [day]: v })}
+                    renderInput={(params) => (
+                      <TextField
+                        {...params}
+                        fullWidth
+                        label={day.charAt(0).toUpperCase() + day.slice(1)}
+                        placeholder="e.g. 8:00 AM – 5:00 PM"
+                        size="small"
+                        InputLabelProps={{ shrink: true }}
+                        sx={softTextFieldSx}
+                      />
+                    )}
+                  />
+                </Grid>
+              ))}
+            </Grid>
+          </Paper>
         </DialogContent>
-        <DialogActions sx={{ px: 3, pb: 2 }}>
-          <Button onClick={() => setEditDialog(false)}>Cancel</Button>
-          <Button variant="contained" onClick={handleEditSave} disabled={saving}
-            startIcon={saving ? <CircularProgress size={16} color="inherit" /> : undefined}>
+        <DialogActions sx={{ px: { xs: 2, sm: 3 }, py: 2, bgcolor: '#fbfff9', borderTop: `1px solid ${GREEN_UI.border}` }}>
+          <Button startIcon={<CancelOutlined />} onClick={() => setEditDialog(false)} sx={{ ...pillButtonSx, color: GREEN_UI.muted }}>
+            Cancel
+          </Button>
+          <Button
+            variant="contained"
+            onClick={handleEditSave}
+            disabled={saving}
+            startIcon={saving ? <CircularProgress size={16} color="inherit" /> : <TaskAlt />}
+            sx={{ ...pillButtonSx, bgcolor: GREEN_UI.green, '&:hover': { bgcolor: GREEN_UI.greenDark } }}
+          >
             {saving ? 'Saving…' : 'Save Changes'}
           </Button>
         </DialogActions>
       </Dialog>
 
       <Snackbar
-        open={snackbar.open} autoHideDuration={5000}
+        open={snackbar.open}
+        autoHideDuration={5000}
         onClose={() => setSnackbar(s => ({ ...s, open: false }))}
         anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
       >
-        <Alert severity={snackbar.severity} onClose={() => setSnackbar(s => ({ ...s, open: false }))}>
+        <Alert
+          severity={snackbar.severity}
+          onClose={() => setSnackbar(s => ({ ...s, open: false }))}
+          sx={{ borderRadius: '16px', boxShadow: GREEN_UI.shadowSoft }}
+        >
           {snackbar.message}
         </Alert>
       </Snackbar>
     </Box>
   );
+
 }

@@ -16,6 +16,7 @@ import {
   useMediaQuery,
   useTheme,
   TextField,
+  InputAdornment,
   Grid,
   Dialog,
   DialogTitle,
@@ -39,6 +40,19 @@ import {
   WarningAmber,
   ArrowBackIosNew,
   ArrowForwardIos,
+  DashboardCustomizeRounded,
+  FactCheckRounded,
+  CalendarMonthRounded,
+  TuneRounded,
+  BadgeRounded,
+  PersonRounded,
+  AccessTimeRounded,
+  TimerRounded,
+  WatchLaterRounded,
+  EventBusyRounded,
+  UploadFileRounded,
+  AddTaskRounded,
+  CloseRounded,
 } from "@mui/icons-material";
 import { supabase } from "../../lib/supabaseClient";
 import { useAuth } from "../../context/AuthContext";
@@ -84,6 +98,86 @@ const EMPTY: AttendanceDraft = {
 const IMPORT_CONCURRENCY = 10;
 const DELETE_CONCURRENCY = 10;
 const PREVIEW_ROW_LIMIT = 50;
+
+
+const GREEN_UI = {
+  pageBg: "radial-gradient(circle at top left, rgba(220, 246, 219, 0.95), rgba(248, 252, 245, 0.98) 34%, #f7fbf3 100%)",
+  cardBg: "rgba(255, 255, 255, 0.92)",
+  cardBgSoft: "rgba(245, 252, 241, 0.88)",
+  border: "rgba(139, 184, 144, 0.24)",
+  borderStrong: "rgba(73, 156, 92, 0.32)",
+  green: "#3aa865",
+  greenDark: "#1f7a46",
+  greenSoft: "#e6f8e9",
+  text: "#1e2d24",
+  muted: "#6c7d70",
+  shadow: "0 20px 55px rgba(43, 91, 55, 0.10)",
+  shadowSoft: "0 12px 28px rgba(43, 91, 55, 0.08)",
+};
+
+const softCardSx = {
+  borderRadius: "26px",
+  border: `1px solid ${GREEN_UI.border}`,
+  background: GREEN_UI.cardBg,
+  boxShadow: GREEN_UI.shadow,
+};
+
+const innerCardSx = {
+  borderRadius: "20px",
+  border: `1px solid ${GREEN_UI.border}`,
+  background: GREEN_UI.cardBgSoft,
+  boxShadow: GREEN_UI.shadowSoft,
+};
+
+const iconTileSx = {
+  width: 42,
+  height: 42,
+  borderRadius: "16px",
+  display: "grid",
+  placeItems: "center",
+  color: GREEN_UI.greenDark,
+  bgcolor: GREEN_UI.greenSoft,
+  border: `1px solid ${GREEN_UI.borderStrong}`,
+};
+
+const pillButtonSx = {
+  borderRadius: 999,
+  textTransform: "none",
+  fontWeight: 800,
+  px: 2,
+};
+
+const softTextFieldSx = {
+  "& .MuiOutlinedInput-root": {
+    borderRadius: "16px",
+    backgroundColor: "#fbfef9",
+    transition: "all 180ms ease",
+    "& fieldset": { borderColor: GREEN_UI.border },
+    "&:hover fieldset": { borderColor: GREEN_UI.borderStrong },
+    "&.Mui-focused fieldset": { borderColor: GREEN_UI.green, borderWidth: 1.5 },
+    "&.Mui-disabled": { backgroundColor: "#f6fbf4" },
+  },
+  "& .MuiInputLabel-root": { color: GREEN_UI.muted },
+  "& .MuiInputBase-input.Mui-disabled": { WebkitTextFillColor: GREEN_UI.text },
+};
+
+const statusChipSx = (status: Attendance["status"]) => {
+  const styles: Record<Attendance["status"], { bg: string; color: string; border: string }> = {
+    Present: { bg: "#e5f8e9", color: "#217a43", border: "#a9dfb6" },
+    Late: { bg: "#fff7e0", color: "#9b6b00", border: "#f5d786" },
+    Absent: { bg: "#ffecec", color: "#b3261e", border: "#f4b6b2" },
+    "On Leave": { bg: "#e9f4ff", color: "#1769aa", border: "#b9daf8" },
+  };
+  const selected = styles[status] ?? styles.Present;
+  return {
+    bgcolor: selected.bg,
+    color: selected.color,
+    borderColor: selected.border,
+    fontWeight: 800,
+    borderRadius: 999,
+    "& .MuiChip-label": { px: 1.25 },
+  };
+};
 
 type SaveImportTask = {
   kind: "create" | "update";
@@ -1542,89 +1636,229 @@ export default function AttendanceMonitoring() {
   };
 
   return (
-    <Box>
-      <Box
+    <Box
+      sx={{
+        minHeight: "100%",
+        p: { xs: 1.5, sm: 2.25, md: 3 },
+        background: GREEN_UI.pageBg,
+        color: GREEN_UI.text,
+        borderRadius: { xs: 0, md: "32px" },
+      }}
+    >
+      <Paper
+        elevation={0}
         sx={{
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: { xs: "flex-start", sm: "center" },
-          flexWrap: "wrap",
-          gap: 2,
-          mb: 3,
+          ...softCardSx,
+          p: { xs: 2, sm: 2.75, md: 3.25 },
+          mb: 2.5,
+          position: "relative",
+          overflow: "hidden",
+          background:
+            "linear-gradient(135deg, rgba(255,255,255,0.98) 0%, rgba(239,250,235,0.96) 60%, rgba(225,248,224,0.94) 100%)",
+          "&:before": {
+            content: '""',
+            position: "absolute",
+            width: 260,
+            height: 260,
+            borderRadius: "50%",
+            right: -90,
+            top: -110,
+            background: "rgba(76, 175, 80, 0.12)",
+          },
+          "&:after": {
+            content: '""',
+            position: "absolute",
+            width: 160,
+            height: 160,
+            borderRadius: "50%",
+            left: { xs: "70%", md: "44%" },
+            bottom: -95,
+            background: "rgba(174, 222, 144, 0.18)",
+          },
         }}
       >
-        <Box>
-          <Typography
-            variant="h4"
-            gutterBottom
-            fontWeight="bold"
-            sx={{
-              fontSize: {
-                xs: "1.35rem",
-                sm: "1.75rem",
-                md: "2.125rem",
-              },
-            }}
-          >
-            Attendance Monitoring
-          </Typography>
-          <Typography variant="body2" color="text.secondary">
-            Track biometric and manual attendance — validated against finalized
-            schedules
-          </Typography>
-        </Box>
         <Box
           sx={{
+            position: "relative",
+            zIndex: 1,
             display: "flex",
-            gap: 1,
+            justifyContent: "space-between",
+            alignItems: { xs: "flex-start", md: "center" },
             flexWrap: "wrap",
-            width: { xs: "100%", sm: "auto" },
-            "& .MuiButton-root": {
-              width: { xs: "100%", sm: "auto" },
-            },
+            gap: 2,
           }}
         >
-          <Tooltip title="Refresh">
-            <span>
-              <IconButton onClick={fetchAttendance} disabled={loading}>
-                <Sync />
-              </IconButton>
-            </span>
-          </Tooltip>
-          <Button
-            variant="outlined"
-            startIcon={<AddCircleOutline />}
-            onClick={() => setDialogOpen(true)}
+          <Box sx={{ maxWidth: 720 }}>
+            <Chip
+              icon={<DashboardCustomizeRounded sx={{ fontSize: "16px !important" }} />}
+              label="Attendance Workspace"
+              size="small"
+              sx={{
+                mb: 1.2,
+                bgcolor: GREEN_UI.greenSoft,
+                color: GREEN_UI.greenDark,
+                fontWeight: 900,
+                borderRadius: 999,
+              }}
+            />
+            <Typography
+              variant="h4"
+              fontWeight={900}
+              sx={{
+                fontSize: { xs: "1.55rem", sm: "2rem", md: "2.35rem" },
+                color: GREEN_UI.text,
+                letterSpacing: "-0.04em",
+                lineHeight: 1.08,
+                mb: 0.75,
+              }}
+            >
+              Attendance Monitoring
+            </Typography>
+            <Typography variant="body2" sx={{ color: GREEN_UI.muted, maxWidth: 680, lineHeight: 1.7 }}>
+              Track biometric and manual attendance, review payroll metrics, and validate daily records against finalized schedules.
+            </Typography>
+          </Box>
+
+          <Box
+            sx={{
+              display: "flex",
+              gap: 1,
+              alignItems: "center",
+              flexWrap: "wrap",
+              width: { xs: "100%", md: "auto" },
+              "& .MuiButton-root": { width: { xs: "100%", sm: "auto" } },
+            }}
           >
-            Manual Entry
-          </Button>
-          <Button
-            variant="contained"
-            startIcon={<UploadFile />}
-            onClick={() => setImportDialog(true)}
-          >
-            Import Biometric Data
-          </Button>
-          {canManageAttendance && (
+            <Tooltip title="Refresh attendance records">
+              <span>
+                <Button
+                  variant="contained"
+                  startIcon={loading ? <CircularProgress size={16} color="inherit" /> : <Sync />}
+                  onClick={fetchAttendance}
+                  disabled={loading}
+                  sx={{
+                    ...pillButtonSx,
+                    py: 1.1,
+                    bgcolor: GREEN_UI.green,
+                    boxShadow: "0 12px 24px rgba(58, 168, 101, 0.25)",
+                    "&:hover": { bgcolor: GREEN_UI.greenDark, boxShadow: "0 16px 28px rgba(31, 122, 70, 0.28)" },
+                  }}
+                >
+                  {loading ? "Refreshing…" : "Refresh"}
+                </Button>
+              </span>
+            </Tooltip>
+            <Button
+              variant="contained"
+              startIcon={<AddCircleOutline />}
+              onClick={() => setDialogOpen(true)}
+              sx={{
+                ...pillButtonSx,
+                py: 1.1,
+                bgcolor: GREEN_UI.greenDark,
+                boxShadow: "0 12px 24px rgba(31, 122, 70, 0.22)",
+                "&:hover": { bgcolor: "#176238", boxShadow: "0 16px 28px rgba(31, 122, 70, 0.28)" },
+              }}
+            >
+              Manual Entry
+            </Button>
             <Button
               variant="outlined"
-              color="error"
-              startIcon={<DeleteSweep />}
-              onClick={() => setDeleteAllDialog(true)}
-              disabled={attendances.length === 0 || deletingAll}
+              startIcon={<UploadFile />}
+              onClick={() => setImportDialog(true)}
+              sx={{
+                ...pillButtonSx,
+                py: 1.1,
+                bgcolor: "rgba(255,255,255,0.7)",
+                borderColor: GREEN_UI.borderStrong,
+                color: GREEN_UI.greenDark,
+                "&:hover": { borderColor: GREEN_UI.green, bgcolor: GREEN_UI.greenSoft },
+              }}
             >
-              Delete All Data
+              Import Biometric Data
             </Button>
-          )}
+            {canManageAttendance && (
+              <Button
+                variant="outlined"
+                color="error"
+                startIcon={<DeleteSweep />}
+                onClick={() => setDeleteAllDialog(true)}
+                disabled={attendances.length === 0 || deletingAll}
+                sx={{ ...pillButtonSx, py: 1.1 }}
+              >
+                Delete All Data
+              </Button>
+            )}
+          </Box>
         </Box>
-      </Box>
+      </Paper>
+
+      <Grid container spacing={1.5} sx={{ mb: 2.5 }}>
+        {[
+          {
+            label: "Visible Records",
+            value: filtered.length,
+            caption: filterDate || filterStatus !== "all" ? "Records matching your filters" : "Currently displayed attendance logs",
+            icon: <FactCheckRounded />,
+          },
+          {
+            label: "Present",
+            value: summary.present,
+            caption: "Present records, including entries with late minutes",
+            icon: <AddTaskRounded />,
+          },
+          {
+            label: "Late Entries",
+            value: summary.late,
+            caption: "Records with late minutes for payroll review",
+            icon: <WatchLaterRounded />,
+          },
+          {
+            label: "Absent / Leave",
+            value: summary.absent + summary.onLeave,
+            caption: "Combined absent and approved leave records",
+            icon: <EventBusyRounded />,
+          },
+        ].map((stat) => (
+          <Grid key={stat.label} size={{ xs: 12, sm: 6, md: 3 }}>
+            <Paper
+              elevation={0}
+              sx={{
+                ...softCardSx,
+                p: 2,
+                minHeight: 126,
+                display: "flex",
+                flexDirection: "column",
+                justifyContent: "space-between",
+                transition: "transform 180ms ease, box-shadow 180ms ease",
+                "&:hover": { transform: "translateY(-3px)", boxShadow: "0 22px 48px rgba(43, 91, 55, 0.13)" },
+              }}
+            >
+              <Box sx={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 1.5 }}>
+                <Box>
+                  <Typography variant="body2" sx={{ color: GREEN_UI.muted, fontWeight: 800 }}>
+                    {stat.label}
+                  </Typography>
+                  <Typography variant="h4" fontWeight={900} sx={{ color: GREEN_UI.text, mt: 0.5, letterSpacing: "-0.04em" }}>
+                    {stat.value}
+                  </Typography>
+                </Box>
+                <Box sx={iconTileSx}>{stat.icon}</Box>
+              </Box>
+              <Typography variant="caption" sx={{ color: GREEN_UI.muted, mt: 1.2 }}>
+                {stat.caption}
+              </Typography>
+            </Paper>
+          </Grid>
+        ))}
+      </Grid>
 
       {error && (
         <Alert
           severity="error"
-          sx={{ mb: 2 }}
+          sx={{ mb: 2, borderRadius: "18px", border: `1px solid ${GREEN_UI.border}` }}
           action={
-            <Button size="small" onClick={fetchAttendance}>
+            <Button size="small" onClick={fetchAttendance} sx={pillButtonSx}>
               Retry
             </Button>
           }
@@ -1633,7 +1867,20 @@ export default function AttendanceMonitoring() {
         </Alert>
       )}
 
-      <Paper sx={{ p: 2, mb: 2 }}>
+      <Paper elevation={0} sx={{ ...softCardSx, p: { xs: 1.5, sm: 2 }, mb: 2 }}>
+        <Box sx={{ display: "flex", alignItems: "center", gap: 1.25, mb: 1.5 }}>
+          <Box sx={{ ...iconTileSx, width: 38, height: 38, borderRadius: "14px" }}>
+            <TuneRounded fontSize="small" />
+          </Box>
+          <Box>
+            <Typography fontWeight={900} sx={{ color: GREEN_UI.text, lineHeight: 1.2 }}>
+              Attendance Filters
+            </Typography>
+            <Typography variant="caption" sx={{ color: GREEN_UI.muted }}>
+              Narrow records by date and attendance status without changing saved data.
+            </Typography>
+          </Box>
+        </Box>
         <Grid container spacing={2} alignItems="center">
           <Grid size={{ xs: 12, md: 3 }}>
             <TextField
@@ -1646,6 +1893,14 @@ export default function AttendanceMonitoring() {
                 setPage(0);
               }}
               InputLabelProps={{ shrink: true }}
+              sx={softTextFieldSx}
+              InputProps={{
+                startAdornment: (
+                  <InputAdornment position="start">
+                    <CalendarMonthRounded sx={{ color: GREEN_UI.greenDark }} />
+                  </InputAdornment>
+                ),
+              }}
             />
           </Grid>
           <Grid size={{ xs: 12, md: 3 }}>
@@ -1659,29 +1914,21 @@ export default function AttendanceMonitoring() {
                 setPage(0);
               }}
               InputLabelProps={{ shrink: true }}
+              sx={softTextFieldSx}
             >
-              <MenuItem key="all" value="all">
-                All Status
-              </MenuItem>
-              <MenuItem key="present" value="present">
-                Present
-              </MenuItem>
-              <MenuItem key="late" value="late">
-                Late
-              </MenuItem>
-              <MenuItem key="absent" value="absent">
-                Absent
-              </MenuItem>
-              <MenuItem key="onleave" value="onleave">
-                On Leave
-              </MenuItem>
+              <MenuItem key="all" value="all">All Status</MenuItem>
+              <MenuItem key="present" value="present">Present</MenuItem>
+              <MenuItem key="late" value="late">Late</MenuItem>
+              <MenuItem key="absent" value="absent">Absent</MenuItem>
+              <MenuItem key="onleave" value="onleave">On Leave</MenuItem>
             </TextField>
           </Grid>
           <Grid size={{ xs: 12, md: 3 }}>
             <Button
               fullWidth
               variant="outlined"
-              sx={{ height: "56px" }}
+              startIcon={<CloseRounded />}
+              sx={{ ...pillButtonSx, height: "56px", borderColor: GREEN_UI.borderStrong, color: GREEN_UI.greenDark }}
               onClick={() => {
                 setFilterDate("");
                 setFilterStatus("all");
@@ -1696,28 +1943,30 @@ export default function AttendanceMonitoring() {
 
       {loading ? (
         <Paper
+          elevation={0}
           sx={{
+            ...softCardSx,
             display: "flex",
             justifyContent: "center",
             alignItems: "center",
-            py: 6,
+            py: 7,
             gap: 2,
           }}
         >
-          <CircularProgress size={28} />
-          <Typography color="text.secondary">Loading…</Typography>
+          <CircularProgress size={28} sx={{ color: GREEN_UI.green }} />
+          <Typography sx={{ color: GREEN_UI.muted, fontWeight: 700 }}>Loading attendance records…</Typography>
         </Paper>
       ) : isSmallScreen ? (
         <Stack spacing={1.25}>
           {filtered.length === 0 ? (
-            <Paper sx={{ p: 3, textAlign: "center", color: "text.secondary" }}>
+            <Paper elevation={0} sx={{ ...softCardSx, p: 3, textAlign: "center", color: GREEN_UI.muted }}>
               {attendances.length === 0
                 ? "No attendance records yet. Use Manual Entry or Import Biometric Data."
                 : "No results match your filters."}
             </Paper>
           ) : (
             paginatedFiltered.map((att) => (
-              <Paper key={att.id} sx={{ p: 2 }}>
+              <Paper key={att.id} elevation={0} sx={{ ...softCardSx, p: 2 }}>
                 <Stack spacing={1.5}>
                   <Box
                     sx={{
@@ -1728,25 +1977,18 @@ export default function AttendanceMonitoring() {
                     }}
                   >
                     <Box sx={{ minWidth: 0 }}>
-                      <Typography fontWeight={700} noWrap>
+                      <Typography fontWeight={900} noWrap sx={{ color: GREEN_UI.text }}>
                         {att.employee}
                       </Typography>
-                      <Typography variant="caption" color="text.secondary">
+                      <Typography variant="caption" sx={{ color: GREEN_UI.muted }}>
                         {normalizeDateForFilter(att.date)}
                       </Typography>
                     </Box>
                     <Chip
                       label={att.status}
                       size="small"
-                      color={
-                        att.status === "Present"
-                          ? "success"
-                          : att.status === "Late"
-                            ? "warning"
-                            : att.status === "On Leave"
-                              ? "info"
-                              : "error"
-                      }
+                      variant="outlined"
+                      sx={statusChipSx(att.status)}
                     />
                   </Box>
 
@@ -1760,10 +2002,10 @@ export default function AttendanceMonitoring() {
                       ["Overtime", `${att.overtime || 0} min`],
                     ].map(([label, value]) => (
                       <Grid key={label} size={{ xs: 6 }}>
-                        <Typography variant="caption" color="text.secondary">
+                        <Typography variant="caption" sx={{ color: GREEN_UI.muted, fontWeight: 700 }}>
                           {label}
                         </Typography>
-                        <Typography variant="body2" fontWeight={600}>
+                        <Typography variant="body2" fontWeight={800} sx={{ color: GREEN_UI.text }}>
                           {value}
                         </Typography>
                       </Grid>
@@ -1779,6 +2021,7 @@ export default function AttendanceMonitoring() {
                         variant="outlined"
                         color="warning"
                         onClick={() => openEdit(att)}
+                        sx={{ ...pillButtonSx, minWidth: 104 }}
                       />
                       <Chip
                         label="Delete"
@@ -1787,6 +2030,7 @@ export default function AttendanceMonitoring() {
                         variant="outlined"
                         color="error"
                         onClick={() => handleDelete(att.id)}
+                        sx={{ ...pillButtonSx, minWidth: 96 }}
                       />
                     </Box>
                   )}
@@ -1796,10 +2040,32 @@ export default function AttendanceMonitoring() {
           )}
         </Stack>
       ) : (
-        <TableContainer component={Paper} sx={{ overflowX: "auto" }}>
-          <Table sx={{ minWidth: 900 }}>
+        <TableContainer
+          component={Paper}
+          elevation={0}
+          sx={{
+            ...softCardSx,
+            overflowX: "auto",
+            "&::-webkit-scrollbar": { height: 10 },
+            "&::-webkit-scrollbar-thumb": { bgcolor: "#cfe8d1", borderRadius: 999 },
+          }}
+        >
+          <Table sx={{ minWidth: 960, "& th, & td": { borderColor: "rgba(139, 184, 144, 0.16)" } }}>
             <TableHead>
-              <TableRow>
+              <TableRow
+                sx={{
+                  background: "linear-gradient(90deg, #eff8eb 0%, #f8fcf5 100%)",
+                  "& th": {
+                    color: GREEN_UI.greenDark,
+                    fontWeight: 900,
+                    fontSize: "0.78rem",
+                    letterSpacing: "0.02em",
+                    textTransform: "uppercase",
+                    py: 1.7,
+                    whiteSpace: "nowrap",
+                  },
+                }}
+              >
                 <TableCell>ID</TableCell>
                 <TableCell>Employee</TableCell>
                 <TableCell>Date</TableCell>
@@ -1819,7 +2085,7 @@ export default function AttendanceMonitoring() {
                   <TableCell
                     colSpan={canManageAttendance ? 11 : 10}
                     align="center"
-                    sx={{ py: 5, color: "text.secondary" }}
+                    sx={{ py: 7, color: GREEN_UI.muted }}
                   >
                     {attendances.length === 0
                       ? "No attendance records yet. Use Manual Entry or Import Biometric Data."
@@ -1828,15 +2094,56 @@ export default function AttendanceMonitoring() {
                 </TableRow>
               ) : (
                 paginatedFiltered.map((att) => (
-                  <TableRow key={att.id} hover>
+                  <TableRow
+                    key={att.id}
+                    hover
+                    sx={{
+                      transition: "background 160ms ease",
+                      "&:hover": { backgroundColor: "rgba(230, 248, 233, 0.36) !important" },
+                    }}
+                  >
                     <TableCell>
-                      <Chip label={att.displayId ?? att.id} size="small" variant="outlined" />
+                      <Chip
+                        icon={<BadgeRounded sx={{ fontSize: "15px !important" }} />}
+                        label={att.displayId ?? att.id}
+                        size="small"
+                        variant="outlined"
+                        sx={{
+                          borderRadius: 999,
+                          fontWeight: 800,
+                          color: GREEN_UI.greenDark,
+                          borderColor: GREEN_UI.borderStrong,
+                          bgcolor: GREEN_UI.greenSoft,
+                        }}
+                      />
                     </TableCell>
-                    <TableCell>{att.employee}</TableCell>
-                    <TableCell>{normalizeDateForFilter(att.date)}</TableCell>
-                    <TableCell>{att.timeIn}</TableCell>
-                    <TableCell>{att.timeOut}</TableCell>
-                    <TableCell>{att.totalHours}</TableCell>
+                    <TableCell sx={{ minWidth: 190 }}>
+                      <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                        <Box sx={{ ...iconTileSx, width: 34, height: 34, borderRadius: "13px" }}>
+                          <PersonRounded fontSize="small" />
+                        </Box>
+                        <Typography fontWeight={850} sx={{ color: GREEN_UI.text, whiteSpace: "nowrap" }}>{att.employee}</Typography>
+                      </Box>
+                    </TableCell>
+                    <TableCell sx={{ whiteSpace: "nowrap" }}>
+                      <Box sx={{ display: "flex", alignItems: "center", gap: 0.75, color: GREEN_UI.text }}>
+                        <CalendarMonthRounded sx={{ fontSize: 18, color: GREEN_UI.greenDark }} />
+                        <Typography variant="body2" fontWeight={700}>{normalizeDateForFilter(att.date)}</Typography>
+                      </Box>
+                    </TableCell>
+                    <TableCell sx={{ whiteSpace: "nowrap" }}>
+                      <Box sx={{ display: "flex", alignItems: "center", gap: 0.75 }}>
+                        <AccessTimeRounded sx={{ fontSize: 18, color: GREEN_UI.greenDark }} />
+                        <Typography variant="body2" fontWeight={700}>{att.timeIn || "—"}</Typography>
+                      </Box>
+                    </TableCell>
+                    <TableCell sx={{ whiteSpace: "nowrap" }}>
+                      <Box sx={{ display: "flex", alignItems: "center", gap: 0.75 }}>
+                        <TimerRounded sx={{ fontSize: 18, color: GREEN_UI.greenDark }} />
+                        <Typography variant="body2" fontWeight={700}>{att.timeOut || "—"}</Typography>
+                      </Box>
+                    </TableCell>
+                    <TableCell sx={{ fontWeight: 800, color: GREEN_UI.text }}>{att.totalHours}</TableCell>
                     <TableCell
                       sx={{
                         color:
@@ -1867,15 +2174,8 @@ export default function AttendanceMonitoring() {
                       <Chip
                         label={att.status}
                         size="small"
-                        color={
-                          att.status === "Present"
-                            ? "success"
-                            : att.status === "Late"
-                              ? "warning"
-                              : att.status === "On Leave"
-                                ? "info"
-                                : "error"
-                        }
+                        variant="outlined"
+                        sx={statusChipSx(att.status)}
                       />
                     </TableCell>
                     {canManageAttendance && (
@@ -1895,7 +2195,7 @@ export default function AttendanceMonitoring() {
                             variant="outlined"
                             color="warning"
                             onClick={() => openEdit(att)}
-                            sx={{ minWidth: 110 }}
+                            sx={{ ...pillButtonSx, minWidth: 110 }}
                           />
                           <Chip
                             label="Delete"
@@ -1904,7 +2204,7 @@ export default function AttendanceMonitoring() {
                             variant="outlined"
                             color="error"
                             onClick={() => handleDelete(att.id)}
-                            sx={{ minWidth: 110 }}
+                            sx={{ ...pillButtonSx, minWidth: 110 }}
                           />
                         </Box>
                       </TableCell>
@@ -1919,8 +2219,9 @@ export default function AttendanceMonitoring() {
 
       {!loading && filtered.length > 0 && (
         <Paper
-          variant="outlined"
+          elevation={0}
           sx={{
+            ...softCardSx,
             mt: 1.5,
             p: { xs: 1.25, sm: 1.5 },
             display: "flex",
@@ -1938,7 +2239,7 @@ export default function AttendanceMonitoring() {
               flexWrap: "wrap",
             }}
           >
-            <Typography variant="body2" color="text.secondary">
+            <Typography variant="body2" sx={{ color: GREEN_UI.muted, fontWeight: 800 }}>
               Rows per page:
             </Typography>
             <TextField
@@ -1949,7 +2250,7 @@ export default function AttendanceMonitoring() {
                 setRowsPerPage(Number(event.target.value));
                 setPage(0);
               }}
-              sx={{ width: 96 }}
+              sx={{ ...softTextFieldSx, width: 96 }}
             >
               {[25, 50, 100, 250].map((value) => (
                 <MenuItem key={value} value={value}>
@@ -1969,8 +2270,7 @@ export default function AttendanceMonitoring() {
           >
             <Typography
               variant="body2"
-              color="text.secondary"
-              sx={{ minWidth: 135 }}
+              sx={{ minWidth: 135, color: GREEN_UI.muted, fontWeight: 800 }}
             >
               {pageStart}-{pageEnd} of {filtered.length}
             </Typography>
@@ -1982,6 +2282,7 @@ export default function AttendanceMonitoring() {
                     size="small"
                     onClick={handlePreviousPage}
                     disabled={!canGoPrevious}
+                    sx={{ bgcolor: GREEN_UI.greenSoft, color: GREEN_UI.greenDark, "&:hover": { bgcolor: "#d7f2dd" } }}
                   >
                     <ArrowBackIosNew fontSize="small" />
                   </IconButton>
@@ -1989,7 +2290,7 @@ export default function AttendanceMonitoring() {
               </Tooltip>
               <Typography
                 variant="body2"
-                sx={{ px: 1, minWidth: 84, textAlign: "center" }}
+                sx={{ px: 1, minWidth: 84, textAlign: "center", color: GREEN_UI.text, fontWeight: 800 }}
               >
                 Page {page + 1} / {totalPages}
               </Typography>
@@ -2000,6 +2301,7 @@ export default function AttendanceMonitoring() {
                     size="small"
                     onClick={handleNextPage}
                     disabled={!canGoNext}
+                    sx={{ bgcolor: GREEN_UI.greenSoft, color: GREEN_UI.greenDark, "&:hover": { bgcolor: "#d7f2dd" } }}
                   >
                     <ArrowForwardIos fontSize="small" />
                   </IconButton>
@@ -2011,11 +2313,19 @@ export default function AttendanceMonitoring() {
       )}
 
       {!loading && (
-        <Paper sx={{ p: 2, mt: 2 }}>
-          <Typography variant="h6" gutterBottom>
+        <Paper elevation={0} sx={{ ...softCardSx, p: 2, mt: 2 }}>
+          <Box sx={{ display: "flex", alignItems: "center", gap: 1.25, mb: 1.5 }}>
+            <Box sx={{ ...iconTileSx, width: 38, height: 38, borderRadius: "14px" }}>
+              <FactCheckRounded fontSize="small" />
+            </Box>
+            <Box>
+              <Typography variant="h6" fontWeight={900} sx={{ color: GREEN_UI.text, lineHeight: 1.2 }}>
             Summary {filterDate ? `for ${filterDate}` : "(All Records)"}
-          </Typography>
-          <Grid container spacing={2}>
+              </Typography>
+              <Typography variant="caption" sx={{ color: GREEN_UI.muted }}>A compact count of the filtered attendance records.</Typography>
+            </Box>
+          </Box>
+          <Grid container spacing={1.5}>
             {[
               ["Present (incl. Late)", summary.present, "success"],
               ["Late", summary.late, "warning"],
@@ -2023,10 +2333,10 @@ export default function AttendanceMonitoring() {
               ["On Leave", summary.onLeave, "info"],
             ].map(([label, val]) => (
               <Grid key={String(label)} size={{ xs: 6, md: 3 }}>
-                <Typography variant="body2" color="text.secondary">
+                <Typography variant="body2" sx={{ color: GREEN_UI.muted, fontWeight: 800 }}>
                   {label}
                 </Typography>
-                <Typography variant="h6">{val}</Typography>
+                <Typography variant="h5" fontWeight={900} sx={{ color: GREEN_UI.text }}>{val}</Typography>
               </Grid>
             ))}
           </Grid>
@@ -2039,8 +2349,32 @@ export default function AttendanceMonitoring() {
         onClose={() => setDialogOpen(false)}
         maxWidth="sm"
         fullWidth
+        PaperProps={{
+          sx: {
+            borderRadius: "26px",
+            border: `1px solid ${GREEN_UI.border}`,
+            boxShadow: GREEN_UI.shadow,
+            background: GREEN_UI.cardBg,
+            overflow: "hidden",
+            "& .MuiDialogTitle-root": { color: GREEN_UI.text },
+            "& .MuiOutlinedInput-root": {
+              borderRadius: "16px",
+              backgroundColor: "#fbfef9",
+              "& fieldset": { borderColor: GREEN_UI.border },
+              "&:hover fieldset": { borderColor: GREEN_UI.borderStrong },
+              "&.Mui-focused fieldset": { borderColor: GREEN_UI.green, borderWidth: 1.5 },
+            },
+          },
+        }}
       >
-        <DialogTitle fontWeight={700}>Manual Attendance Entry</DialogTitle>
+        <DialogTitle fontWeight={900} sx={{ px: 3, pt: 2.5 }}>
+          <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+            <Box sx={{ ...iconTileSx, width: 38, height: 38, borderRadius: "14px" }}>
+              <AddCircleOutline fontSize="small" />
+            </Box>
+            Manual Attendance Entry
+          </Box>
+        </DialogTitle>
         <DialogContent
           sx={{
             display: "flex",
@@ -2164,11 +2498,12 @@ export default function AttendanceMonitoring() {
           </TextField>
         </DialogContent>
         <DialogActions sx={{ px: 3, pb: 2 }}>
-          <Button onClick={() => setDialogOpen(false)}>Cancel</Button>
+          <Button onClick={() => setDialogOpen(false)} sx={pillButtonSx}>Cancel</Button>
           <Button
             variant="contained"
             onClick={handleSave}
             disabled={saving}
+            sx={{ ...pillButtonSx, bgcolor: GREEN_UI.greenDark, "&:hover": { bgcolor: "#176238" } }}
             startIcon={
               saving ? (
                 <CircularProgress size={16} color="inherit" />
@@ -2192,10 +2527,34 @@ export default function AttendanceMonitoring() {
         }}
         maxWidth="md"
         fullWidth
+        PaperProps={{
+          sx: {
+            borderRadius: "26px",
+            border: `1px solid ${GREEN_UI.border}`,
+            boxShadow: GREEN_UI.shadow,
+            background: GREEN_UI.cardBg,
+            overflow: "hidden",
+            "& .MuiDialogTitle-root": { color: GREEN_UI.text },
+            "& .MuiOutlinedInput-root": {
+              borderRadius: "16px",
+              backgroundColor: "#fbfef9",
+              "& fieldset": { borderColor: GREEN_UI.border },
+              "&:hover fieldset": { borderColor: GREEN_UI.borderStrong },
+              "&.Mui-focused fieldset": { borderColor: GREEN_UI.green, borderWidth: 1.5 },
+            },
+          },
+        }}
       >
-        <DialogTitle fontWeight={700}>Import Biometric Data</DialogTitle>
-        <DialogContent>
-          <Alert severity="info" sx={{ mb: 2 }}>
+        <DialogTitle fontWeight={900} sx={{ px: 3, pt: 2.5 }}>
+          <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+            <Box sx={{ ...iconTileSx, width: 38, height: 38, borderRadius: "14px" }}>
+              <UploadFileRounded fontSize="small" />
+            </Box>
+            Import Biometric Data
+          </Box>
+        </DialogTitle>
+        <DialogContent sx={{ pt: "12px !important" }}>
+          <Alert severity="info" sx={{ mb: 2, borderRadius: "18px" }}>
             <strong>Import order:</strong>
             <br />
             <strong>1)</strong> Upload <code>Employee Attendance Record</code>{" "}
@@ -2357,6 +2716,7 @@ export default function AttendanceMonitoring() {
         <DialogActions sx={{ px: 3, pb: 2 }}>
           <Button
             disabled={importing || parsingImport}
+            sx={pillButtonSx}
             onClick={() => {
               setImportDialog(false);
               setImportPreview([]);
@@ -2378,6 +2738,7 @@ export default function AttendanceMonitoring() {
             }
             onClick={handleImport}
             disabled={importing || parsingImport || importPreview.length === 0}
+            sx={{ ...pillButtonSx }}
           >
             {importing
               ? `Importing ${importProgress.current}/${importProgress.total}…`
@@ -2392,6 +2753,23 @@ export default function AttendanceMonitoring() {
         onClose={() => setEditDialog(false)}
         maxWidth="sm"
         fullWidth
+        PaperProps={{
+          sx: {
+            borderRadius: "26px",
+            border: `1px solid ${GREEN_UI.border}`,
+            boxShadow: GREEN_UI.shadow,
+            background: GREEN_UI.cardBg,
+            overflow: "hidden",
+            "& .MuiDialogTitle-root": { color: GREEN_UI.text },
+            "& .MuiOutlinedInput-root": {
+              borderRadius: "16px",
+              backgroundColor: "#fbfef9",
+              "& fieldset": { borderColor: GREEN_UI.border },
+              "&:hover fieldset": { borderColor: GREEN_UI.borderStrong },
+              "&.Mui-focused fieldset": { borderColor: GREEN_UI.green, borderWidth: 1.5 },
+            },
+          },
+        }}
       >
         <DialogTitle fontWeight={700}>
           <Box
@@ -2521,12 +2899,13 @@ export default function AttendanceMonitoring() {
           </TextField>
         </DialogContent>
         <DialogActions sx={{ px: 3, pb: 2 }}>
-          <Button onClick={() => setEditDialog(false)}>Cancel</Button>
+          <Button onClick={() => setEditDialog(false)} sx={pillButtonSx}>Cancel</Button>
           <Button
             variant="contained"
             color="warning"
             onClick={handleEditSave}
             disabled={saving}
+            sx={{ ...pillButtonSx }}
             startIcon={
               saving ? (
                 <CircularProgress size={16} color="inherit" />
@@ -2551,6 +2930,23 @@ export default function AttendanceMonitoring() {
         }}
         maxWidth="sm"
         fullWidth
+        PaperProps={{
+          sx: {
+            borderRadius: "26px",
+            border: `1px solid ${GREEN_UI.border}`,
+            boxShadow: GREEN_UI.shadow,
+            background: GREEN_UI.cardBg,
+            overflow: "hidden",
+            "& .MuiDialogTitle-root": { color: GREEN_UI.text },
+            "& .MuiOutlinedInput-root": {
+              borderRadius: "16px",
+              backgroundColor: "#fbfef9",
+              "& fieldset": { borderColor: GREEN_UI.border },
+              "&:hover fieldset": { borderColor: GREEN_UI.borderStrong },
+              "&.Mui-focused fieldset": { borderColor: GREEN_UI.green, borderWidth: 1.5 },
+            },
+          },
+        }}
       >
         <DialogTitle fontWeight={700}>
           <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
@@ -2619,6 +3015,7 @@ export default function AttendanceMonitoring() {
             disabled={
               deletingAll || deleteAllConfirm.trim().toLowerCase() !== "delete"
             }
+            sx={{ ...pillButtonSx }}
           >
             {deletingAll
               ? `Deleting ${deleteProgress.current}/${deleteProgress.total}…`
