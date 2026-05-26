@@ -368,11 +368,11 @@ export default function LandingPage() {
               <Button sx={navButtonSx} onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}>
                 Home
               </Button>
-              <Button sx={navButtonSx} onClick={() => document.getElementById("experience")?.scrollIntoView({ behavior: "smooth" })}>
-                Experience
-              </Button>
               <Button sx={navButtonSx} onClick={() => document.getElementById("jobs")?.scrollIntoView({ behavior: "smooth" })}>
                 Jobs
+              </Button>
+              <Button sx={navButtonSx} onClick={() => document.getElementById("experience")?.scrollIntoView({ behavior: "smooth" })}>
+                Experience
               </Button>
               <Button sx={navButtonSx} onClick={() => navigate("/apply")}>
                 Apply
@@ -470,6 +470,7 @@ export default function LandingPage() {
               </Typography>
 
               <Stack direction={{ xs: "column", sm: "row" }} spacing={2} sx={{ mb: 4 }}>
+                
                 <Button
                   size="large"
                   variant="contained"
@@ -486,7 +487,7 @@ export default function LandingPage() {
                     boxShadow: "0 18px 36px rgba(31,122,71,0.28)",
                   }}
                 >
-                  Apply for Job
+                  Click here to Apply for Job
                 </Button>
 
                 <Button
@@ -685,169 +686,8 @@ export default function LandingPage() {
         </Container>
       </Box>
 
-      {/* EXPERIENCE SECTION */}
-      <Box id="experience" sx={{ py: { xs: 7, md: 11 }, scrollMarginTop: { xs: 86, md: 100 } }}>
-        <Container maxWidth="xl">
-          <Grid container spacing={{ xs: 4, md: 5 }} alignItems="stretch">
-            <Grid size={{ xs: 12, md: 4 }}>
-              <Typography
-                sx={{
-                  fontSize: { xs: "2rem", md: "3.15rem" },
-                  lineHeight: 1,
-                  fontWeight: 950,
-                  letterSpacing: "-0.055em",
-                  color: "#102016",
-                  mb: 2,
-                }}
-              >
-                Designed to make applicants feel welcome.
-              </Typography>
-              <Typography sx={{ color: "#5d6d63", lineHeight: 1.85, mb: 3 }}>
-                The landing page now presents the company like a destination: polished, warm,
-                professional, and easy to explore from any device.
-              </Typography>
-
-              <Stack spacing={1.3}>
-                {cultureHighlights.map((item) => (
-                  <Stack key={item} direction="row" spacing={1.2} alignItems="center">
-                    <CheckCircle sx={{ color: "#1F7A47" }} fontSize="small" />
-                    <Typography fontWeight={800} sx={{ color: "#23372b" }}>
-                      {item}
-                    </Typography>
-                  </Stack>
-                ))}
-              </Stack>
-            </Grid>
-
-            <Grid size={{ xs: 12, md: 8 }}>
-              <Grid container spacing={2.5}>
-                {brochureItems.map((item, index) => (
-                  <Grid key={item.title} size={{ xs: 12, sm: 6, lg: 4 }}>
-                    <Card
-                      sx={{
-                        height: "100%",
-                        borderRadius: 2.5,
-                        border: "1px solid rgba(31,122,71,0.11)",
-                        boxShadow: "0 18px 44px rgba(16,32,22,0.08)",
-                        background:
-                          index === 0
-                            ? "linear-gradient(180deg, #ffffff 0%, #f0f8f1 100%)"
-                            : "rgba(255,255,255,0.86)",
-                        overflow: "hidden",
-                      }}
-                    >
-                      <CardContent sx={{ p: 3.2 }}>
-                        <Box
-                          sx={{
-                            width: 58,
-                            height: 58,
-                            borderRadius: "22px",
-                            bgcolor: "rgba(31,122,71,0.10)",
-                            color: "#1F7A47",
-                            display: "flex",
-                            alignItems: "center",
-                            justifyContent: "center",
-                            mb: 2.5,
-                            boxShadow: "inset 0 0 0 1px rgba(31,122,71,0.08)",
-                          }}
-                        >
-                          {item.icon}
-                        </Box>
-                        <Typography variant="h5" fontWeight={950} sx={{ letterSpacing: "-0.035em", mb: 1 }}>
-                          {item.title}
-                        </Typography>
-                        <Typography sx={{ color: "#64746b", lineHeight: 1.8 }}>{item.subtitle}</Typography>
-                      </CardContent>
-                    </Card>
-                  </Grid>
-                ))}
-              </Grid>
-            </Grid>
-          </Grid>
-        </Container>
-      </Box>
-
-      {/* GALLERY / BROCHURE VISUALS */}
-      <Box sx={{ py: { xs: 4, md: 8 }, background: "linear-gradient(135deg, #154f31 0%, #1F7A47 65%, #4caf70 100%)", color: "#fff" }}>
-        <Container maxWidth="xl">
-          <Stack
-            direction={{ xs: "column", md: "row" }}
-            justifyContent="space-between"
-            alignItems={{ xs: "flex-start", md: "flex-end" }}
-            spacing={2}
-            sx={{ mb: 4 }}
-          >
-            <Box>
-              <Typography
-                sx={{
-                  fontSize: { xs: "2rem", md: "3.4rem" },
-                  lineHeight: 1,
-                  fontWeight: 950,
-                  letterSpacing: "-0.06em",
-                }}
-              >
-                A glimpse of the place applicants will want to join.
-              </Typography>
-            </Box>
-          </Stack>
-
-          <Grid container spacing={2}>
-            {galleryImages.map((image, index) => (
-              <Grid key={image} size={{ xs: 12, sm: 6, md: index === 0 ? 5 : index === 1 ? 3 : 2 }}>
-                <Paper
-                  elevation={0}
-                  sx={{
-                    minHeight: { xs: 260, md: index === 0 ? 420 : 300 },
-                    borderRadius: { xs: 2, md: 2.5 },
-                    overflow: "hidden",
-                    backgroundImage: `linear-gradient(180deg, transparent 42%, rgba(0,0,0,0.52)), url(${image})`,
-                    backgroundSize: { xs: "cover", md: "112%" },
-                    backgroundPosition: "center",
-                    border: "1px solid rgba(255,255,255,0.12)",
-                    boxShadow: "0 26px 70px rgba(0,0,0,0.22)",
-                    position: "relative",
-                    transform: "translate3d(0,0,0)",
-                    transformOrigin: "center",
-                    willChange: "transform, background-position",
-                    animation: `${index % 2 === 0 ? "galleryFloatA" : "galleryFloatB"} ${index === 0 ? 8 : 6.8 + index}s ease-in-out infinite`,
-                    animationDelay: `${index * 0.35}s`,
-                    "@keyframes galleryFloatA": {
-                      "0%, 100%": {
-                        transform: "translate3d(0, 0, 0) rotate(0deg)",
-                        backgroundPosition: "center center",
-                      },
-                      "50%": {
-                        transform: "translate3d(0, -14px, 0) rotate(-0.6deg)",
-                        backgroundPosition: "center 45%",
-                      },
-                    },
-                    "@keyframes galleryFloatB": {
-                      "0%, 100%": {
-                        transform: "translate3d(0, 0, 0) rotate(0deg)",
-                        backgroundPosition: "center center",
-                      },
-                      "50%": {
-                        transform: "translate3d(0, 12px, 0) rotate(0.6deg)",
-                        backgroundPosition: "center 55%",
-                      },
-                    },
-                  }}
-                >
-                  <Typography
-                    fontWeight={950}
-                    sx={{ position: "absolute", left: 22, bottom: 18, color: "#fff" }}
-                  >
-                    {index === 0 ? "Guest Experience" : index === 1 ? "Sip Coffee" : index === 2 ? "Relax & Swimming" : "Restaurant"}
-                  </Typography>
-                </Paper>
-              </Grid>
-            ))}
-          </Grid>
-        </Container>
-      </Box>
-
       {/* JOB POSTINGS */}
-      <Box id="jobs" sx={{ py: { xs: 7, md: 11 }, scrollMarginTop: { xs: 86, md: 100 } }}>
+      <Box id="jobs" sx={{ py: { md: 5 }, scrollMarginTop: { xs: 86, md: 100 }}}>
         <Container maxWidth="xl">
           <Box
             sx={{
@@ -1203,10 +1043,11 @@ export default function LandingPage() {
             </Grid>
           )}
         </Container>
-      </Box>
+        </Box>
 
       {/* FINAL CTA */}
-      <Container maxWidth="xl" sx={{ pb: { xs: 7, md: 10 } }}>
+      <Box sx={{ py: { xs: 7, md: 5 }, scrollMarginTop: { xs: 86, md: 100 }}}>
+      <Container maxWidth="xl">
         <Paper
           elevation={0}
           sx={{
@@ -1282,6 +1123,168 @@ export default function LandingPage() {
           </Grid>
         </Paper>
       </Container>
+      </Box>
+
+      {/* EXPERIENCE SECTION */}
+      <Box id="experience" sx={{ py: { xs: 3.5, md: 11 }, scrollMarginTop: { xs: 86, md: 100 } }}>
+        <Container maxWidth="xl">
+          <Grid container spacing={{ xs: 4, md: 5 }} alignItems="stretch">
+            <Grid size={{ xs: 12, md: 4 }}>
+              <Typography
+                sx={{
+                  fontSize: { xs: "2rem", md: "3.15rem" },
+                  lineHeight: 1,
+                  fontWeight: 950,
+                  letterSpacing: "-0.055em",
+                  color: "#102016",
+                  mb: 2,
+                }}
+              >
+                Designed to make applicants feel welcome.
+              </Typography>
+              <Typography sx={{ color: "#5d6d63", lineHeight: 1.85, mb: 3 }}>
+                The landing page now presents the company like a destination: polished, warm,
+                professional, and easy to explore from any device.
+              </Typography>
+
+              <Stack spacing={1.3}>
+                {cultureHighlights.map((item) => (
+                  <Stack key={item} direction="row" spacing={1.2} alignItems="center">
+                    <CheckCircle sx={{ color: "#1F7A47" }} fontSize="small" />
+                    <Typography fontWeight={800} sx={{ color: "#23372b" }}>
+                      {item}
+                    </Typography>
+                  </Stack>
+                ))}
+              </Stack>
+            </Grid>
+
+            <Grid size={{ xs: 12, md: 8 }}>
+              <Grid container spacing={2.5}>
+                {brochureItems.map((item, index) => (
+                  <Grid key={item.title} size={{ xs: 12, sm: 6, lg: 4 }}>
+                    <Card
+                      sx={{
+                        height: "100%",
+                        borderRadius: 2.5,
+                        border: "1px solid rgba(31,122,71,0.11)",
+                        boxShadow: "0 18px 44px rgba(16,32,22,0.08)",
+                        background:
+                          index === 0
+                            ? "linear-gradient(180deg, #ffffff 0%, #f0f8f1 100%)"
+                            : "rgba(255,255,255,0.86)",
+                        overflow: "hidden",
+                      }}
+                    >
+                      <CardContent sx={{ p: 3.2 }}>
+                        <Box
+                          sx={{
+                            width: 58,
+                            height: 58,
+                            borderRadius: "22px",
+                            bgcolor: "rgba(31,122,71,0.10)",
+                            color: "#1F7A47",
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            mb: 2.5,
+                            boxShadow: "inset 0 0 0 1px rgba(31,122,71,0.08)",
+                          }}
+                        >
+                          {item.icon}
+                        </Box>
+                        <Typography variant="h5" fontWeight={950} sx={{ letterSpacing: "-0.035em", mb: 1 }}>
+                          {item.title}
+                        </Typography>
+                        <Typography sx={{ color: "#64746b", lineHeight: 1.8 }}>{item.subtitle}</Typography>
+                      </CardContent>
+                    </Card>
+                  </Grid>
+                ))}
+              </Grid>
+            </Grid>
+          </Grid>
+        </Container>
+      </Box>
+
+      {/* GALLERY / BROCHURE VISUALS */}
+      <Box sx={{ py: { xs: 4, md: 8 }, background: "linear-gradient(135deg, #154f31 0%, #1F7A47 65%, #4caf70 100%)", color: "#fff" }}>
+        <Container maxWidth="xl">
+          <Stack
+            direction={{ xs: "column", md: "row" }}
+            justifyContent="space-between"
+            alignItems={{ xs: "flex-start", md: "flex-end" }}
+            spacing={2}
+            sx={{ mb: 4 }}
+          >
+            <Box>
+              <Typography
+                sx={{
+                  fontSize: { xs: "2rem", md: "3.4rem" },
+                  lineHeight: 1,
+                  fontWeight: 950,
+                  letterSpacing: "-0.06em",
+                }}
+              >
+                A glimpse of the place applicants will want to join.
+              </Typography>
+            </Box>
+          </Stack>
+
+          <Grid container spacing={2}>
+            {galleryImages.map((image, index) => (
+              <Grid key={image} size={{ xs: 12, sm: 6, md: index === 0 ? 5 : index === 1 ? 3 : 2 }}>
+                <Paper
+                  elevation={0}
+                  sx={{
+                    minHeight: { xs: 260, md: index === 0 ? 420 : 300 },
+                    borderRadius: { xs: 2, md: 2.5 },
+                    overflow: "hidden",
+                    backgroundImage: `linear-gradient(180deg, transparent 42%, rgba(0,0,0,0.52)), url(${image})`,
+                    backgroundSize: { xs: "cover", md: "112%" },
+                    backgroundPosition: "center",
+                    border: "1px solid rgba(255,255,255,0.12)",
+                    boxShadow: "0 26px 70px rgba(0,0,0,0.22)",
+                    position: "relative",
+                    transform: "translate3d(0,0,0)",
+                    transformOrigin: "center",
+                    willChange: "transform, background-position",
+                    animation: `${index % 2 === 0 ? "galleryFloatA" : "galleryFloatB"} ${index === 0 ? 8 : 6.8 + index}s ease-in-out infinite`,
+                    animationDelay: `${index * 0.35}s`,
+                    "@keyframes galleryFloatA": {
+                      "0%, 100%": {
+                        transform: "translate3d(0, 0, 0) rotate(0deg)",
+                        backgroundPosition: "center center",
+                      },
+                      "50%": {
+                        transform: "translate3d(0, -14px, 0) rotate(-0.6deg)",
+                        backgroundPosition: "center 45%",
+                      },
+                    },
+                    "@keyframes galleryFloatB": {
+                      "0%, 100%": {
+                        transform: "translate3d(0, 0, 0) rotate(0deg)",
+                        backgroundPosition: "center center",
+                      },
+                      "50%": {
+                        transform: "translate3d(0, 12px, 0) rotate(0.6deg)",
+                        backgroundPosition: "center 55%",
+                      },
+                    },
+                  }}
+                >
+                  <Typography
+                    fontWeight={950}
+                    sx={{ position: "absolute", left: 22, bottom: 18, color: "#fff" }}
+                  >
+                    {index === 0 ? "Guest Experience" : index === 1 ? "Sip Coffee" : index === 2 ? "Relax & Swimming" : "Restaurant"}
+                  </Typography>
+                </Paper>
+              </Grid>
+            ))}
+          </Grid>
+        </Container>
+      </Box>
 
       {/* FOOTER */}
       <Box sx={{ py: 4, borderTop: "1px solid rgba(31,122,71,0.10)", bgcolor: "rgba(255,255,255,0.70)" }}>
